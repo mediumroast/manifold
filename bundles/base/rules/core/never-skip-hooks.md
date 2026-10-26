@@ -2,7 +2,7 @@
 id: never-skip-hooks
 title: Commit hooks
 severity: high
-applies_to: coder, bug-coder
+applies_to: coder, bug-coder, test-coder
 status: active
 source: convention
 ---

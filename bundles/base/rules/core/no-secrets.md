@@ -2,7 +2,7 @@
 id: no-secrets
 title: Secrets
 severity: high
-applies_to: coder, bug-coder
+applies_to: coder, bug-coder, test-coder
 status: active
 source: convention
 ---

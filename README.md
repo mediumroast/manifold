@@ -8,11 +8,11 @@ Manifold is a toolkit for making AI coding tools such as Claude Code and GitHub 
 
 The first release is the foundation. It is self-contained, needs no server, and installs into any repository:
 
-- **Three agents:** `planner`, `coder` and `bug-coder`, in Claude Code and GitHub Copilot formats.
+- **Five agents:** `planner`, `coder`, `test-planner`, `test-coder` and `bug-coder`, in Claude Code and GitHub Copilot formats.
 - **Rules:** a small library of "don't do this, and do this instead" rules, each with the reason behind it. Every agent carries the rules that apply to its role.
 - **Templates:** phase plan, test plan and walkthrough notes, installed to `docs/templates/`.
 - **An installer** that shows what it will do before it does anything, never overwrites a file you edited, and removes cleanly.
-- **Agent Skills (experimental):** the same three roles as portable [Agent Skills](https://agentskills.io).
+- **Agent Skills (experimental):** the same five roles as portable [Agent Skills](https://agentskills.io).
 
 See [`bundles/base`](bundles/base/README.md) for details.
 

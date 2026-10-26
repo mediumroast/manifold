@@ -57,8 +57,8 @@ def tree(repo):
     return sorted(str(p.relative_to(repo)) for p in repo.rglob("*") if p.is_file() and ".git" not in p.parts)
 
 
-AGENT_FILES = [".claude/agents/planner.md", ".claude/agents/coder.md", ".claude/agents/bug-coder.md"]
-COPILOT_FILES = [".github/agents/planner.agent.md", ".github/agents/coder.agent.md", ".github/agents/bug-coder.agent.md"]
+AGENT_FILES = [".claude/agents/%s.md" % r for r in ("planner", "coder", "bug-coder", "test-planner", "test-coder")]
+COPILOT_FILES = [".github/agents/%s.agent.md" % r for r in ("planner", "coder", "bug-coder", "test-planner", "test-coder")]
 TEMPLATE_FILES = ["docs/templates/PHASE_PLAN_TEMPLATE.md", "docs/templates/PHASE_TEST_PLAN_TEMPLATE.md", "docs/templates/WT_TEMPLATE.md"]
 
 
@@ -106,6 +106,13 @@ def test_rule_without_why_or_instead_is_rejected(tmp_path, section):
     nxt = text.find("## ", start + 3)
     p.write_text(text[:start] + (text[nxt:] if nxt != -1 else ""))
     assert any(section in x for x in build.lint(src))
+
+
+def test_rule_with_reference_marker_is_rejected(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "rules" / "core" / "no-secrets.md"
+    p.write_text(p.read_text().replace("tell the user to rotate it", "ask the {{ref:planner}} to rotate it"))
+    assert any("markers" in x for x in build.lint(src))
 
 
 def test_rule_id_must_match_filename(tmp_path):
@@ -435,13 +442,13 @@ def test_role_of(stem, role):
 def _tailored(repo, directory, suffix):
     (repo / directory).mkdir(parents=True)
     (repo / directory / ("acme-planner" + suffix)).write_text("---\nname: acme-planner\n---\n")
-    (repo / directory / ("acme-test-coder" + suffix)).write_text("---\nname: acme-test-coder\n---\n")
+    (repo / directory / ("acme-reviewer" + suffix)).write_text("---\nname: acme-reviewer\n---\n")
 
 
 def test_overlap_warns_and_blocks_apply_until_allowed(bundle_dir, repo):
     _tailored(repo, ".github/agents", ".agent.md")
     rc, out = run(bundle_dir, repo, "--format", "copilot")
-    assert rc == 0 and "WARNING" in out and "acme-planner.agent.md" in out and "acme-test-coder" not in out
+    assert rc == 0 and "WARNING" in out and "acme-planner.agent.md" in out and "acme-reviewer" not in out
     rc, out = run(bundle_dir, repo, "--format", "copilot", "--apply")
     assert rc == 1 and "overlapping" in out
     assert not (repo / ".github/agents/planner.agent.md").exists() and not (repo / ".manifold").exists()
@@ -464,7 +471,7 @@ def test_own_installed_files_are_not_flagged_on_reinstall(bundle_dir, repo):
 
 # ------------------------------------------------------------ skills (experimental format)
 
-SKILL_NAMES = ["plan-change", "execute-plan", "fix-bug"]
+SKILL_NAMES = ["plan-change", "execute-plan", "fix-bug", "plan-tests", "write-tests"]
 SKILL_FILES = [".claude/skills/%s/SKILL.md" % n for n in SKILL_NAMES]
 
 
@@ -481,7 +488,7 @@ def test_skills_use_only_fields_from_the_spec():
         assert build.validate_skill(build.SKILL_NAMES[role], out) == []
 
 
-def test_bundle_lists_three_skills_with_matching_folder_and_name(bundle_dir):
+def test_bundle_lists_all_skills_with_matching_folder_and_name(bundle_dir):
     skills = _bundle_json(bundle_dir)["formats"]["skills"]
     assert [e["path"] for e in skills] == [".claude/skills/%s/SKILL.md" % n for n in
                                            [build.SKILL_NAMES[r] for r in build.ROLES]]

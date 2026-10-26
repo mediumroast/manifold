@@ -2,7 +2,7 @@
 id: plan-means-stop
 title: Planning stops at the plan
 severity: medium
-applies_to: planner
+applies_to: planner, test-planner
 status: active
 source: convention
 ---

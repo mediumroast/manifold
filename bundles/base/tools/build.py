@@ -21,7 +21,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ROLES = ("planner", "coder", "bug-coder")
+ROLES = ("planner", "coder", "bug-coder", "test-planner", "test-coder")
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 SCALAR_KEYS = ("name", "description", "argument-hint")
 FORBIDDEN_TERMS = ("mediumroast",)
@@ -32,7 +32,8 @@ FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 
 CLAUDE_AGENT_PATH = ".claude/agents/{name}.md"
 COPILOT_AGENT_PATH = ".github/agents/{name}.agent.md"
-SKILL_NAMES = {"planner": "plan-change", "coder": "execute-plan", "bug-coder": "fix-bug"}
+SKILL_NAMES = {"planner": "plan-change", "coder": "execute-plan", "bug-coder": "fix-bug",
+               "test-planner": "plan-tests", "test-coder": "write-tests"}
 SKILL_ROOT = ".claude/skills"
 SKILL_PATH = SKILL_ROOT + "/{name}/SKILL.md"
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -124,6 +125,8 @@ def parse_rule(path: Path) -> dict:
     for needed in ("rule", "why", "instead"):
         if not sections.get(needed):
             raise BuildError("%s: every rule needs a '%s' section" % (path.name, needed.capitalize()))
+    if "{{" in body:
+        raise BuildError("%s: rules cannot use {{ref:...}} markers; name the role in plain words" % path.name)
     meta["applies_to"] = applies
     meta.update(sections)
     return meta

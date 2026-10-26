@@ -2,7 +2,7 @@
 id: no-generated-artifacts-in-commits
 title: Generated output
 severity: high
-applies_to: coder, bug-coder
+applies_to: coder, bug-coder, test-coder
 status: active
 source: incident
 ---

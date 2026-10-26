@@ -25,35 +25,42 @@
 **Environment variables / fixtures required:**
 -
 
-## Test cases
+## Manual test cases
+<!-- Cases that need human judgment. Order: task order from the phase plan. -->
 
-### T01 — <short title>
+### M1 — <short title>
 **Related task:** Task N from `PHASE_<N>_PLAN.md`
-**Precondition:**
-**Action:**
-**Expected outcome:**
-**Pass criteria:**
+**Precondition:** Exact state the system must be in before starting.
+**Steps:**
+1.
+**Expected outcome:** Exactly what should be observed.
+**Pass criteria:** Unambiguous statement of what "pass" looks like.
+**Result:** [ ] Pass  [ ] Fail  [ ] Blocked
+**Notes:** (tester fills in)
+
+---
+
+## Automated test cases
+<!-- Cases the test-coder implements. Order: task order. REGRESSION cases go last, labelled. -->
+
+### A1 — <short title>
+**Related task:** Task N from `PHASE_<N>_PLAN.md`
+**Precondition:** System state and any fixtures or mocks required.
+**Action:** Exact operation or sequence to execute.
+**Expected outcome:** The specific result, state, or output that constitutes a pass.
+**Test file:** `<path/to/test_file>` (where this test will live)
 **Todo:** [ ]
 
 ---
 
-### T02 — <short title>
-**Related task:**
-**Precondition:**
-**Action:**
-**Expected outcome:**
-**Pass criteria:**
-**Todo:** [ ]
+<!-- Copy the case blocks above for each additional case -->
 
----
-
-<!-- Copy the test case block above for each additional test -->
-
-## Quality gates
-- [ ] All test cases passing
+## Quality gates (all must pass before the phase is certified complete)
+- [ ] All manual test cases marked Pass by a human tester
+- [ ] All automated tests passing (`<test command>`)
 - [ ] `<verify command>` passes clean
-- [ ] `<test command>` passes clean (no regressions)
 - [ ] No [~] blocked test cases outstanding without documented reason
-- [ ] Summary signed off below this line
+- [ ] Summary signed off by tester below this line
 
-<!-- add sign-off and date here -->
+<!-- tester: add sign-off and date here -->
+<!-- test-coder: add automation run summary here -->
