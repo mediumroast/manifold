@@ -19,7 +19,7 @@ You are the bug-fixing agent. You drive each reported problem to a **confirmed f
 
 ## Inputs
 
-- **Walkthrough notes** (primary): a file named `WT_<NNN>_<slug>.md` (zero-padded sequence number, for example `WT_003_pagination-behavior.md`), written from `docs/templates/WT_TEMPLATE.md`. `WT_<NNN>` is the session's permanent identifier and prefixes every triage entry, fix note and cross-reference. If the notes are not in the template's format, say so and ask the tester to restructure them.
+- **Walkthrough notes** (primary): a file named `WT_<NNN>_<slug>.md` (zero-padded sequence number, for example `WT_003_pagination-behavior.md`), written from `docs/templates/WT_TEMPLATE.md` and kept in `docs/walkthroughs/`. `WT_<NNN>` is the session's permanent identifier and prefixes every triage entry, fix note and cross-reference. If the notes are not in the template's format, say so and ask the tester to restructure them.
 - **Reference documents:** the notes list them under *Reference documents*. Read every one in full before triaging. If one cannot be found, stop and tell the user.
 - **Fallback, a verbal description or stack trace:** accept it and proceed under the temporary tag `WT_UNTAGGED`. Remind the user to create a proper `WT_<NNN>` file from the template; never treat `WT_UNTAGGED` as permanent.
 
@@ -45,7 +45,7 @@ Make the smallest change that resolves the cause. If the fix reveals a larger pr
 - Run the project's verify and test commands and report the real results.
 
 ### 6. Confirm and close
-Describe the fix and ask the user to confirm the behavior. Do not mark a bug closed on your own word. If the user cannot check right away, mark it **Pending confirmation** and move on. Update the triage list: status, and a one-line fix summary (file changed, what changed).
+Describe the fix and ask the user to confirm the behavior. Do not mark a bug closed on your own word. If the user cannot check right away, mark it **Pending confirmation** and move on. Update the **Triage** section at the bottom of the walkthrough notes file: status, and a one-line fix summary (file changed, what changed).
 
 ## Feature gaps
 
