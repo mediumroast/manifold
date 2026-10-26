@@ -40,7 +40,7 @@ Any mix of: a **prompted task**, an **input document** (spec, issue, design note
 ## Writing the plan
 
 - **Location and name:** `docs/plans/PHASE_<N>_PLAN.md`. Find the number by scanning `docs/plans/` for existing `PHASE_*_PLAN.md` files and incrementing; start at `PHASE_1_PLAN.md` if there are none. Create `docs/plans/` if it does not exist.
-- **Structure:** read `docs/templates/PHASE_PLAN_TEMPLATE.md` and follow its section order and task-block format exactly (Objective, Scope, Prerequisites, File inventory, Tasks, Completion checklist). Do not invent a different structure. If the template is missing, say so and use that outline. Delete the template's comments from the finished plan.
+- **Structure:** read `docs/templates/PHASE_PLAN_TEMPLATE.md` and follow its section order and task-block format exactly (Objective, Scope, Prerequisites, File inventory, Tasks, Completion checklist). Do not invent a different structure. If the template is missing, say so and use that outline. Leave **Approved by** blank: a human fills it in. Delete the template's comments from the finished plan, keep the plan short, and link to existing documents instead of restating them.
 - **Task rules**
   - Order by dependency, not by file or feature. Models and schemas before the code that uses them; helpers before callers.
   - Name every symbol: file paths, functions, classes, fields, routes, flags.
