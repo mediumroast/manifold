@@ -1,6 +1,6 @@
 # Manifold
 
-Consistent plans, implementation summaries and bug reports from coding agents, in any repository.
+Consistent plans, test plans and walkthrough-driven bug triage from coding agents, in any repository.
 
 Manifold is a toolkit for making AI coding tools such as Claude Code and GitHub Copilot behave consistently across repositories: they plan before they build, record evidence for what they did, stay inside the task's scope, and leave documents that people and other tools can read and reuse.
 
@@ -10,7 +10,7 @@ The first release is the foundation. It is self-contained, needs no server, and 
 
 - **Three agents:** `planner`, `coder` and `bug-coder`, in Claude Code and GitHub Copilot formats.
 - **Rules:** a small library of "don't do this, and do this instead" rules, each with the reason behind it. Every agent carries the rules that apply to its role.
-- **Templates:** plan, implementation summary and bug report, installed to `docs/templates/`.
+- **Templates:** phase plan, test plan and walkthrough notes, installed to `docs/templates/`.
 - **An installer** that shows what it will do before it does anything, never overwrites a file you edited, and removes cleanly.
 - **Agent Skills (experimental):** the same three roles as portable [Agent Skills](https://agentskills.io).
 

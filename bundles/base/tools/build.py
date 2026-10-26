@@ -39,9 +39,9 @@ SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SKILL_ALLOWED_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 REF_RE = re.compile(r"\{\{(ref|name):([a-z-]+)\}\}")
 TEMPLATE_PATHS = {
-    "plan.md": "docs/templates/plan.md",
-    "implementation.md": "docs/templates/implementation.md",
-    "bug-report.md": "docs/templates/bug-report.md",
+    "PHASE_PLAN_TEMPLATE.md": "docs/templates/PHASE_PLAN_TEMPLATE.md",
+    "PHASE_TEST_PLAN_TEMPLATE.md": "docs/templates/PHASE_TEST_PLAN_TEMPLATE.md",
+    "WT_TEMPLATE.md": "docs/templates/WT_TEMPLATE.md",
 }
 
 
@@ -301,9 +301,9 @@ def render_instructions_block(agents: dict, rules, style: str = "agents") -> str
             lines.append("- **%s** (agent) / **%s** (skill): %s" % (
                 role, SKILL_NAMES[role], first_sentence(role_description(agents, role, "claude"))))
     lines += ["", "## Plans and templates", "",
-              "- Plans live in `docs/plans/<slug>.md`. Start from `docs/templates/plan.md`.",
-              "- Implementation summaries follow `docs/templates/implementation.md`.",
-              "- Bugs are recorded in `docs/bugs/BUG-<NNN>-<slug>.md` from `docs/templates/bug-report.md`.",
+              "- Plans live in `docs/plans/PHASE_<N>_PLAN.md`. Start from `docs/templates/PHASE_PLAN_TEMPLATE.md`; the coder records its completion summary in the plan.",
+              "- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
+              "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`.",
               "", "## Working rules", ""]
     for r in sorted(rules, key=lambda r: (SEVERITY_ORDER[r["severity"]], r["id"])):
         lines.append("- **%s.** %s *Instead:* %s" % (r["title"], first_sentence(r["rule"]), one_line(r["instead"])))

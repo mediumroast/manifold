@@ -59,7 +59,7 @@ def tree(repo):
 
 AGENT_FILES = [".claude/agents/planner.md", ".claude/agents/coder.md", ".claude/agents/bug-coder.md"]
 COPILOT_FILES = [".github/agents/planner.agent.md", ".github/agents/coder.agent.md", ".github/agents/bug-coder.agent.md"]
-TEMPLATE_FILES = ["docs/templates/plan.md", "docs/templates/implementation.md", "docs/templates/bug-report.md"]
+TEMPLATE_FILES = ["docs/templates/PHASE_PLAN_TEMPLATE.md", "docs/templates/PHASE_TEST_PLAN_TEMPLATE.md", "docs/templates/WT_TEMPLATE.md"]
 
 
 # --------------------------------------------------------------------- lint
@@ -92,7 +92,7 @@ def test_lint_rejects_unknown_include(tmp_path):
 
 def test_lint_rejects_forbidden_term(tmp_path):
     src = copy_source(tmp_path / "src")
-    p = src / "templates" / "plan.md"
+    p = src / "templates" / "PHASE_PLAN_TEMPLATE.md"
     p.write_text(p.read_text() + "\nSee Mediumroast docs.\n")
     assert any("forbidden term" in x for x in build.lint(src))
 

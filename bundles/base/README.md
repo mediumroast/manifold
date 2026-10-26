@@ -30,7 +30,7 @@ The installer is a **dry run by default** and never overwrites a file you have e
 | `.claude/agents/{planner,coder,bug-coder}.md` | The agents, in Claude Code format (default) |
 | `.github/agents/{planner,coder,bug-coder}.agent.md` | The same agents in GitHub Copilot format (`--format copilot` or `both`) |
 | `.claude/skills/{plan-change,execute-plan,fix-bug}/SKILL.md` | The same roles as Agent Skills (`--format skills`, experimental; see below) |
-| `docs/templates/{plan,implementation,bug-report}.md` | Document templates the agents follow |
+| `docs/templates/{PHASE_PLAN_TEMPLATE,PHASE_TEST_PLAN_TEMPLATE,WT_TEMPLATE}.md` | Document templates the agents follow |
 | `AGENTS.md` (managed block) | Which agents exist, where plans live, and the working rules. Created if you have neither `AGENTS.md` nor `CLAUDE.md` |
 | `.manifold/` | A manifest of what was installed (with hashes), the license, and archived copies of anything replaced |
 
