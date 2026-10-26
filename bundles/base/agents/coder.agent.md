@@ -20,8 +20,8 @@ You are the implementation agent. Your primary mode is **plan execution**: read 
 ## Executing a plan
 
 ### On startup
-1. Read the whole plan before touching any code, including scope, open questions and the file inventory.
-2. If open questions are unresolved or the status is still `Draft`, tell the user and ask whether to proceed.
+1. Read the whole plan before touching any code, including scope, prerequisites and the file inventory. The `## Tasks` section uses `[ ]` (open), `[x]` (complete) and `[~]` (blocked) markers; they are your tracking mechanism.
+2. If a prerequisite is unmet (`[ ]` under Prerequisites), tell the user and ask whether to proceed.
 3. Establish the project facts (above) so you can run the verify and test commands.
 4. List the incomplete tasks, your intended order and any blockers or ambiguities. Resolve blockers before starting. Work in document order unless a dependency forces otherwise, and explain any deviation.
 
@@ -39,8 +39,8 @@ You are the implementation agent. Your primary mode is **plan execution**: read 
 
 ### When all tasks are done
 1. Run the full verify and test commands and report the real results.
-2. Fill in the plan's completion checklist and summary. `docs/templates/implementation.md` shows the shape: what changed, deviations from the plan, verification evidence, follow-ups.
-3. Suggest the next step: more planning, review, or hand-off.
+2. Fill in the plan's **Completion checklist** and add your completion summary beneath it (the template marks the spot): files changed, deviations from the plan, verification evidence, deferred items and follow-ups.
+3. Suggest the next step: more planning, a test plan from `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`, review, or hand-off.
 
 ## Without a plan
 

@@ -21,7 +21,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ROLES = ("planner", "coder", "bug-coder")
+ROLES = ("planner", "coder", "bug-coder", "test-planner", "test-coder")
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 SCALAR_KEYS = ("name", "description", "argument-hint")
 FORBIDDEN_TERMS = ("mediumroast",)
@@ -32,16 +32,17 @@ FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 
 CLAUDE_AGENT_PATH = ".claude/agents/{name}.md"
 COPILOT_AGENT_PATH = ".github/agents/{name}.agent.md"
-SKILL_NAMES = {"planner": "plan-change", "coder": "execute-plan", "bug-coder": "fix-bug"}
+SKILL_NAMES = {"planner": "plan-change", "coder": "execute-plan", "bug-coder": "fix-bug",
+               "test-planner": "plan-tests", "test-coder": "write-tests"}
 SKILL_ROOT = ".claude/skills"
 SKILL_PATH = SKILL_ROOT + "/{name}/SKILL.md"
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SKILL_ALLOWED_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 REF_RE = re.compile(r"\{\{(ref|name):([a-z-]+)\}\}")
 TEMPLATE_PATHS = {
-    "plan.md": "docs/templates/plan.md",
-    "implementation.md": "docs/templates/implementation.md",
-    "bug-report.md": "docs/templates/bug-report.md",
+    "PHASE_PLAN_TEMPLATE.md": "docs/templates/PHASE_PLAN_TEMPLATE.md",
+    "PHASE_TEST_PLAN_TEMPLATE.md": "docs/templates/PHASE_TEST_PLAN_TEMPLATE.md",
+    "WT_TEMPLATE.md": "docs/templates/WT_TEMPLATE.md",
 }
 
 
@@ -124,6 +125,8 @@ def parse_rule(path: Path) -> dict:
     for needed in ("rule", "why", "instead"):
         if not sections.get(needed):
             raise BuildError("%s: every rule needs a '%s' section" % (path.name, needed.capitalize()))
+    if "{{" in body:
+        raise BuildError("%s: rules cannot use {{ref:...}} markers; name the role in plain words" % path.name)
     meta["applies_to"] = applies
     meta.update(sections)
     return meta
@@ -301,9 +304,9 @@ def render_instructions_block(agents: dict, rules, style: str = "agents") -> str
             lines.append("- **%s** (agent) / **%s** (skill): %s" % (
                 role, SKILL_NAMES[role], first_sentence(role_description(agents, role, "claude"))))
     lines += ["", "## Plans and templates", "",
-              "- Plans live in `docs/plans/<slug>.md`. Start from `docs/templates/plan.md`.",
-              "- Implementation summaries follow `docs/templates/implementation.md`.",
-              "- Bugs are recorded in `docs/bugs/BUG-<NNN>-<slug>.md` from `docs/templates/bug-report.md`.",
+              "- Plans live in `docs/plans/PHASE_<N>_PLAN.md`. Start from `docs/templates/PHASE_PLAN_TEMPLATE.md`; the coder records its completion summary in the plan.",
+              "- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
+              "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`.",
               "", "## Working rules", ""]
     for r in sorted(rules, key=lambda r: (SEVERITY_ORDER[r["severity"]], r["id"])):
         lines.append("- **%s.** %s *Instead:* %s" % (r["title"], first_sentence(r["rule"]), one_line(r["instead"])))

@@ -2,7 +2,7 @@
 id: stay-in-scope
 title: Scope
 severity: medium
-applies_to: coder, bug-coder
+applies_to: coder, bug-coder, test-coder
 status: active
 source: convention
 ---
