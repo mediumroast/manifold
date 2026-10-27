@@ -2,7 +2,7 @@
 id: follow-existing-patterns
 title: Existing patterns
 severity: medium
-applies_to: planner, coder, bug-coder, test-planner, test-coder
+applies_to: planner, coder, bug-coder, reviewer, test-planner, test-coder, scenario-writer
 status: active
 source: convention
 ---

@@ -2,7 +2,7 @@
 id: report-results-honestly
 title: Reporting results
 severity: high
-applies_to: coder, bug-coder, test-coder
+applies_to: coder, bug-coder, reviewer, test-coder
 status: active
 source: convention
 ---

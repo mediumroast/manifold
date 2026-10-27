@@ -21,7 +21,15 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ROLES = ("planner", "coder", "bug-coder", "test-planner", "test-coder")
+ROLES = ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer")
+# Which roles each install profile gets. build: a product repository. quality: a separate
+# repository for behavior scenarios. single: one repository holding both (verification is
+# not independent there, and the installer says so).
+PROFILES = {
+    "build": ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder"),
+    "quality": ("scenario-writer", "test-planner", "test-coder"),
+    "single": ROLES,
+}
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 SCALAR_KEYS = ("name", "description", "argument-hint")
 FORBIDDEN_TERMS = ("mediumroast",)
@@ -33,17 +41,33 @@ FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 CLAUDE_AGENT_PATH = ".claude/agents/{name}.md"
 COPILOT_AGENT_PATH = ".github/agents/{name}.agent.md"
 SKILL_NAMES = {"planner": "plan-change", "coder": "execute-plan", "bug-coder": "fix-bug",
-               "test-planner": "plan-tests", "test-coder": "write-tests"}
+               "reviewer": "review-change", "test-planner": "plan-tests", "test-coder": "write-tests",
+               "scenario-writer": "write-scenarios"}
 SKILL_ROOT = ".claude/skills"
 SKILL_PATH = SKILL_ROOT + "/{name}/SKILL.md"
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SKILL_ALLOWED_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 REF_RE = re.compile(r"\{\{(ref|name):([a-z-]+)\}\}")
+ALL_PROFILES = tuple(PROFILES)
+# template file -> (installed path, profiles that receive it)
 TEMPLATE_PATHS = {
-    "PHASE_PLAN_TEMPLATE.md": "docs/templates/PHASE_PLAN_TEMPLATE.md",
-    "PHASE_TEST_PLAN_TEMPLATE.md": "docs/templates/PHASE_TEST_PLAN_TEMPLATE.md",
-    "WT_TEMPLATE.md": "docs/templates/WT_TEMPLATE.md",
+    "INTENT_TEMPLATE.md": ("docs/templates/INTENT_TEMPLATE.md", ALL_PROFILES),
+    "PHASE_PLAN_TEMPLATE.md": ("docs/templates/PHASE_PLAN_TEMPLATE.md", ("build", "single")),
+    "PHASE_TEST_PLAN_TEMPLATE.md": ("docs/templates/PHASE_TEST_PLAN_TEMPLATE.md", ALL_PROFILES),
+    "WT_TEMPLATE.md": ("docs/templates/WT_TEMPLATE.md", ALL_PROFILES),
+    "REVIEW_TEMPLATE.md": ("docs/templates/REVIEW_TEMPLATE.md", ("build", "single")),
+    "SCENARIO_TEMPLATE.md": ("docs/templates/SCENARIO_TEMPLATE.md", ("quality", "single")),
+    "SATISFACTION_REPORT_TEMPLATE.md": ("docs/templates/SATISFACTION_REPORT_TEMPLATE.md", ("quality", "single")),
 }
+# config file (in config/) -> (installed path, profiles). User-editable after install.
+SETTINGS_FILES = {
+    "quality-settings.json": (".manifold/quality-settings.json", ("quality", "single")),
+}
+QUALITY_SETTINGS_KEYS = (
+    "satisfaction.minimum_overall", "satisfaction.minimum_per_seed", "failures.critical_max_rate",
+    "judge.minimum_confidence", "trajectories.per_scenario", "sampling.seed",
+    "visibility.level", "gate.mode", "burn.on_disclosure",
+)
 
 
 class BuildError(Exception):
@@ -279,35 +303,48 @@ def first_sentence(text: str) -> str:
 INSTRUCTION_STYLES = ("agents", "skills", "both")
 
 
-def render_instructions_block(agents: dict, rules, style: str = "agents") -> str:
+def profile_rules(rules, profile):
+    roles = PROFILES[profile]
+    return [r for r in rules if "all" in r["applies_to"] or any(x in r["applies_to"] for x in roles)]
+
+
+def render_instructions_block(agents: dict, rules, style: str = "agents", profile: str = "single") -> str:
     if style not in INSTRUCTION_STYLES:
         raise BuildError("unknown instructions style %r" % style)
+    if profile not in PROFILES:
+        raise BuildError("unknown profile %r" % profile)
+    roles = PROFILES[profile]
+    rules = profile_rules(rules, profile)
     lines = [BLOCK_BEGIN]
     if style == "agents":
         lines += ["## Agents", "",
                   "Installed by the Manifold base bundle. Invoke an agent by asking for it by name "
                   "(in Claude Code, `@agent-<name>` also works) or pick it from your tool's agent list.", ""]
-        for role in ROLES:
+        for role in roles:
             lines.append("- **%s**: %s" % (role, first_sentence(role_description(agents, role, "claude"))))
     elif style == "skills":
         lines += ["## Skills", "",
                   "Installed by the Manifold base bundle. Run a skill by asking for it by name "
                   "(in Claude Code, type `/<name>`).", ""]
-        for role in ROLES:
+        for role in roles:
             lines.append("- **%s**: %s" % (SKILL_NAMES[role], first_sentence(role_description(agents, role, "skills"))))
     else:
         lines += ["## Agents and skills", "",
                   "Installed by the Manifold base bundle. Each role is available as an agent "
                   "(in Claude Code, `@agent-<name>`, or from your tool's agent list) and as a skill "
                   "(in Claude Code, `/<name>`). Use one entry point per role.", ""]
-        for role in ROLES:
+        for role in roles:
             lines.append("- **%s** (agent) / **%s** (skill): %s" % (
                 role, SKILL_NAMES[role], first_sentence(role_description(agents, role, "claude"))))
-    lines += ["", "## Plans and templates", "",
-              "- Plans live in `docs/plans/PHASE_<N>_PLAN.md`. Start from `docs/templates/PHASE_PLAN_TEMPLATE.md`; the coder records its completion summary in the plan.",
-              "- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
-              "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`.",
-              "", "## Working rules", ""]
+    docs = ["- Intents (what and why, with scenario seeds) follow `docs/templates/INTENT_TEMPLATE.md`."]
+    if profile in ("build", "single"):
+        docs += ["- Plans live in `docs/plans/PHASE_<N>_PLAN.md`. Start from `docs/templates/PHASE_PLAN_TEMPLATE.md`; the coder records its completion summary in the plan.",
+                 "- Review policy lives in `REVIEW.md`, written from `docs/templates/REVIEW_TEMPLATE.md`."]
+    docs += ["- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
+             "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`."]
+    if profile in ("quality", "single"):
+        docs += ["- Behavior scenarios follow `docs/templates/SCENARIO_TEMPLATE.md`; run results follow `docs/templates/SATISFACTION_REPORT_TEMPLATE.md`; thresholds and visibility are settings in `.manifold/quality-settings.json`."]
+    lines += ["", "## Plans and templates", ""] + docs + ["", "## Working rules", ""]
     for r in sorted(rules, key=lambda r: (SEVERITY_ORDER[r["severity"]], r["id"])):
         lines.append("- **%s.** %s *Instead:* %s" % (r["title"], first_sentence(r["rule"]), one_line(r["instead"])))
     lines += ["", BLOCK_END, ""]
@@ -315,6 +352,19 @@ def render_instructions_block(agents: dict, rules, style: str = "agents") -> str
 
 
 # -------------------------------------------------------------------- lint
+
+def flatten_settings(data, prefix=""):
+    out = {}
+    for key, value in data.items():
+        if key.startswith("_"):
+            continue
+        name = prefix + key
+        if isinstance(value, dict):
+            out.update(flatten_settings(value, name + "."))
+        else:
+            out[name] = value
+    return out
+
 
 def lint(root: Path = ROOT):
     """Return a list of problem strings (empty means clean)."""
@@ -348,11 +398,39 @@ def lint(root: Path = ROOT):
             if "{{" in out or "<!-- include:" in out:
                 problems.append("%s (skills): unresolved placeholder or include" % role)
             problems.extend(validate_skill(SKILL_NAMES[role], out))
-        for style in INSTRUCTION_STYLES:
-            guard(render_instructions_block, agents, rules, style)
+        for profile in PROFILES:
+            for style in INSTRUCTION_STYLES:
+                guard(render_instructions_block, agents, rules, style, profile)
+        for role, text in agents.items():
+            for _kind, ref in REF_RE.findall(text):
+                for profile, roles in PROFILES.items():
+                    if role in roles and ref not in roles:
+                        problems.append("%s refers to %r, which the %s profile does not install" % (role, ref, profile))
+    for profile, roles in PROFILES.items():
+        for role in roles:
+            if role not in ROLES:
+                problems.append("profile %s lists unknown role %r" % (profile, role))
+    for role in ROLES:
+        if not any(role in roles for roles in PROFILES.values()):
+            problems.append("role %s belongs to no profile" % role)
     for name in TEMPLATE_PATHS:
         if not (root / "templates" / name).exists():
             problems.append("missing template: %s" % name)
+    for name in SETTINGS_FILES:
+        path = root / "config" / name
+        if not path.exists():
+            problems.append("missing settings file: %s" % name)
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            problems.append("%s is not valid JSON: %s" % (name, exc))
+            continue
+        if name == "quality-settings.json":
+            flat = flatten_settings(data)
+            for key in QUALITY_SETTINGS_KEYS:
+                if key not in flat:
+                    problems.append("%s: missing setting %s" % (name, key))
     for path in list((root / "agents").glob("*.md")) + list((root / "rules").rglob("*.md")) + \
             list((root / "templates").glob("*.md")) + list((root / "fragments").glob("*.md")):
         text = path.read_text(encoding="utf-8").lower()
@@ -389,35 +467,42 @@ def build_payload(root: Path = ROOT):
             target = tmpl.format(name=role)
             src = "payload/%s/%s" % (fmt, target)
             files[src] = data
-            bucket.append({"path": target, "src": src, "sha256": sha256(data)})
+            bucket.append({"path": target, "src": src, "sha256": sha256(data), "role": role})
     for role in ROLES:
         name = SKILL_NAMES[role]
         data = render_skill(role, agents[role], fragments, rules, version).encode("utf-8")
         target = SKILL_PATH.format(name=name)
         src = "payload/skills/%s" % target
         files[src] = data
-        skills.append({"path": target, "rel": "%s/SKILL.md" % name, "src": src, "sha256": sha256(data)})
-    for fname, target in TEMPLATE_PATHS.items():
+        skills.append({"path": target, "rel": "%s/SKILL.md" % name, "src": src, "sha256": sha256(data), "role": role})
+    for fname, (target, profiles) in TEMPLATE_PATHS.items():
         data = (root / "templates" / fname).read_bytes()
         src = "payload/common/%s" % target
         files[src] = data
-        common.append({"path": target, "src": src, "sha256": sha256(data)})
+        common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
+    for fname, (target, profiles) in SETTINGS_FILES.items():
+        data = (root / "config" / fname).read_bytes()
+        src = "payload/common/%s" % target
+        files[src] = data
+        common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
     for lic in ("LICENSE", "NOTICE"):
         data = (root / lic).read_bytes()
         target = ".manifold/%s" % lic
         src = "payload/common/%s" % target
         files[src] = data
-        common.append({"path": target, "src": src, "sha256": sha256(data)})
+        common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(ALL_PROFILES)})
     variants = {}
-    for style in INSTRUCTION_STYLES:
-        block = render_instructions_block(agents, rules, style).encode("utf-8")
-        src = "payload/instructions/AGENTS.%s.md" % style
-        files[src] = block
-        variants[style] = {"src": src, "sha256": sha256(block)}
+    for profile in PROFILES:
+        variants[profile] = {}
+        for style in INSTRUCTION_STYLES:
+            block = render_instructions_block(agents, rules, style, profile).encode("utf-8")
+            src = "payload/instructions/AGENTS.%s.%s.md" % (profile, style)
+            files[src] = block
+            variants[profile][style] = {"src": src, "sha256": sha256(block)}
 
     bundle = {
         "name": "manifold", "bundle": "base", "version": version,
-        "roles": list(ROLES), "skills_root": SKILL_ROOT,
+        "roles": list(ROLES), "profiles": {k: list(v) for k, v in PROFILES.items()}, "skills_root": SKILL_ROOT,
         "formats": {"claude": claude, "copilot": copilot, "skills": skills},
         "common": common,
         "instructions": {"begin": BLOCK_BEGIN, "end": BLOCK_END, "variants": variants},

@@ -2,7 +2,7 @@
 id: ask-on-ambiguity
 title: Ambiguity
 severity: medium
-applies_to: planner, coder, test-planner, test-coder
+applies_to: planner, coder, reviewer, test-planner, test-coder, scenario-writer
 status: active
 source: convention
 ---
