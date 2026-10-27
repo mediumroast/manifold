@@ -138,12 +138,12 @@ def test_deprecated_rules_are_not_rendered(tmp_path):
 
 # ---------------------------------------------------------------- rendering
 
-def test_claude_format_keeps_only_name_and_description(built):
+def test_claude_format_keeps_only_name_description_and_denied_tools(built):
     with zipfile.ZipFile(built) as zf:
         name = [n for n in zf.namelist() if n.endswith("payload/claude/.claude/agents/planner.md")][0]
         head = zf.read(name).decode().split("---")[1]
     keys = {line.split(":")[0] for line in head.strip().splitlines()}
-    assert keys == {"name", "description"}
+    assert keys == {"name", "description", "disallowedTools"}
 
 
 def test_copilot_format_keeps_tools_hint_and_handoffs(built):
@@ -887,6 +887,20 @@ def test_reviewer_is_read_only_and_never_approves():
     assert "must not review its own change" in t
     assert "you do **not approve or block** anything" in t
     assert "REVIEW.md" in t and "Read-only" in t
+
+
+def test_claude_format_denies_the_tools_an_agent_does_not_declare():
+    """Claude Code agents inherit every tool unless told otherwise, so the read-only
+    and black-box roles must carry a denylist (an allowlist would also hide MCP tools)."""
+    def fm(role):
+        out = build.render_agent(role, _agent_text(role), "claude", build.load_fragments(), build.load_rules())
+        return out.split("---")[1]
+    reviewer = fm("reviewer")
+    assert "disallowedTools: Edit, Write, NotebookEdit, WebFetch, WebSearch" in reviewer
+    assert "Bash" not in reviewer
+    assert "disallowedTools: Bash" in fm("scenario-writer")
+    assert "disallowedTools" not in fm("coder")
+    assert "tools:" not in fm("reviewer").replace("disallowedTools:", "")
 
 
 def test_scenario_writer_is_black_box_and_leaves_approval_to_humans():

@@ -221,6 +221,21 @@ def expand_refs(text: str, fmt: str, who: str) -> str:
     return REF_RE.sub(sub, text)
 
 
+# Claude Code has no allowlist that keeps MCP tools, so a capability an agent does not
+# declare in its canonical `tools:` list is removed with `disallowedTools:` instead.
+CLAUDE_DENY = (("edit", ("Edit", "Write", "NotebookEdit")),
+               ("execute", ("Bash",)),
+               ("web", ("WebFetch", "WebSearch")))
+
+
+def claude_disallowed(blocks) -> list:
+    declared = scalar_value(blocks, "tools")
+    if declared is None:
+        return []
+    have = {t.strip() for t in declared.strip("[]").split(",") if t.strip()}
+    return [tool for cap, tools in CLAUDE_DENY if cap not in have for tool in tools]
+
+
 def render_agent(role: str, text: str, fmt: str, fragments: dict, rules) -> str:
     blocks, body = split_frontmatter(text)
     name = scalar_value(blocks, "name")
@@ -233,6 +248,9 @@ def render_agent(role: str, text: str, fmt: str, fragments: dict, rules) -> str:
     body = expand_refs(expand_includes(body, fragments, render_rules(rules, role), role), fmt, role)
     if fmt == "claude":
         fm = ["name: %s" % name, "description: %s" % yaml_str(desc)]
+        denied = claude_disallowed(blocks)
+        if denied:
+            fm.append("disallowedTools: %s" % ", ".join(denied))
     elif fmt == "copilot":
         fm = []
         for key, raw in blocks:
