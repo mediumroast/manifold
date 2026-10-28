@@ -233,6 +233,8 @@ def claude_disallowed(blocks) -> list:
     if declared is None:
         return []
     have = {t.strip() for t in declared.strip("[]").split(",") if t.strip()}
+    if "search" in have:
+        have.add("execute")  # Claude Code has no Glob or Grep tool: listing and searching go through Bash
     return [tool for cap, tools in CLAUDE_DENY if cap not in have for tool in tools]
 
 

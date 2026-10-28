@@ -140,7 +140,7 @@ def test_deprecated_rules_are_not_rendered(tmp_path):
 
 def test_claude_format_keeps_only_name_description_and_denied_tools(built):
     with zipfile.ZipFile(built) as zf:
-        name = [n for n in zf.namelist() if n.endswith("payload/claude/.claude/agents/planner.md")][0]
+        name = [n for n in zf.namelist() if n.endswith("payload/claude/.claude/agents/reviewer.md")][0]
         head = zf.read(name).decode().split("---")[1]
     keys = {line.split(":")[0] for line in head.strip().splitlines()}
     assert keys == {"name", "description", "disallowedTools"}
@@ -898,7 +898,10 @@ def test_claude_format_denies_the_tools_an_agent_does_not_declare():
     reviewer = fm("reviewer")
     assert "disallowedTools: Edit, Write, NotebookEdit, WebFetch, WebSearch" in reviewer
     assert "Bash" not in reviewer
-    assert "disallowedTools: Bash" in fm("scenario-writer")
+    # search is Bash in Claude Code, so a role that may search keeps it (the 7c live run: the
+    # test-planner could not list scenarios/ and stopped)
+    for role in ("scenario-writer", "test-planner", "planner"):
+        assert "Bash" not in fm(role), role
     assert "disallowedTools" not in fm("coder")
     assert "tools:" not in fm("reviewer").replace("disallowedTools:", "")
 
