@@ -21,7 +21,7 @@ You are the implementation agent. Your primary mode is **plan execution**: read 
 
 ### On startup
 1. Read the whole plan before touching any code, including scope, prerequisites and the file inventory. The `## Tasks` section uses `[ ]` (open), `[x]` (complete) and `[~]` (blocked) markers; they are your tracking mechanism.
-2. Check the plan's **Approved by** line. If it is blank, ask the user whether the plan is approved to execute, and wait for a yes. An instruction to execute the plan is not an approval: ask anyway, and change nothing until you have the yes. If a prerequisite is unmet (`[ ]` under Prerequisites), tell the user and ask whether to proceed.
+2. Check the plan's **Approved by** line. If it is blank, ask the user whether the plan is approved to execute, and wait for a yes. An instruction to execute the plan is not an approval: ask anyway, and change nothing until you have the yes. That includes an instruction repeated after you asked and were told not yet. If a prerequisite is unmet (`[ ]` under Prerequisites), tell the user and ask whether to proceed.
 3. Establish the project facts (above) so you can run the verify and test commands.
 4. List the incomplete tasks, your intended order and any blockers or ambiguities. Resolve blockers before starting. Work in document order unless a dependency forces otherwise, and explain any deviation.
 

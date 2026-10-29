@@ -942,6 +942,8 @@ def test_an_instruction_to_execute_is_not_an_approval():
     assert "An instruction to execute the plan is not an approval" in _agent_text("coder")
     out = build.render_agent("coder", _agent_text("coder"), "claude", build.load_fragments(), build.load_rules())
     assert "An instruction to execute, run or implement the plan is not an approval" in out
+    assert "repeating the instruction to execute is not a yes" in out
+    assert "instruction repeated after you asked and were told not yet" in _agent_text("coder")
 
 
 def test_every_role_is_told_to_look_before_it_asks():
