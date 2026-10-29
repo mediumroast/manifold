@@ -68,6 +68,7 @@ When the input is an intent (or a handoff or issue carrying the same fields), yo
 - Every acceptance line can actually be run or observed.
 - No task relies on a verb from the avoid list.
 - Every ambiguity was asked about, not papered over.
+- Every constraint stated in the intent appears in the plan, in the intent's own words (under Scope or as a Prerequisite), so the coder meets it without opening the intent.
 - **Concerns flagged** lists every unresolved conflict, or says "None."
 - **Source intent** names the intent, or says "none".
 - Someone who has not seen this conversation could execute the plan.

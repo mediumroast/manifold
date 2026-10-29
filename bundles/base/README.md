@@ -168,6 +168,8 @@ Each agent carries the rules that apply to its role, and the same rules are summ
 
 ## Customizing
 
+**Tool restrictions are advice, not a sandbox.** In Claude Code the reviewer cannot edit files and the planning roles cannot use web tools, because the installed agent files list those tools as disallowed. That removes the tool from the agent itself. An agent can still hand work to a subagent that has the tool, and a model can choose to ignore a rule, so keep your client's own permission prompts on.
+
 The installed files are yours. Edit them freely: the installer will see the change and will not overwrite your version on an upgrade. To change the shared rules, edit or add files in `rules/core/` and rebuild.
 
 ## Building from source

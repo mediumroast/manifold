@@ -919,6 +919,24 @@ def test_test_agents_have_both_modes():
     assert "never read the product's source code" in _agent_text("test-planner")
 
 
+def test_test_agents_say_their_mode_first():
+    """Live run: neither test agent named its mode, so a person could not tell which input it had used."""
+    for role in ("test-planner", "test-coder"):
+        assert "Say which mode you are in at the start of your first reply" in _agent_text(role), role
+
+
+def test_planner_carries_the_intents_constraints_into_the_plan():
+    """Live run: the plan kept 'Python 3.8' but dropped the intent's 'standard library only'."""
+    assert "Every constraint stated in the intent appears in the plan" in _agent_text("planner")
+
+
+def test_every_role_is_told_to_look_before_it_asks():
+    """Live run: agents guessed test file names and asked about commands the repository answers."""
+    for role in ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer"):
+        out = build.render_agent(role, _agent_text(role), "claude", build.load_fragments(), build.load_rules())
+        assert "Never guess a file name" in out, role
+
+
 def test_bug_coder_writes_the_failing_test_first_and_does_not_edit_it():
     t = _agent_text("bug-coder")
     assert "failing test first" in t and "commit it on its own" in t
