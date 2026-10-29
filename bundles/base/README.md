@@ -164,7 +164,7 @@ The same seven roles can be installed as [Agent Skills](https://agentskills.io),
 
 ## Rules
 
-Each agent carries the rules that apply to its role, and the same rules are summarised in your `AGENTS.md`. Every rule states what not to do, **why**, and what to do **instead**: for example "stage only the files you changed", "never report tests as passing unless you ran them", "frontmatter must be the first line of the file". They live in [`rules/core/`](rules/core/), one small file each, so they are easy to review, change or extend.
+Each agent carries the rules that apply to its role, and the same rules are summarized in your `AGENTS.md`. Every rule states what not to do, **why**, and what to do **instead**: for example "stage only the files you changed", "never report tests as passing unless you ran them", "frontmatter must be the first line of the file". They live in [`rules/core/`](rules/core/), one small file each, so they are easy to review, change or extend.
 
 ## Customizing
 

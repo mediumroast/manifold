@@ -16,4 +16,4 @@ Ambiguity resolved by guessing turns into rework.
 Ask one focused question, or write a recommendation under "Open questions" and wait for the answer.
 
 ## Enforce
-- review: none (judgement call)
+- review: none (judgment call)

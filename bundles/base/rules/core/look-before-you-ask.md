@@ -16,4 +16,4 @@ Questions the repository answers cost the user a turn and make the agent look as
 Look first. If you ask, say what you looked at and what is still unknown.
 
 ## Enforce
-- review: none (judgement call)
+- review: none (judgment call)

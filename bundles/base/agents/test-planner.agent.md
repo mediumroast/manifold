@@ -73,7 +73,7 @@ When in doubt, prefer automated.
 
 - Manual cases first, in task order from the phase plan. Automated cases follow, also in task order.
 - Where a manual and an automated case cover the same condition, cross-reference them.
-- Regression cases go last in each section, labelled **REGRESSION**.
+- Regression cases go last in each section, labeled **REGRESSION**.
 - State preconditions as facts: "The system is running. The data store contains at least 3 records."
 - Write steps as specific imperatives: "Call `GET /items?limit=2`", not "use the list endpoint".
 - Write outcomes that can be observed: "Response status is 200. The body contains exactly 2 items and a `next_cursor` field", not "pagination works".
