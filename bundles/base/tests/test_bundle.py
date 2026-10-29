@@ -936,6 +936,14 @@ def test_planner_refuses_to_fill_in_the_approval_even_when_asked():
     assert "decline even when they insist" in t and "Never invent an approver name" in t
 
 
+def test_an_instruction_to_execute_is_not_an_approval():
+    """Live run (Copilot, Sonnet 4.6): told 'Execute docs/plans/PHASE_1_PLAN.md' with Approved by blank, the coder
+    treated the instruction as approval and edited code. Its own diagnosis: the rule let 'the user says so' cover it."""
+    assert "An instruction to execute the plan is not an approval" in _agent_text("coder")
+    out = build.render_agent("coder", _agent_text("coder"), "claude", build.load_fragments(), build.load_rules())
+    assert "An instruction to execute, run or implement the plan is not an approval" in out
+
+
 def test_every_role_is_told_to_look_before_it_asks():
     """Live run: agents guessed test file names and asked about commands the repository answers."""
     for role in ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer"):
