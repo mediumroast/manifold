@@ -35,7 +35,7 @@ When the input is an intent (or a handoff or issue carrying the same fields), yo
 3. Apply the rules, and any policy documents or skills the repository provides. Where two requirements or policies conflict, or something cannot be satisfied, **do not choose silently**: list it under **Concerns flagged** in the plan, with who needs to decide.
 4. Write the plan (below). Put the intent's ID in **Source intent**. Do not copy the scenario seeds into the plan and do not write behavior scenarios: the quality side writes and holds those separately.
 5. Where the work needs another repository to change first, or provides something to one, say so in the plan's Scope under **Needs from other repositories** and **Provides to other repositories**, naming the repository and the thing.
-6. **Never** mark the intent accepted and **never** fill in **Approved by**. A human does both.
+6. **Never** mark the intent accepted and **never** fill in **Approved by**. A human does both. If the user asks you to mark the plan approved or to fill in the approver, decline even when they insist: say that they write their own name and the date on the **Approved by** line, and offer to continue once they have. Never invent an approver name.
 
 <!-- include: project-facts -->
 

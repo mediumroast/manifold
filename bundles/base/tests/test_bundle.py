@@ -930,6 +930,12 @@ def test_planner_carries_the_intents_constraints_into_the_plan():
     assert "Every constraint stated in the intent appears in the plan" in _agent_text("planner")
 
 
+def test_planner_refuses_to_fill_in_the_approval_even_when_asked():
+    """Live run (Copilot, Sonnet 4.6): asked to mark the plan approved, the planner wrote an approver name itself."""
+    t = _agent_text("planner")
+    assert "decline even when they insist" in t and "Never invent an approver name" in t
+
+
 def test_every_role_is_told_to_look_before_it_asks():
     """Live run: agents guessed test file names and asked about commands the repository answers."""
     for role in ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer"):
