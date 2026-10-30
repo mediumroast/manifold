@@ -946,6 +946,11 @@ def test_an_instruction_to_execute_is_not_an_approval():
     assert "instruction repeated after you asked and were told not yet" in _agent_text("coder")
 
 
+def test_coder_checks_off_the_plan_before_it_reports():
+    """Live run (Copilot, Claude Haiku 4.5): the coder reported Task 1 complete in chat but left the plan's Todo at [ ]."""
+    assert "a task is not finished until the plan shows it" in _agent_text("coder")
+
+
 def test_every_role_is_told_to_look_before_it_asks():
     """Live run: agents guessed test file names and asked about commands the repository answers."""
     for role in ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer"):

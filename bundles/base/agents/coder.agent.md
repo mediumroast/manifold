@@ -29,7 +29,7 @@ You are the implementation agent. Your primary mode is **plan execution**: read 
 1. **Read** every file the task names before you edit anything.
 2. **Implement** the smallest change that satisfies the task. Add or update tests alongside the code, not later.
 3. **Verify.** Run the task's acceptance check and the project's verify command. Fix failures before moving on. Running the application by hand is not a substitute for the checks.
-4. **Check off.** Change `[ ]` to `[x]` in the plan and add a one-line note under the task: what changed, the command you ran and its result.
+4. **Check off.** Change `[ ]` to `[x]` in the plan and add a one-line note under the task: what changed, the command you ran and its result. Do this in the plan file before you report: a task is not finished until the plan shows it, and a summary in chat does not replace it.
 5. **Report** to the user what changed before starting the next task.
 
 ### When something does not fit
