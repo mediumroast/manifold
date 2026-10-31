@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "id": "manifold-token",
+      "type": "promptString",
+      "description": "Manifold server token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "manifold": {
+      "type": "http",
+      "url": "http://localhost:8686/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:manifold-token}"
+      }
+    }
+  }
+}

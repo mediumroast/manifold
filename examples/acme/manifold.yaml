@@ -1,0 +1,18 @@
+# Instance settings for this wiki. No secrets belong in this file.
+version: 1
+name: Acme Engineering Wiki
+server_name: manifold
+
+components:
+  - slug: acme-api
+    owner: "Platform team"
+    repo: "https://example.test/acme/acme-api"
+    description: "REST order service: customers, products and orders for the Acme storefront."
+  - slug: acme-web
+    owner: "Web team"
+    repo: "https://example.test/acme/acme-web"
+    description: "Customer-facing storefront: browse, check out and follow an order."
+  - slug: acme-cli
+    owner: "Support tools"
+    repo: "https://example.test/acme/acme-cli"
+    description: "Command-line client for support staff."

@@ -22,6 +22,7 @@ path = [
   "assets/web/index.html",
   "assets/web/vendor/SHA256SUMS",
   "docker/**",
+  "examples/**",
   ".dockerignore",
   "NOTICE",
   "REUSE.toml",
