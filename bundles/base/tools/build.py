@@ -539,7 +539,7 @@ def build_zip(root: Path = ROOT, out_dir: Path = None) -> Path:
     zip_path = out_dir / ("%s.zip" % top)
     entries = dict(files)
     entries["bundle.json"] = (json.dumps(bundle, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    for fname in ("README.md", "INSTALL.md", "LICENSE", "NOTICE", "install.py", "install.sh"):
+    for fname in ("README.md", "INSTALL.md", "MODELS.md", "LICENSE", "NOTICE", "install.py", "install.sh"):
         entries[fname] = (root / fname).read_bytes()
     executable = {"install.py", "install.sh"}
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:

@@ -1071,3 +1071,18 @@ def test_planner_writes_the_constraints_as_one_line_and_compares_it():
 def test_readme_says_holdout_data_needs_a_real_boundary():
     t = (ROOT / "README.md").read_text()
     assert "Hold-out data needs a real boundary" in t and "deny reads to their path" in t
+
+
+def test_models_page_names_the_tested_models_and_recommends_sonnet():
+    t = (ROOT / "MODELS.md").read_text()
+    for name in ("Sonnet 5.5", "Sonnet 4.6", "Haiku 4.5", "MAI-Code-1.1-Flash"):
+        assert name in t
+    assert "use Claude Sonnet" in t
+    assert "If you must use a smaller model" in t
+    assert "MODELS.md" in (ROOT / "README.md").read_text()
+
+
+def test_models_page_ships_in_the_zip(tmp_path):
+    built = build.build_zip(ROOT, tmp_path)
+    with zipfile.ZipFile(built) as zf:
+        assert any(n.endswith("/MODELS.md") for n in zf.namelist())

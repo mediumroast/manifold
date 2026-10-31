@@ -66,6 +66,10 @@ The quality profile installs `.manifold/quality-settings.json`, which you own an
 
 Every report states the values it used. `gate.mode` is `report-only` until something can enforce a required check.
 
+### Choosing a model
+
+Use Claude Sonnet for every role. Smaller models (Claude Haiku 4.5 and MAI-Code-1.1-Flash were tested) skipped the hold-out rule and other guardrails that Sonnet followed. [MODELS.md](MODELS.md) lists what was tested, what each model did, and the controls to add if you must use a smaller one.
+
 ### Rules are advice, not enforcement
 
 Agent definitions and rules are **instructions that a model is likely, not certain, to follow**. Nothing in this bundle stops an agent from breaking a rule. Where a rule must always hold, back it with something deterministic: branch protection, required reviews, separate credentials, or (in Claude Code) hooks. Each rule's *Enforce* line names the mechanism where one exists. Optional hooks are on the [roadmap](../../ROADMAP.md).
