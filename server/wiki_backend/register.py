@@ -32,6 +32,9 @@ def _update_sidebar(wiki_root: Path, slug: str) -> None:
     for i, line in enumerate(lines):
         if line.strip().startswith("- [") and "/components/" in line:
             insert_after = i
+    if insert_after < 0:
+        # No component listed yet (a new instance): the list starts under its heading.
+        insert_after = next((i for i, line in enumerate(lines) if line.strip() == "- **Components**"), -1)
     if insert_after >= 0:
         lines.insert(insert_after + 1, link + "\n")
         sidebar.write_text("".join(lines), encoding="utf-8")
@@ -222,6 +225,13 @@ def _update_index(wiki_root: Path, slug: str, description: str) -> None:
     for i, line in enumerate(lines):
         if line.strip().startswith("|") and "/components/" in line and "Wiki page" not in line:
             insert_after = i
+    if insert_after < 0:
+        # No component row yet (a new instance): the first row goes under the table's separator line.
+        for i, line in enumerate(lines):
+            if line.strip().startswith("|") and "Wiki page" in line and i + 1 < len(lines) \
+                    and set(lines[i + 1].strip()) <= set("|-: "):
+                insert_after = i + 1
+                break
     if insert_after >= 0:
         lines.insert(insert_after + 1, row + "\n")
         index.write_text("".join(lines), encoding="utf-8")

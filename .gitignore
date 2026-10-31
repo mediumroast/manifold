@@ -12,3 +12,9 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# Local settings and secrets: the service script writes these with a generated token.
+docker/.env.dev
+docker/.env.staging
+docker/.env.production
+.env

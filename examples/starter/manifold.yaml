@@ -1,0 +1,8 @@
+# Instance settings for this wiki. No secrets belong in this file.
+version: 1
+name: My Team Wiki
+server_name: manifold
+
+# Components are added here when you register them (wiki_register_component_tool),
+# or by hand: a slug of lowercase letters and digits with single dots, hyphens or underscores.
+components: []
