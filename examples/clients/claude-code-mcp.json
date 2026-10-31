@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "manifold": {
+      "type": "http",
+      "url": "http://localhost:8686/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MANIFOLD_TOKEN}"
+      }
+    }
+  }
+}
