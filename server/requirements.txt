@@ -1,0 +1,15 @@
+# Runtime dependencies of the server. Python 3.11 or newer.
+#
+# The ranges say what has been run: the lowest version tested, up to the next major version.
+# requirements.lock pins the exact versions that were tested together; the container build
+# installs with it:  pip install -r requirements.txt -c requirements.lock
+#
+# To refresh the lock after changing this file or on a deliberate upgrade:
+#   python3 -m venv .lock && .lock/bin/pip install -r requirements.txt \
+#     && .lock/bin/pip freeze > requirements.lock && rm -rf .lock
+fastmcp>=4.1,<5
+uvicorn[standard]>=0.54,<1
+starlette>=1.10,<2
+pydantic>=2.14,<3
+python-frontmatter>=1.3,<2
+pyyaml>=6.0,<7

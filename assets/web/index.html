@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}}</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/docs/_manifold/vendor/darklight.min.css">
+  <style>
+    .app-name-link { font-weight: 700; }
+    nav.app-nav { display: none; }
+  </style>
+</head>
+<body>
+  <div id="app">Loading wiki…</div>
+  <script>
+    window.$docsify = {{DOCSIFY_CONFIG}}
+  </script>
+  <script>
+    // Pages start with YAML frontmatter for the tools; the reader does not need to see it.
+    window.$docsify.plugins = [function (hook) {
+      hook.beforeEach(function (content) {
+        return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+      });
+    }];
+  </script>
+  <script src="/docs/_manifold/vendor/docsify.min.js"></script>
+  <script src="/docs/_manifold/vendor/search.min.js"></script>
+  <script src="/docs/_manifold/vendor/prism-python.min.js"></script>
+  <script src="/docs/_manifold/vendor/prism-bash.min.js"></script>
+  <script src="/docs/_manifold/vendor/prism-json.min.js"></script>
+  <script src="/docs/_manifold/vendor/prism-yaml.min.js"></script>
+  <script src="/docs/_manifold/vendor/prism-typescript.min.js"></script>
+  <script src="/docs/_manifold/vendor/docsify-copy-code.min.js"></script>
+  <script src="/docs/_manifold/vendor/darklight.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+Manifold
+Copyright 2026 Mediumroast, Inc.
+
+This product includes software developed at Mediumroast, Inc.
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party software
+--------------------
+
+The wiki browser served by the server (assets/web/vendor/) includes these
+MIT-licensed packages, copied from the npm registry. Their license texts are in
+assets/web/vendor/licenses/, and assets/web/vendor/VENDORED.md records the exact
+versions and the two small changes made to one of them.
+
+  docsify 4.13.1                  Copyright (c) 2016 - present Docsify Contributors
+  prismjs 1.30.0                  Copyright (c) 2012 Lea Verou
+  docsify-copy-code 2.1.1         Copyright (c) 2017 JP Erasmus
+  docsify-darklight-theme 3.2.0   Copyright (c) 2020-present Boopathi Kumar
