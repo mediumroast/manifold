@@ -1,0 +1,53 @@
+version = 1
+SPDX-PackageName = "manifold"
+
+# Code files carry "SPDX-License-Identifier: Apache-2.0" as their first comment. The files below
+# cannot (or must not) carry a header, so their license is declared here.
+
+# The copyright holder, for every file outside the bundles (which have their own REUSE.toml).
+[[annotations]]
+path = ["server/**", "assets/**", "tools/**", "docker/**", "examples/**", "svc_ctl.sh", ".dockerignore", "NOTICE", "LICENSE", "REUSE.toml"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Mediumroast, Inc."
+
+# Files that start with YAML frontmatter or an HTML doctype, or that are plain data.
+[[annotations]]
+path = [
+  "server/pytest.ini",
+  "server/requirements.txt",
+  "server/requirements-dev.txt",
+  "server/requirements.lock",
+  "assets/helpers/commands/*.md",
+  "assets/helpers/prompts/*.md",
+  "assets/web/index.html",
+  "assets/web/vendor/SHA256SUMS",
+  "NOTICE",
+  "REUSE.toml",
+]
+precedence = "aggregate"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Vendored third-party files: MIT, under their authors' copyright.
+[[annotations]]
+path = ["assets/web/vendor/docsify.min.js", "assets/web/vendor/search.min.js", "assets/web/vendor/licenses/docsify-LICENSE.txt"]
+precedence = "override"
+SPDX-FileCopyrightText = "2016 - present Docsify Contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["assets/web/vendor/prism-*.min.js", "assets/web/vendor/licenses/prismjs-LICENSE.txt"]
+precedence = "override"
+SPDX-FileCopyrightText = "2012 Lea Verou"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["assets/web/vendor/docsify-copy-code.min.js", "assets/web/vendor/licenses/docsify-copy-code-LICENSE.txt"]
+precedence = "override"
+SPDX-FileCopyrightText = "2017 JP Erasmus"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["assets/web/vendor/darklight.min.js", "assets/web/vendor/darklight.min.css", "assets/web/vendor/icons/*.svg", "assets/web/vendor/licenses/docsify-darklight-theme-LICENSE.txt"]
+precedence = "override"
+SPDX-FileCopyrightText = "2020-present Boopathi Kumar"
+SPDX-License-Identifier = "MIT"
