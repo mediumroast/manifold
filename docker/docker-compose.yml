@@ -1,0 +1,35 @@
+# Production-shaped service: no source mount, no reload, read-only root file system,
+# published on the host's loopback address unless BIND_ADDRESS says otherwise.
+# For development with live code, add docker-compose.dev.yml (svc_ctl.sh does this for "dev").
+services:
+  manifold:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: manifold-server:local
+    container_name: manifold-${ENVIRONMENT:-dev}
+    user: "${HOST_UID}:${HOST_GID}"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PORT: ${PORT:-8686}
+      MANIFOLD_TOKEN: ${MANIFOLD_TOKEN:?set MANIFOLD_TOKEN in the environment file (svc_ctl.sh <env> init-env creates one)}
+      MANIFOLD_GIT_NAME: ${MANIFOLD_GIT_NAME:-}
+      MANIFOLD_GIT_EMAIL: ${MANIFOLD_GIT_EMAIL:-}
+      MANIFOLD_INGEST_MAX_BYTES: ${MANIFOLD_INGEST_MAX_BYTES:-}
+    volumes:
+      - ${WIKI_ROOT}:/workspace
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8686}:${PORT:-8686}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:$${PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

@@ -21,6 +21,8 @@ path = [
   "assets/helpers/prompts/*.md",
   "assets/web/index.html",
   "assets/web/vendor/SHA256SUMS",
+  "docker/**",
+  ".dockerignore",
   "NOTICE",
   "REUSE.toml",
 ]
