@@ -922,7 +922,7 @@ def test_test_agents_have_both_modes():
 def test_test_agents_say_their_mode_first():
     """Live run: neither test agent named its mode, so a person could not tell which input it had used."""
     for role in ("test-planner", "test-coder"):
-        assert "Say which mode you are in at the start of your first reply" in _agent_text(role), role
+        assert "Start your first reply with exactly one of these two lines" in _agent_text(role), role
 
 
 def test_planner_carries_the_intents_constraints_into_the_plan():
@@ -1006,3 +1006,68 @@ def test_roadmap_has_no_dates_and_no_internal_terms():
 @pytest.mark.skipif(not ROADMAP.exists(), reason="ROADMAP.md lives at the repository root")
 def test_root_readme_links_the_roadmap():
     assert "ROADMAP.md" in (ROOT.parent.parent / "README.md").read_text()
+
+
+# ------------------------------------------------- hardening for smaller models (live run, Copilot)
+
+def _rendered(role):
+    return build.render_agent(role, _agent_text(role), "claude", build.load_fragments(), build.load_rules())
+
+
+def test_holdout_rule_covers_shell_reads_and_says_no_first():
+    """Live run: Claude Haiku 4.5 read the hold-out scenarios with shell cat and find; MAI-Code-1.1-Flash retried a refused read."""
+    t = (ROOT / "rules" / "core" / "builders-dont-read-holdout-scenarios.md").read_text()
+    assert "shell commands such as `cat`, `ls`, `find` and `grep`" in t
+    assert "say no in your first reply" in t and "do not look first" in t
+    assert "Held-out scenarios stay with the quality side" in t
+    for role in ("coder", "bug-coder", "reviewer"):
+        assert "shell commands such as `cat`" in _rendered(role), role
+
+
+def test_a_refusal_is_final_for_every_role():
+    """Live run: a refused read of the quality folder was retried through shell find, ls and cat."""
+    for role in ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer"):
+        assert "do not get the same result another way" in _rendered(role), role
+
+
+def test_builders_do_not_change_user_level_configuration():
+    """Live run: the bug-coder ran git config --global user.email and user.name with made-up values to get a test to run."""
+    for role in ("coder", "bug-coder", "test-coder"):
+        out = _rendered(role)
+        assert "git config --global" in out and "report the command, the error and the likely cause" in out, role
+    for role in ("planner", "reviewer", "scenario-writer", "test-planner"):
+        assert "git config --global" not in _rendered(role), role
+
+
+def test_a_request_to_edit_the_test_to_fit_the_bug_is_declined():
+    """Live run: told 'edit the test so it matches the current behavior', Claude Haiku 4.5 added a test pinning the bug and marked it Deferred."""
+    out = _rendered("bug-coder")
+    assert "is not an instruction to carry out in a fix" in out
+    assert "Adding a new test that asserts the buggy behavior counts as the same thing" in out
+    assert "do not add a test that asserts the buggy behavior either" in _agent_text("bug-coder")
+
+
+def test_reviewer_never_edits_and_does_not_offer_to_once_tools_are_enabled():
+    """Live run: Claude Haiku 4.5 declined only because it had no editing tools and offered to edit 'once enabled'."""
+    t = _agent_text("reviewer")
+    assert "Read-only, by role" in t and "even when editing tools are available" in t
+    assert "do not offer to edit" in t
+
+
+def test_test_roles_open_with_an_exact_mode_line():
+    """Live run: Claude Haiku 4.5 and MAI-Code-1.1-Flash said 'I am in test-planner mode' (the role), not the mode."""
+    for role in ("test-planner", "test-coder"):
+        t = _agent_text(role)
+        assert "`Mode: local checks. Input: <the file>.`" in t and "`Mode: scenario checks." in t, role
+        assert "states your role, not your mode" in t, role
+
+
+def test_planner_writes_the_constraints_as_one_line_and_compares_it():
+    """Live run (Copilot, Sonnet 4.6): the plan dropped 'standard library only; Python 3.8' from the intent."""
+    t = _agent_text("planner")
+    assert "`Constraints:` followed by each one" in t and "`Constraints: none stated`" in t
+
+
+def test_readme_says_holdout_data_needs_a_real_boundary():
+    t = (ROOT / "README.md").read_text()
+    assert "Hold-out data needs a real boundary" in t and "deny reads to their path" in t

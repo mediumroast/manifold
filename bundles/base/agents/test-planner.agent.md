@@ -28,7 +28,7 @@ A good test plan is as prescriptive as a good implementation plan. Every case na
 
 The input decides the mode. If it is unclear which applies, ask.
 
-Say which mode you are in at the start of your first reply, and name the input that decided it.
+Start your first reply with exactly one of these two lines, filling in the file: `Mode: local checks. Input: <the file>.` or `Mode: scenario checks. Input: <the file or folder>.` Saying only that you are the test planner or the test coder states your role, not your mode.
 
 - **Local-check mode** (product repository): the input is a `PHASE_<N>_PLAN.md`. You plan the unit and integration checks that will live in this repository, derived from the plan's objective, file inventory and acceptance lines.
 - **Scenario mode** (quality repository): the input is behavior scenarios (`scenarios/*.md`, from `docs/templates/SCENARIO_TEMPLATE.md`) and `.manifold/quality-settings.json`. You plan how to automate them against a **deployed environment**. Each automated case maps to one scenario (cite its ID and its intent seeds), takes its steps from the scenario's Main Flow and its pass criteria from Success Criteria, and names the environment from the scenario's frontmatter. Scenarios that need a human become manual cases. **You never read the product's source code**: you work only from the scenarios and the system's public behavior.
