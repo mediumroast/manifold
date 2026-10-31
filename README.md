@@ -35,15 +35,38 @@ It needs Python 3.8 or newer and uses only the standard library.
 
 A wiki server and web interface for handing work from one repository's agents to another's, with an editor where a person and an AI write an intent together. They are not part of this release, and there are no dates. See [ROADMAP.md](ROADMAP.md).
 
+## How this relates to the AI-native SDLC
+
+Manifold follows the loop in Anthropic's [AI-native SDLC playbook](https://claude.com/resources/articles/the-ai-native-sdlc-playbook) (Louis Claxton): each stage commits an artifact, the next stage starts by reading it, and people hold the gates. The roles map onto it like this:
+
+| Stage | Artifact | Manifold role |
+|---|---|---|
+| Plan | An intent (problem, outcome, constraints, scenario seeds) | `planner` in intent mode drafts; a person accepts |
+| Design and build | A phase plan, then the diff | `planner` writes the plan; a person approves it; `coder` executes it |
+| Test | Failing test first; evidence from literal command output | `bug-coder`, `test-planner`, `test-coder` |
+| Review | Findings against the plan | `reviewer` (read-only, never approves) |
+| Behavior check | Scenarios in a separate quality repository | `scenario-writer`, then the test roles in scenario mode |
+
+Where Manifold departs (it is tool-neutral, spans many repositories, and cannot rely on Claude Code hooks, so its rules are advice) and what is missing is written down in [docs/plans/design/sdlc-playbook-alignment.md](docs/plans/design/sdlc-playbook-alignment.md). The playbook is a third-party document, linked and not copied.
+
 ## Status
 
-v0.1.0 is a pre-release. The agents and skills pass the project's automated checks, including the official Agent Skills validator, but they have **not yet been tried in a live Claude Code or GitHub Copilot session**. The Agent Skills format is experimental.
+v0.1.0 is a pre-release. The agents and skills pass the project's automated checks, including the official Agent Skills validator, and have been run end to end by hand in **Claude Code** and in **GitHub Copilot in VS Code**; see [tests/results](tests/results/README.md). The Agent Skills format is experimental.
+
+The main finding: the guardrails hold on Claude Sonnet and are weaker on smaller models. Use Sonnet, and read [`bundles/base/MODELS.md`](bundles/base/MODELS.md) before choosing another model.
+
+## Plans, tests and how we work
+
+Manifold is developed in the open, with its own agents once they are ready for it. The design documents and the development plan are in [docs/plans](docs/plans/README.md). The live-client test protocol is in [tests/live](tests/live/README.md), and the results are in [tests/results](tests/results/README.md).
 
 ## Repository layout
 
 | Path | What |
 |---|---|
 | `bundles/base/` | The base bundle: agents, rules, templates, installer, build tool and tests |
+| `docs/plans/` | The development plan and design documents |
+| `tests/live/` | The live-client protocol: step-by-step runs for Claude Code and GitHub Copilot, with the scripts that save and judge evidence |
+| `tests/results/` | Summaries, results and findings of each live run |
 
 ## Contributing and security
 
