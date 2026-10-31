@@ -124,16 +124,27 @@ import subprocess  # noqa: E402
 
 
 @pytest.fixture()
-def service_folder(tmp_path):
-    if not shutil.which("docker"):
-        pytest.skip("svc_ctl.sh needs the docker command line before it gets as far as the instance check")
+def service_folder(tmp_path, monkeypatch):
+    """A scratch copy of svc_ctl.sh and the compose files, with a stand-in `docker` that only records its calls."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "docker"
+    fake.write_text('#!/bin/sh\necho "$@" >> "%s"\nexit 0\n' % (tmp_path / "docker.log"))
+    fake.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + os.environ["PATH"])
     root = tmp_path / "svc"
     (root / "docker").mkdir(parents=True)
     shutil.copy(DOCKER.parent / "svc_ctl.sh", root / "svc_ctl.sh")
-    for name in ("docker-compose.yml", "docker-compose.dev.yml", ".env.dev.template"):
+    for name in ("docker-compose.yml", "docker-compose.dev.yml", ".env.dev.template", ".env.staging.template",
+                 ".env.production.template"):
         shutil.copy(DOCKER / name, root / "docker" / name)
     run(root, "dev", "init-env")
     return root
+
+
+def docker_calls(root):
+    log = root.parent / "docker.log"
+    return log.read_text().splitlines() if log.exists() else []
 
 
 def run(root, *args):
@@ -141,8 +152,8 @@ def run(root, *args):
                           env=dict(os.environ, NO_COLOR="1"))
 
 
-def set_wiki_root(root, value):
-    env_file = root / "docker" / ".env.dev"
+def set_wiki_root(root, value, environment="dev"):
+    env_file = root / "docker" / (".env.%s" % environment)
     lines = [("WIKI_ROOT=%s" % value) if line.startswith("WIKI_ROOT=") else line for line in env_file.read_text().splitlines()]
     env_file.write_text("\n".join(lines) + "\n")
 
@@ -166,13 +177,40 @@ def test_start_refuses_a_folder_that_is_not_an_instance(service_folder, tmp_path
     assert result.returncode != 0 and "No manifold.yaml" in result.stderr + result.stdout
 
 
-def test_start_goes_on_to_docker_for_a_real_instance(service_folder, tmp_path):
+def _instance(tmp_path):
     (tmp_path / "inst").mkdir()
     (tmp_path / "inst" / "manifold.yaml").write_text("version: 1\n")
-    set_wiki_root(service_folder, tmp_path / "inst")
-    output = run(service_folder, "dev", "start")
-    assert "WIKI_ROOT" not in output.stderr + output.stdout or "docker" in (output.stderr + output.stdout).lower()
-    assert "No manifold.yaml" not in output.stderr + output.stdout and "is not a folder" not in output.stderr + output.stdout
+    return tmp_path / "inst"
+
+
+def test_start_goes_on_to_compose_for_a_real_instance(service_folder, tmp_path):
+    set_wiki_root(service_folder, _instance(tmp_path))
+    result = run(service_folder, "dev", "start")
+    assert result.returncode == 0, result.stderr + result.stdout
+    up = [c for c in docker_calls(service_folder) if " up " in c + " "]
+    assert len(up) == 1 and "up -d --build" in up[0] and "--project-name manifold-dev" in up[0]
+
+
+def test_only_the_dev_environment_adds_the_overlay(service_folder, tmp_path):
+    inst = _instance(tmp_path)
+    run(service_folder, "production", "init-env")
+    set_wiki_root(service_folder, inst, "production")
+    set_wiki_root(service_folder, inst)
+    run(service_folder, "dev", "start")
+    run(service_folder, "production", "start")
+    calls = [c for c in docker_calls(service_folder) if " up " in c + " "]
+    dev = [c for c in calls if "manifold-dev" in c][0]
+    production = [c for c in calls if "manifold-production" in c][0]
+    assert "docker-compose.dev.yml" in dev and "docker-compose.dev.yml" not in production
+
+
+def test_health_checks_the_instance_before_calling_compose(service_folder, tmp_path):
+    result = run(service_folder, "dev", "health")
+    assert result.returncode != 0 and "WIKI_ROOT" in result.stderr + result.stdout
+    assert not [c for c in docker_calls(service_folder) if " run " in c + " "]
+    set_wiki_root(service_folder, _instance(tmp_path))
+    assert run(service_folder, "dev", "health").returncode == 0
+    assert [c for c in docker_calls(service_folder) if " run " in c + " "]
 
 
 def test_templates_ask_for_an_instance_path():
