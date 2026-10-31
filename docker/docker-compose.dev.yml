@@ -1,0 +1,8 @@
+# Development overlay: the server code is mounted over the image and reloads on change.
+# Not for production.  Used by svc_ctl.sh for the "dev" environment.
+services:
+  manifold:
+    read_only: false
+    volumes:
+      - ../server:/app
+    command: ["sh", "-c", "exec python -m uvicorn server:asgi_app --host \"$$MANIFOLD_HOST\" --port \"$$PORT\" --reload"]

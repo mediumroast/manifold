@@ -1,0 +1,20 @@
+.git/
+.claude/
+.DS_Store
+*.swp
+*.swo
+raw/
+wiki/
+docs/
+spikes/
+export/
+dist/
+handoffs/
+**/__pycache__/
+**/*.pyc
+server/tests/
+# Environment files hold local settings; only the templates are tracked.
+docker/.env.dev
+docker/.env.staging
+docker/.env.production
+**/.env
