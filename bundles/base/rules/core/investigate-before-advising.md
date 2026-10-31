@@ -16,4 +16,4 @@ Advice that ignores what the user has already done wastes their time and erodes 
 State what you looked at, what you found, and what it implies.
 
 ## Enforce
-- review: none (judgement call)
+- review: none (judgment call)

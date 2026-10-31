@@ -8,6 +8,7 @@
 -->
 
 **Approved by:** <!-- name and YYYY-MM-DD; left blank until a human approves. The coder will not start without it. -->
+**Source intent:** <!-- INT-<n> and its path, or "none" -->
 
 ## Objective
 <!--
@@ -23,6 +24,18 @@
 **Out of scope:**
 <!-- Things you noticed but are deliberately not doing. -->
 -
+
+**Needs from other repositories:**
+<!-- Repository and the thing that must change or exist first, or "None." -->
+
+**Provides to other repositories:**
+<!-- Repository and the thing this change offers them, or "None." -->
+
+## Concerns flagged
+<!--
+  Conflicts between requirements or policies, and anything the planner could not resolve,
+  each with who needs to decide. Write "None." if there are none.
+-->
 
 ## Prerequisites
 <!--

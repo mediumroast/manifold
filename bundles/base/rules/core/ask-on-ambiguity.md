@@ -2,7 +2,7 @@
 id: ask-on-ambiguity
 title: Ambiguity
 severity: medium
-applies_to: planner, coder, test-planner, test-coder
+applies_to: planner, coder, reviewer, test-planner, test-coder, scenario-writer
 status: active
 source: convention
 ---
@@ -16,4 +16,4 @@ Ambiguity resolved by guessing turns into rework.
 Ask one focused question, or write a recommendation under "Open questions" and wait for the answer.
 
 ## Enforce
-- review: none (judgement call)
+- review: none (judgment call)

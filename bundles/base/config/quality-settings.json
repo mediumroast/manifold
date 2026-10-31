@@ -1,0 +1,28 @@
+{
+  "_note": "Quality settings for this repository. These are starting values: tune them on real runs. Keys beginning with an underscore are ignored. Every report states the values it used.",
+  "satisfaction": {
+    "minimum_overall": 0.85,
+    "minimum_per_seed": 0.70
+  },
+  "failures": {
+    "critical_max_rate": 0.05
+  },
+  "judge": {
+    "minimum_confidence": 0.85
+  },
+  "trajectories": {
+    "per_scenario": 3
+  },
+  "sampling": {
+    "seed": 42
+  },
+  "visibility": {
+    "level": "described"
+  },
+  "gate": {
+    "mode": "report-only"
+  },
+  "burn": {
+    "on_disclosure": true
+  }
+}

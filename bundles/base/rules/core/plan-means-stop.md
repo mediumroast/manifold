@@ -16,4 +16,4 @@ A plan is a decision point for the human. Acting past it removes their ability t
 List what you noticed under "Open questions" or "Out of scope", then wait for the go-ahead.
 
 ## Enforce
-- review: none (judgement call)
+- review: none (judgment call)

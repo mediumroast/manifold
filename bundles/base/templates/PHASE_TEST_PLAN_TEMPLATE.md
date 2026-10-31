@@ -48,7 +48,7 @@
 ## Automated test cases
 <!--
   Cases the test-coder implements. Order: task order. REGRESSION cases go last,
-  labelled. Every secured endpoint or function needs an unauthenticated case
+  labeled. Every secured endpoint or function needs an unauthenticated case
   and, where roles exist, an insufficient-permission case.
 -->
 

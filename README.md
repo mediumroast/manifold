@@ -8,13 +8,15 @@ Manifold is a toolkit for making AI coding tools such as Claude Code and GitHub 
 
 The first release is the foundation. It is self-contained, needs no server, and installs into any repository:
 
-- **Five agents:** `planner`, `coder`, `test-planner`, `test-coder` and `bug-coder`, in Claude Code and GitHub Copilot formats.
-- **Rules:** a small library of "don't do this, and do this instead" rules, each with the reason behind it. Every agent carries the rules that apply to its role.
-- **Templates:** phase plan, test plan and walkthrough notes, installed to `docs/templates/`.
+- **Seven agents:** `planner` (with an intent mode), `coder`, `bug-coder` (failing test first), `reviewer`, `test-planner`, `test-coder` and `scenario-writer`, in Claude Code and GitHub Copilot formats.
+- **Two layers of testing.** Unit and integration checks live in your product repository. Behavior scenarios live in a **separate quality repository**, written from the intent rather than the implementation, so the AI that builds the code is not the AI that writes the tests that judge it. Install profiles (`build`, `quality`, `single`) set each repository up for its job.
+- **Rules:** a small library of "don't do this, and do this instead" rules, each with the reason behind it. Every agent carries the rules that apply to its role. They are advice a model is likely, not certain, to follow; the bundle says plainly where deterministic enforcement is needed.
+- **Templates:** intent (with scenario seeds), phase plan, test plan, walkthrough notes, review policy, behavior scenario and satisfaction report, installed to `docs/templates/`.
+- **Quality settings:** numerical thresholds as defaults you can change.
 - **An installer** that shows what it will do before it does anything, never overwrites a file you edited, and removes cleanly.
-- **Agent Skills (experimental):** the same five roles as portable [Agent Skills](https://agentskills.io).
+- **Agent Skills (experimental):** the same roles as portable [Agent Skills](https://agentskills.io).
 
-See [`bundles/base`](bundles/base/README.md) for details.
+See [`bundles/base`](bundles/base/README.md) for details and [ROADMAP.md](ROADMAP.md) for what comes next.
 
 ## Quick start
 
@@ -31,7 +33,7 @@ It needs Python 3.8 or newer and uses only the standard library.
 
 ## What is coming
 
-A wiki server and web interface for handing work from one repository's agents to another's. They are not part of this release, and there are no dates yet.
+A wiki server and web interface for handing work from one repository's agents to another's, with an editor where a person and an AI write an intent together. They are not part of this release, and there are no dates. See [ROADMAP.md](ROADMAP.md).
 
 ## Status
 

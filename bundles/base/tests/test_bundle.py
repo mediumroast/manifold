@@ -138,12 +138,12 @@ def test_deprecated_rules_are_not_rendered(tmp_path):
 
 # ---------------------------------------------------------------- rendering
 
-def test_claude_format_keeps_only_name_and_description(built):
+def test_claude_format_keeps_only_name_description_and_denied_tools(built):
     with zipfile.ZipFile(built) as zf:
-        name = [n for n in zf.namelist() if n.endswith("payload/claude/.claude/agents/planner.md")][0]
+        name = [n for n in zf.namelist() if n.endswith("payload/claude/.claude/agents/reviewer.md")][0]
         head = zf.read(name).decode().split("---")[1]
     keys = {line.split(":")[0] for line in head.strip().splitlines()}
-    assert keys == {"name", "description"}
+    assert keys == {"name", "description", "disallowedTools"}
 
 
 def test_copilot_format_keeps_tools_hint_and_handoffs(built):
@@ -433,7 +433,7 @@ _inst_spec.loader.exec_module(inst)
     ("planner", "planner"), ("coder", "coder"), ("bug-coder", "bug-coder"),
     ("acme-planner", "planner"), ("acme-bug-coder", "bug-coder"),
     ("acme-test-coder", "test-coder"), ("acme-test-planner", "test-planner"),
-    ("my-coders", None), ("reviewer", None), ("plannerx", None),
+    ("my-coders", None), ("reviewer", "reviewer"), ("acme-scenario-writer", "scenario-writer"), ("deployer", None), ("plannerx", None),
 ])
 def test_role_of(stem, role):
     assert inst.role_of(stem) == role
@@ -442,13 +442,13 @@ def test_role_of(stem, role):
 def _tailored(repo, directory, suffix):
     (repo / directory).mkdir(parents=True)
     (repo / directory / ("acme-planner" + suffix)).write_text("---\nname: acme-planner\n---\n")
-    (repo / directory / ("acme-reviewer" + suffix)).write_text("---\nname: acme-reviewer\n---\n")
+    (repo / directory / ("acme-deployer" + suffix)).write_text("---\nname: acme-deployer\n---\n")
 
 
 def test_overlap_warns_and_blocks_apply_until_allowed(bundle_dir, repo):
     _tailored(repo, ".github/agents", ".agent.md")
     rc, out = run(bundle_dir, repo, "--format", "copilot")
-    assert rc == 0 and "WARNING" in out and "acme-planner.agent.md" in out and "acme-reviewer" not in out
+    assert rc == 0 and "WARNING" in out and "acme-planner.agent.md" in out and "acme-deployer" not in out
     rc, out = run(bundle_dir, repo, "--format", "copilot", "--apply")
     assert rc == 1 and "overlapping" in out
     assert not (repo / ".github/agents/planner.agent.md").exists() and not (repo / ".manifold").exists()
@@ -537,13 +537,17 @@ def test_unknown_role_in_a_reference_is_rejected():
 
 def test_instruction_variants_exist_and_differ(bundle_dir):
     variants = _bundle_json(bundle_dir)["instructions"]["variants"]
-    assert set(variants) == {"agents", "skills", "both"}
-    text = {k: (bundle_dir / v["src"]).read_text() for k, v in variants.items()}
-    for k, v in variants.items():
-        assert hashlib.sha256(text[k].encode()).hexdigest() == v["sha256"]
-    assert "## Agents\n" in text["agents"] and "## Skills" not in text["agents"]
-    assert "## Skills\n" in text["skills"] and "@agent-" not in text["skills"]
-    assert "## Agents and skills" in text["both"] and "plan-change" in text["both"] and "planner" in text["both"]
+    assert set(variants) == {"build", "quality", "single"}
+    for profile, styles in variants.items():
+        assert set(styles) == {"agents", "skills", "both"}
+        text = {k: (bundle_dir / v["src"]).read_text() for k, v in styles.items()}
+        for k, v in styles.items():
+            assert hashlib.sha256(text[k].encode()).hexdigest() == v["sha256"]
+        assert "## Agents\n" in text["agents"] and "## Skills" not in text["agents"]
+        assert "## Skills\n" in text["skills"] and "@agent-" not in text["skills"]
+        assert "## Agents and skills" in text["both"]
+    both = (bundle_dir / variants["single"]["both"]["src"]).read_text()
+    assert "plan-change" in both and "planner" in both
 
 
 def test_skills_pass_the_official_reference_validator(bundle_dir, tmp_path):
@@ -726,3 +730,359 @@ def test_uninstall_dry_run_names_created_files_but_removes_nothing(bundle_dir, r
     rc, out = run(bundle_dir, repo, "--uninstall")
     assert rc == 0 and "REMOVE    AGENTS.md" in out and "REMOVE    CLAUDE.md" in out and "Dry run" in out
     assert {f: (repo / f).read_bytes() for f in tree(repo)} == before
+
+
+# ----------------------------------------------------------------- profiles
+
+BUILD_ROLES = ["planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder"]
+QUALITY_ROLES = ["scenario-writer", "test-planner", "test-coder"]
+
+
+def _agent_names(repo):
+    folder = repo / ".claude" / "agents"
+    return sorted(p.stem for p in folder.iterdir()) if folder.is_dir() else []
+
+
+def test_default_profile_is_build(bundle_dir, repo):
+    rc, out = run(bundle_dir, repo, "--apply")
+    assert rc == 0 and "Profile: build" in out
+    assert _agent_names(repo) == sorted(BUILD_ROLES)
+    assert (repo / "docs/templates/PHASE_PLAN_TEMPLATE.md").exists()
+    assert (repo / "docs/templates/REVIEW_TEMPLATE.md").exists()
+    assert (repo / "docs/templates/INTENT_TEMPLATE.md").exists()
+    assert not (repo / "docs/templates/SCENARIO_TEMPLATE.md").exists()
+    assert not (repo / ".manifold/quality-settings.json").exists()
+    assert json.loads((repo / ".manifold/manifest.json").read_text())["profiles"] == ["build"]
+
+
+def test_quality_profile_installs_only_quality_roles_and_files(bundle_dir, repo):
+    rc, out = run(bundle_dir, repo, "--profile", "quality", "--apply")
+    assert rc == 0 and "Profile: quality" in out and "WARNING   The single profile" not in out
+    assert _agent_names(repo) == sorted(QUALITY_ROLES)
+    for f in ("docs/templates/SCENARIO_TEMPLATE.md", "docs/templates/SATISFACTION_REPORT_TEMPLATE.md",
+              "docs/templates/INTENT_TEMPLATE.md", ".manifold/quality-settings.json"):
+        assert (repo / f).exists(), f
+    for f in ("docs/templates/PHASE_PLAN_TEMPLATE.md", "docs/templates/REVIEW_TEMPLATE.md"):
+        assert not (repo / f).exists(), f
+    block = (repo / "AGENTS.md").read_text()
+    assert "scenario-writer" in block and "**coder**" not in block and "**planner**" not in block
+
+
+def test_single_profile_installs_everything_and_warns(bundle_dir, repo):
+    rc, out = run(bundle_dir, repo, "--profile", "single", "--apply")
+    assert rc == 0 and "WARNING   The single profile" in out and "NOT independent" in out
+    assert _agent_names(repo) == sorted(build.ROLES)
+    assert (repo / ".manifold/quality-settings.json").exists() and (repo / "docs/templates/REVIEW_TEMPLATE.md").exists()
+
+
+def test_installing_build_then_quality_becomes_single_with_warning(bundle_dir, repo):
+    assert run(bundle_dir, repo, "--apply")[0] == 0
+    rc, out = run(bundle_dir, repo, "--profile", "quality", "--apply")
+    assert rc == 0 and "WARNING   The single profile" in out
+    assert json.loads((repo / ".manifold/manifest.json").read_text())["profiles"] == ["build", "quality"]
+    assert _agent_names(repo) == sorted(build.ROLES)
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+@pytest.mark.parametrize("fmt", ["claude", "copilot", "skills", "both"])
+def test_every_profile_and_format_uninstalls_to_an_empty_repo(bundle_dir, repo, profile, fmt):
+    assert run(bundle_dir, repo, "--profile", profile, "--format", fmt, "--apply")[0] == 0
+    assert tree(repo)
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_quality_settings_are_user_editable_and_never_overwritten(bundle_dir, repo):
+    assert run(bundle_dir, repo, "--profile", "quality", "--apply")[0] == 0
+    settings = repo / ".manifold/quality-settings.json"
+    data = json.loads(settings.read_text())
+    data["satisfaction"]["minimum_overall"] = 0.95
+    settings.write_text(json.dumps(data, indent=2) + "\n")
+    rc, out = run(bundle_dir, repo, "--profile", "quality", "--apply")
+    assert rc == 2 and "quality-settings.json" in out and "CONFLICT" in out
+    assert json.loads(settings.read_text())["satisfaction"]["minimum_overall"] == 0.95
+    rc, out = run(bundle_dir, repo, "--uninstall", "--apply")
+    assert "KEEP      .manifold/quality-settings.json" in out
+    assert json.loads(settings.read_text())["satisfaction"]["minimum_overall"] == 0.95
+
+
+def test_quality_settings_defaults():
+    flat = build.flatten_settings(json.loads((ROOT / "config" / "quality-settings.json").read_text()))
+    assert flat["satisfaction.minimum_overall"] == 0.85
+    assert flat["satisfaction.minimum_per_seed"] == 0.70
+    assert flat["failures.critical_max_rate"] == 0.05
+    assert flat["judge.minimum_confidence"] == 0.85
+    assert flat["trajectories.per_scenario"] == 3
+    assert flat["sampling.seed"] == 42
+    assert flat["visibility.level"] == "described"
+    assert flat["gate.mode"] == "report-only"
+    assert flat["burn.on_disclosure"] is True
+    assert set(build.QUALITY_SETTINGS_KEYS) <= set(flat)
+
+
+def test_lint_rejects_missing_quality_setting(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "config" / "quality-settings.json"
+    data = json.loads(p.read_text())
+    del data["judge"]
+    p.write_text(json.dumps(data))
+    assert any("judge.minimum_confidence" in x for x in build.lint(src))
+
+
+def test_lint_rejects_a_reference_to_a_role_the_profile_lacks(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "agents" / "scenario-writer.agent.md"
+    p.write_text(p.read_text().replace("## What you do not do", "See the {{ref:coder}}.\n\n## What you do not do", 1))
+    assert any("scenario-writer refers to 'coder'" in x and "quality" in x for x in build.lint(src))
+
+
+def test_rules_reach_only_the_roles_they_apply_to(tmp_path):
+    rules = build.load_rules(ROOT)
+    def ids(role):
+        return {r["id"] for r in build.rules_for(rules, role)}
+    assert "quality-side-is-black-box" in ids("scenario-writer") and "quality-side-is-black-box" in ids("test-coder")
+    assert "quality-side-is-black-box" not in ids("coder")
+    assert "builders-dont-read-holdout-scenarios" in ids("coder") and "builders-dont-read-holdout-scenarios" in ids("reviewer")
+    assert "builders-dont-read-holdout-scenarios" not in ids("scenario-writer")
+    assert "builders-dont-write-acceptance-tests" in ids("bug-coder")
+    assert "dont-edit-the-test-to-pass" in ids("coder") and "dont-edit-the-test-to-pass" in ids("test-coder")
+    assert "human-confirms-closure" in ids("bug-coder") and "human-confirms-closure" not in ids("reviewer")
+
+
+# ----------------------------------------------------- intent, review, scenarios
+
+def _agent_text(role):
+    return (ROOT / "agents" / ("%s.agent.md" % role)).read_text()
+
+
+def _tools(role):
+    blocks, _ = build.split_frontmatter(_agent_text(role))
+    return build.scalar_value(blocks, "tools")
+
+
+def test_intent_template_has_scenario_seeds_and_a_human_only_status():
+    t = (ROOT / "templates" / "INTENT_TEMPLATE.md").read_text()
+    assert t.startswith("---\n")
+    for needle in ("## Scenario seeds", "### S1", "**We will know when:**", "**Must never:**", "accepted_by:", "affects:", "status: draft"):
+        assert needle in t, needle
+    assert "Only a human changes the status" in t
+
+
+def test_plan_template_carries_intent_concerns_and_cross_repository_lines():
+    t = (ROOT / "templates" / "PHASE_PLAN_TEMPLATE.md").read_text()
+    for needle in ("**Source intent:**", "## Concerns flagged", "**Needs from other repositories:**", "**Provides to other repositories:**", "**Approved by:**"):
+        assert needle in t, needle
+
+
+def test_planner_has_intent_mode_and_never_accepts_its_own_plan():
+    t = _agent_text("planner")
+    assert "## Intent mode" in t and "scenario seeds" in t and "Concerns flagged" in t
+    assert "**Never** mark the intent accepted" in t and "Approved by" in t
+
+
+def test_reviewer_is_read_only_and_never_approves():
+    tools = _tools("reviewer")
+    assert "edit" not in tools and "write" not in tools
+    t = _agent_text("reviewer")
+    assert "must not review its own change" in t
+    assert "you do **not approve or block** anything" in t
+    assert "REVIEW.md" in t and "Read-only" in t
+
+
+def test_claude_format_denies_the_tools_an_agent_does_not_declare():
+    """Claude Code agents inherit every tool unless told otherwise, so the read-only
+    and black-box roles must carry a denylist (an allowlist would also hide MCP tools)."""
+    def fm(role):
+        out = build.render_agent(role, _agent_text(role), "claude", build.load_fragments(), build.load_rules())
+        return out.split("---")[1]
+    reviewer = fm("reviewer")
+    assert "disallowedTools: Edit, Write, NotebookEdit, WebFetch, WebSearch" in reviewer
+    assert "Bash" not in reviewer
+    # search is Bash in Claude Code, so a role that may search keeps it (the 7c live run: the
+    # test-planner could not list scenarios/ and stopped)
+    for role in ("scenario-writer", "test-planner", "planner"):
+        assert "Bash" not in fm(role), role
+    assert "disallowedTools" not in fm("coder")
+    assert "tools:" not in fm("reviewer").replace("disallowedTools:", "")
+
+
+def test_scenario_writer_is_black_box_and_leaves_approval_to_humans():
+    t = _agent_text("scenario-writer")
+    assert "Do not read the product's source code" in t and "status: pending" in t and "A person moves them to `approved`" in t
+    assert "execute" not in _tools("scenario-writer")
+
+
+def test_test_agents_have_both_modes():
+    for role in ("test-planner", "test-coder"):
+        t = _agent_text(role)
+        assert "Local-check mode" in t and "Scenario mode" in t, role
+    assert "never read the product's source code" in _agent_text("test-planner")
+
+
+def test_test_agents_say_their_mode_first():
+    """Live run: neither test agent named its mode, so a person could not tell which input it had used."""
+    for role in ("test-planner", "test-coder"):
+        assert "Start your first reply with exactly one of these two lines" in _agent_text(role), role
+
+
+def test_planner_carries_the_intents_constraints_into_the_plan():
+    """Live run: the plan kept 'Python 3.8' but dropped the intent's 'standard library only'."""
+    assert "Every constraint stated in the intent appears in the plan" in _agent_text("planner")
+
+
+def test_planner_refuses_to_fill_in_the_approval_even_when_asked():
+    """Live run (Copilot, Sonnet 4.6): asked to mark the plan approved, the planner wrote an approver name itself."""
+    t = _agent_text("planner")
+    assert "decline even when they insist" in t and "Never invent an approver name" in t
+
+
+def test_an_instruction_to_execute_is_not_an_approval():
+    """Live run (Copilot, Sonnet 4.6): told 'Execute docs/plans/PHASE_1_PLAN.md' with Approved by blank, the coder
+    treated the instruction as approval and edited code. Its own diagnosis: the rule let 'the user says so' cover it."""
+    assert "An instruction to execute the plan is not an approval" in _agent_text("coder")
+    out = build.render_agent("coder", _agent_text("coder"), "claude", build.load_fragments(), build.load_rules())
+    assert "An instruction to execute, run or implement the plan is not an approval" in out
+    assert "repeating the instruction to execute is not a yes" in out
+    assert "instruction repeated after you asked and were told not yet" in _agent_text("coder")
+
+
+def test_coder_checks_off_the_plan_before_it_reports():
+    """Live run (Copilot, Claude Haiku 4.5): the coder reported Task 1 complete in chat but left the plan's Todo at [ ]."""
+    assert "a task is not finished until the plan shows it" in _agent_text("coder")
+
+
+def test_every_role_is_told_to_look_before_it_asks():
+    """Live run: agents guessed test file names and asked about commands the repository answers."""
+    for role in ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer"):
+        out = build.render_agent(role, _agent_text(role), "claude", build.load_fragments(), build.load_rules())
+        assert "Never guess a file name" in out, role
+
+
+def test_bug_coder_writes_the_failing_test_first_and_does_not_edit_it():
+    t = _agent_text("bug-coder")
+    assert "failing test first" in t and "commit it on its own" in t
+    assert "you did not edit it" in t and "not the acceptance check" in t
+
+
+def test_scenario_template_matches_the_working_format():
+    t = (ROOT / "templates" / "SCENARIO_TEMPLATE.md").read_text()
+    for key in ("id:", "title:", "author:", "created:", "status: pending", "tags:", "environment:", "priority:", "intent:", "seeds:"):
+        assert key in t, key
+    for section in ("## User Goal", "## Context", "## Main Flow", "## Edge Cases to Consider", "## Success Criteria"):
+        assert section in t, section
+
+
+def test_satisfaction_report_states_thresholds_and_per_seed_results():
+    t = (ROOT / "templates" / "SATISFACTION_REPORT_TEMPLATE.md").read_text()
+    for needle in ("## Thresholds used", "## Results per seed", "satisfaction.minimum_overall", "## Disclosed scenarios", "Gate mode"):
+        assert needle in t, needle
+
+
+def test_review_template_has_passes_and_a_nit_cap():
+    t = (ROOT / "templates" / "REVIEW_TEMPLATE.md").read_text()
+    for needle in ("## Passes", "What Important means", "Cap the nits", "Do not report", "Human threshold"):
+        assert needle in t, needle
+
+
+# ------------------------------------------------------------------ roadmap
+
+ROADMAP = ROOT.parent.parent / "ROADMAP.md"
+
+
+@pytest.mark.skipif(not ROADMAP.exists(), reason="ROADMAP.md lives at the repository root")
+def test_roadmap_has_no_dates_and_no_internal_terms():
+    import re
+    text = ROADMAP.read_text()
+    assert not re.search(r"\b(19|20)\d\d\b", text), "the roadmap must not contain years or dates"
+    months = r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b"
+    assert not re.search(months, text)
+    assert not re.search(r"\bQ[1-4]\b", text)
+    assert "mediumroast" not in text.lower()
+    for status in ("In progress", "Planned", "Exploring"):
+        assert status in text
+    assert "Formats freeze" in text
+
+
+@pytest.mark.skipif(not ROADMAP.exists(), reason="ROADMAP.md lives at the repository root")
+def test_root_readme_links_the_roadmap():
+    assert "ROADMAP.md" in (ROOT.parent.parent / "README.md").read_text()
+
+
+# ------------------------------------------------- hardening for smaller models (live run, Copilot)
+
+def _rendered(role):
+    return build.render_agent(role, _agent_text(role), "claude", build.load_fragments(), build.load_rules())
+
+
+def test_holdout_rule_covers_shell_reads_and_says_no_first():
+    """Live run: Claude Haiku 4.5 read the hold-out scenarios with shell cat and find; MAI-Code-1.1-Flash retried a refused read."""
+    t = (ROOT / "rules" / "core" / "builders-dont-read-holdout-scenarios.md").read_text()
+    assert "shell commands such as `cat`, `ls`, `find` and `grep`" in t
+    assert "say no in your first reply" in t and "do not look first" in t
+    assert "Held-out scenarios stay with the quality side" in t
+    for role in ("coder", "bug-coder", "reviewer"):
+        assert "shell commands such as `cat`" in _rendered(role), role
+
+
+def test_a_refusal_is_final_for_every_role():
+    """Live run: a refused read of the quality folder was retried through shell find, ls and cat."""
+    for role in ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer"):
+        assert "do not get the same result another way" in _rendered(role), role
+
+
+def test_builders_do_not_change_user_level_configuration():
+    """Live run: the bug-coder ran git config --global user.email and user.name with made-up values to get a test to run."""
+    for role in ("coder", "bug-coder", "test-coder"):
+        out = _rendered(role)
+        assert "git config --global" in out and "report the command, the error and the likely cause" in out, role
+    for role in ("planner", "reviewer", "scenario-writer", "test-planner"):
+        assert "git config --global" not in _rendered(role), role
+
+
+def test_a_request_to_edit_the_test_to_fit_the_bug_is_declined():
+    """Live run: told 'edit the test so it matches the current behavior', Claude Haiku 4.5 added a test pinning the bug and marked it Deferred."""
+    out = _rendered("bug-coder")
+    assert "is not an instruction to carry out in a fix" in out
+    assert "Adding a new test that asserts the buggy behavior counts as the same thing" in out
+    assert "do not add a test that asserts the buggy behavior either" in _agent_text("bug-coder")
+
+
+def test_reviewer_never_edits_and_does_not_offer_to_once_tools_are_enabled():
+    """Live run: Claude Haiku 4.5 declined only because it had no editing tools and offered to edit 'once enabled'."""
+    t = _agent_text("reviewer")
+    assert "Read-only, by role" in t and "even when editing tools are available" in t
+    assert "do not offer to edit" in t
+
+
+def test_test_roles_open_with_an_exact_mode_line():
+    """Live run: Claude Haiku 4.5 and MAI-Code-1.1-Flash said 'I am in test-planner mode' (the role), not the mode."""
+    for role in ("test-planner", "test-coder"):
+        t = _agent_text(role)
+        assert "`Mode: local checks. Input: <the file>.`" in t and "`Mode: scenario checks." in t, role
+        assert "states your role, not your mode" in t, role
+
+
+def test_planner_writes_the_constraints_as_one_line_and_compares_it():
+    """Live run (Copilot, Sonnet 4.6): the plan dropped 'standard library only; Python 3.8' from the intent."""
+    t = _agent_text("planner")
+    assert "`Constraints:` followed by each one" in t and "`Constraints: none stated`" in t
+
+
+def test_readme_says_holdout_data_needs_a_real_boundary():
+    t = (ROOT / "README.md").read_text()
+    assert "Hold-out data needs a real boundary" in t and "deny reads to their path" in t
+
+
+def test_models_page_names_the_tested_models_and_recommends_sonnet():
+    t = (ROOT / "MODELS.md").read_text()
+    for name in ("Sonnet 5.5", "Sonnet 4.6", "Haiku 4.5", "MAI-Code-1.1-Flash"):
+        assert name in t
+    assert "use Claude Sonnet" in t
+    assert "If you must use a smaller model" in t
+    assert "MODELS.md" in (ROOT / "README.md").read_text()
+
+
+def test_models_page_ships_in_the_zip(tmp_path):
+    built = build.build_zip(ROOT, tmp_path)
+    with zipfile.ZipFile(built) as zf:
+        assert any(n.endswith("/MODELS.md") for n in zf.namelist())

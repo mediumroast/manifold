@@ -46,6 +46,7 @@ or press Cmd+Shift+. in Finder to show hidden files.
 | Option | Effect |
 |---|---|
 | `--apply` | Write the changes. Without it the installer only shows its plan. |
+| `--profile <name>` | Which roles to install: `build` (default; a product repository), `quality` (a separate repository for behavior scenarios) or `single` (everything in one repository; prints a warning that verification is not independent). Profiles accumulate: installing `quality` after `build` makes the repository `single`. |
 | `--format <list>` | What to install: `claude`, `copilot`, `skills` (experimental), `both` (claude and copilot), `all`, or a comma list such as `claude,skills`. Default `claude`. |
 | `--skills-dir <path>` | Where skills are installed, relative to the repository. Default `.claude/skills`. Remembered for later runs. |
 | `--allow-overlap` | Install even if the repository already has agents or skills for the same roles (for example `acme-planner`), or if the install would leave both agents and skills for the same roles. Without it, `--apply` refuses, because two entry points for one role can confuse routing. |

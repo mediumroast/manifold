@@ -2,7 +2,12 @@
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities **privately**. Use **Report a vulnerability** under this repository's **Security** tab (GitHub private vulnerability reporting). Please do not open a public issue or pull request for a suspected vulnerability.
+Please report suspected vulnerabilities **privately**, by either route:
+
+- email **hello@mediumroast.io**, or
+- use **Report a vulnerability** under this repository's **Security** tab (GitHub private vulnerability reporting).
+
+Please do not open a public issue or pull request for a suspected vulnerability.
 
 Include what you found, the version or commit, steps to reproduce or a proof of concept, and the impact you expect.
 

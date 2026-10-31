@@ -8,6 +8,7 @@ Dry-run by default: nothing is written until you pass --apply.
     ./install.sh --target /path/to/repo                 # show the plan
     ./install.sh --target /path/to/repo --apply         # do it
     ./install.sh --target /path/to/repo --format skills # experimental: install as Agent Skills
+    ./install.sh --target /path/to/repo --profile quality  # a separate repository for behavior scenarios
     ./install.sh --target /path/to/repo --status        # compare with what is installed
     ./install.sh --target /path/to/repo --uninstall --apply
 
@@ -107,14 +108,40 @@ def resolve_skills_dir(bundle: dict, manifest: dict, requested):
     return raw.rstrip("/")
 
 
-def selected_entries(bundle: dict, formats, skills_dir=None):
+PROFILE_NAMES = ("build", "quality", "single")
+DEFAULT_PROFILE = "build"
+
+
+def profile_roles(bundle: dict, profiles):
+    roles = []
+    for name in profiles:
+        for role in bundle["profiles"][name]:
+            if role not in roles:
+                roles.append(role)
+    return roles
+
+
+def effective_profile(profiles):
+    """The profile whose instruction block describes what is installed: build plus quality is single."""
+    names = set(profiles)
+    if "single" in names or {"build", "quality"} <= names:
+        return "single"
+    return next(iter(names))
+
+
+def selected_entries(bundle: dict, formats, skills_dir=None, profiles=(DEFAULT_PROFILE,)):
+    roles = set(profile_roles(bundle, profiles))
     entries = []
     for fmt in formats:
         for e in bundle["formats"][fmt]:
+            if e.get("role") not in roles:
+                continue
             if fmt == "skills" and skills_dir:
                 e = dict(e, path="%s/%s" % (skills_dir, e["rel"]))
             entries.append(e)
-    entries.extend(bundle["common"])
+    for e in bundle["common"]:
+        if set(e.get("profiles", PROFILE_NAMES)) & set(profiles):
+            entries.append(e)
     return entries
 
 
@@ -179,9 +206,9 @@ def apply_block(existing: str, block: str, begin: str, end: str) -> str:
     return text
 
 
-def plan_instructions(bundle: dict, target: Path, style: str = "agents"):
+def plan_instructions(bundle: dict, target: Path, style: str = "agents", profile: str = "single"):
     info = bundle["instructions"]
-    block = (HERE / info["variants"][style]["src"]).read_text(encoding="utf-8")
+    block = (HERE / info["variants"][profile][style]["src"]).read_text(encoding="utf-8")
     file, creating = find_instruction_file(target)
     existing = "" if creating else file.read_text(encoding="utf-8")
     updated = apply_block(existing, block, info["begin"], info["end"])
@@ -203,7 +230,7 @@ def timestamp() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-KNOWN_ROLES = ("bug-coder", "test-planner", "test-coder", "planner", "coder")
+KNOWN_ROLES = ("scenario-writer", "bug-coder", "test-planner", "test-coder", "reviewer", "planner", "coder")
 AGENT_DIRS = {"claude": (".claude/agents", ".md"), "copilot": (".github/agents", ".agent.md")}
 
 
@@ -215,10 +242,10 @@ def role_of(stem: str):
     return None
 
 
-def find_overlapping_agents(bundle: dict, target: Path, formats, recorded: dict, skills_dir=None):
+def find_overlapping_agents(bundle: dict, target: Path, formats, recorded: dict, skills_dir=None, profiles=(DEFAULT_PROFILE,)):
     """Existing agents or skills, not installed by this bundle, that fill the same role as one we ship."""
-    ours = {e["path"] for e in selected_entries(bundle, formats, skills_dir)} | set(recorded)
-    shipped_roles = set(bundle["roles"])
+    ours = {e["path"] for e in selected_entries(bundle, formats, skills_dir, profiles)} | set(recorded)
+    shipped_roles = set(profile_roles(bundle, profiles))
     found = []
     for fmt in formats:
         if fmt in AGENT_DIRS:
@@ -257,7 +284,8 @@ def cmd_status(bundle, target, formats) -> int:
     if not recorded:
         print("No manifest at %s: this bundle is not installed here." % MANIFEST_REL)
         return 0
-    print("Installed: %s %s (%s)" % (manifest.get("name", "?"), manifest.get("version", "?"), ", ".join(manifest.get("formats", []))))
+    print("Installed: %s %s (%s; profile: %s)" % (manifest.get("name", "?"), manifest.get("version", "?"),
+                                              ", ".join(manifest.get("formats", [])), ", ".join(manifest.get("profiles", ["build"]))))
     bad = 0
     for rel, known in sorted(recorded.items()):
         dest = safe_dest(target, rel)
@@ -274,13 +302,27 @@ def cmd_status(bundle, target, formats) -> int:
     return 0
 
 
-def cmd_install(bundle, target, formats, apply_, force, with_instructions, allow_overlap=False, skills_dir_arg=None) -> int:
+SINGLE_WARNING = (
+    "WARNING   The single profile puts the builders and the behavior-scenario writers in one repository.",
+    "          Verification of product behavior is then NOT independent: the AI that builds the code can",
+    "          read and edit what judges it. Use it to get started; move scenarios to a separate quality",
+    "          repository (install the quality profile there) for independent verification.",
+)
+
+
+def cmd_install(bundle, target, formats, apply_, force, with_instructions, allow_overlap=False, skills_dir_arg=None, profile_arg=None) -> int:
     manifest = load_manifest(target)
     recorded = dict(manifest.get("files", {}))
     skills_dir = resolve_skills_dir(bundle, manifest, skills_dir_arg)
-    overlaps = find_overlapping_agents(bundle, target, formats, recorded, skills_dir)
+    profiles = sorted(set(manifest.get("profiles", [])) | {profile_arg or (manifest.get("profiles") or [DEFAULT_PROFILE])[0]})
+    profile = effective_profile(profiles)
+    print("Profile: %s%s" % (profile, "" if profile == profiles[0] and len(profiles) == 1 else " (installed: %s)" % ", ".join(profiles)))
+    if profile == "single":
+        for line in SINGLE_WARNING:
+            print("  " + line)
+    overlaps = find_overlapping_agents(bundle, target, formats, recorded, skills_dir, profiles)
     both_styles = style_conflict(formats, recorded)
-    entries = selected_entries(bundle, formats, skills_dir)
+    entries = selected_entries(bundle, formats, skills_dir, profiles)
     rows = [(e,) + classify(e, target, recorded) for e in entries]
     conflicts = 0
     for entry, action, detail in rows:
@@ -295,7 +337,7 @@ def cmd_install(bundle, target, formats, apply_, force, with_instructions, allow
     if with_instructions:
         style_now = installed_styles(recorded) | styles_of_formats(formats)
         style_name = "both" if len(style_now) == 2 else next(iter(style_now))
-        instr = plan_instructions(bundle, target, style_name)
+        instr = plan_instructions(bundle, target, style_name, profile)
         file, _updated, action, extra, notes = instr
         print("  %-9s %s   (managed block between manifold markers)" % (action, file.name))
         for act, name, _content in extra:
@@ -365,7 +407,7 @@ def cmd_install(bundle, target, formats, apply_, force, with_instructions, allow
     new_manifest = {
         "name": bundle["name"], "bundle": bundle["bundle"], "version": bundle["version"],
         "installed_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "formats": kept, "files": dict(sorted(recorded.items())),
+        "formats": kept, "profiles": profiles, "files": dict(sorted(recorded.items())),
     }
     if "skills" in kept:
         new_manifest["skills_dir"] = skills_dir
@@ -460,6 +502,11 @@ def main(argv=None) -> int:
     ap.add_argument("--format", default="claude",
                     help="what to install: claude, copilot, skills (experimental), both (claude+copilot), all, "
                          "or a comma list such as claude,skills (default: claude)")
+    ap.add_argument("--profile", choices=PROFILE_NAMES, default=None,
+                    help="which roles to install: build (product repository: planner, coder, bug-coder, reviewer, "
+                         "test-planner, test-coder; default), quality (a separate repository for behavior scenarios: "
+                         "scenario-writer, test-planner, test-coder) or single (everything in one repository, "
+                         "with a warning that verification is not independent)")
     ap.add_argument("--skills-dir", default=None,
                     help="where skills go, relative to the repository (default: .claude/skills; check your tool's documentation)")
     ap.add_argument("--apply", action="store_true", help="write changes (default is a dry run)")
@@ -482,7 +529,7 @@ def main(argv=None) -> int:
             return cmd_status(bundle, target, formats)
         if args.uninstall:
             return cmd_uninstall(bundle, target, args.apply)
-        return cmd_install(bundle, target, formats, args.apply, args.force, not args.no_instructions, args.allow_overlap, args.skills_dir)
+        return cmd_install(bundle, target, formats, args.apply, args.force, not args.no_instructions, args.allow_overlap, args.skills_dir, args.profile)
     except InstallError as exc:
         print("error: %s" % exc, file=sys.stderr)
         return 1

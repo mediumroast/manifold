@@ -5,7 +5,7 @@ SPDX-PackageName = "manifold-base"
 # frontmatter or are consumed verbatim, so their license is declared here
 # instead of in a header comment.
 [[annotations]]
-path = ["agents/**", "fragments/**", "rules/**", "templates/**", "README.md", "INSTALL.md", "CONTRIBUTING.md", "VERSION", "NOTICE"]
+path = ["agents/**", "fragments/**", "rules/**", "templates/**", "README.md", "INSTALL.md", "MODELS.md", "CONTRIBUTING.md", "VERSION", "NOTICE"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Mediumroast, Inc."
 SPDX-License-Identifier = "Apache-2.0"
