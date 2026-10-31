@@ -18,7 +18,13 @@ The first release is the foundation. It is self-contained, needs no server, and 
 
 See [`bundles/base`](bundles/base/README.md) for details and [ROADMAP.md](ROADMAP.md) for what comes next.
 
-## Quick start
+## The server (in the repository, not yet released)
+
+The repository also holds a **Manifold server**: an MCP server that gives agents and people one shared place for component pages, decisions and **handoffs**, the units of work one repository's agent passes to another's. It serves a git repository of Markdown pages over HTTP, with a wiki browser, and records every change as a commit.
+
+It is under development and has not been released. It is protected by a single shared token and nothing else yet (no per-person sign-in, no TLS), listens on your machine's loopback address by default, and should not be exposed to a network you do not control. To try it, follow the [quickstart](docs/quickstart.md); the [server README](server/README.md) lists its tools and settings, and [docs/concepts.md](docs/concepts.md) explains instances, components and handoffs.
+
+## Quick start (the base bundle)
 
 Download `manifold-base-<version>.zip` from the latest release, then:
 
@@ -33,7 +39,7 @@ It needs Python 3.8 or newer and uses only the standard library.
 
 ## What is coming
 
-A wiki server and web interface for handing work from one repository's agents to another's, with an editor where a person and an AI write an intent together. They are not part of this release, and there are no dates. See [ROADMAP.md](ROADMAP.md).
+Per-person sign-in and TLS for the server, a web interface to browse, search and review, and an editor where a person and an AI write an intent together. They are not part of v0.1.0, and there are no dates. See [ROADMAP.md](ROADMAP.md).
 
 ## How this relates to the AI-native SDLC
 
@@ -55,6 +61,8 @@ v0.1.0 is a pre-release. The agents and skills pass the project's automated chec
 
 The main finding: the guardrails hold on Claude Sonnet and are weaker on smaller models. Use Sonnet, and read [`bundles/base/MODELS.md`](bundles/base/MODELS.md) before choosing another model.
 
+The server has its own automated suite (unit tests, plus a smoke test that starts the real server and uses it as a client does) and has been run end to end with a client library and in a browser. It has not been used in production. The container image has not yet been built by the project's own checks: the compose files were validated and the build steps were run outside Docker, so treat a first `docker compose up` as a test.
+
 ## Plans, tests and how we work
 
 Manifold is developed in the open, with its own agents once they are ready for it. The design documents and the development plan are in [docs/plans](docs/plans/README.md). The live-client test protocol is in [tests/live](tests/live/README.md), and the results are in [tests/results](tests/results/README.md).
@@ -64,7 +72,13 @@ Manifold is developed in the open, with its own agents once they are ready for i
 | Path | What |
 |---|---|
 | `bundles/base/` | The base bundle: agents, rules, templates, installer, build tool and tests |
+| `server/` | The Manifold server (Python), its tests, and its pinned requirements |
+| `assets/` | What the server ships: handoff helper files and the wiki browser (with vendored, offline Docsify) |
+| `docker/`, `svc_ctl.sh` | Container files and the script that runs them |
+| `examples/` | `acme`, a made-up filled-in wiki; `starter`, an empty one; and client configuration examples |
+| `docs/` | [Quickstart](docs/quickstart.md), [concepts](docs/concepts.md), [`manifold.yaml` reference](docs/manifold-yaml.md), [operations](docs/operations.md) |
 | `docs/plans/` | The development plan and design documents |
+| `tools/` | `vendor_web.py`, which rebuilds the vendored browser files from pinned, checked packages |
 | `tests/live/` | The live-client protocol: step-by-step runs for Claude Code and GitHub Copilot, with the scripts that save and judge evidence |
 | `tests/results/` | Summaries, results and findings of each live run |
 

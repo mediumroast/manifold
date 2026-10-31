@@ -125,6 +125,18 @@ ensure_env_file() {
   [[ -f "$ENV_FILE" ]] || die "Environment file not found: $ENV_FILE. Run '$0 $ENV_NAME init-env'."
 }
 
+# The instance repository must exist and hold manifold.yaml: otherwise the container would start
+# and report itself unhealthy, which is a poor way to learn that WIKI_ROOT is still a placeholder.
+ensure_instance() {
+  local root
+  root="$(sed -n 's/^WIKI_ROOT=//p' "$ENV_FILE" | tail -1)"
+  [[ -n "$root" ]] || die "WIKI_ROOT is not set in $ENV_FILE. Set it to the absolute path of your instance repository."
+  # Compose resolves a relative path against the folder that holds the compose file.
+  [[ "$root" = /* ]] || root="$DOCKER_DIR/$root"
+  [[ -d "$root" ]] || die "WIKI_ROOT in $ENV_FILE is not a folder: $root. Set it to the absolute path of your instance repository."
+  [[ -f "$root/manifold.yaml" ]] || die "No manifold.yaml in $root (the WIKI_ROOT in $ENV_FILE). That folder is not an instance repository; see docs/quickstart.md."
+}
+
 cmd_init_env() {
   ensure_compose_file
   if [[ -f "$ENV_FILE" ]]; then
@@ -167,6 +179,7 @@ cmd_pull() {
 cmd_start() {
   ensure_compose_file
   ensure_env_file
+  ensure_instance
   info "Starting the wiki MCP service ($ENV_NAME)…"
   compose up -d --build
   ok "Service started."
@@ -175,6 +188,7 @@ cmd_start() {
 cmd_start_fg() {
   ensure_compose_file
   ensure_env_file
+  ensure_instance
   info "Starting the wiki MCP service in the foreground ($ENV_NAME)…"
   compose up --build
 }
@@ -190,6 +204,7 @@ cmd_stop() {
 cmd_restart() {
   ensure_compose_file
   ensure_env_file
+  ensure_instance
   info "Stopping the wiki MCP service ($ENV_NAME)…"
   compose down
   ok "Service stopped."
@@ -204,6 +219,7 @@ cmd_restart() {
 cmd_rebuild() {
   ensure_compose_file
   ensure_env_file
+  ensure_instance
   info "Pulling base image and rebuilding the wiki MCP service ($ENV_NAME)…"
   compose build --pull --no-cache
   compose up -d --force-recreate
@@ -235,6 +251,7 @@ cmd_shell() {
 cmd_health() {
   ensure_compose_file
   ensure_env_file
+  ensure_instance
   info "Checking wiki mount and container wiring ($ENV_NAME)…"
   compose run --rm --no-deps --entrypoint python "$SERVICE_NAME" -c '
 import os, sys

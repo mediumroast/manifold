@@ -114,3 +114,68 @@ def test_the_lock_satisfies_the_ranges():
 def test_unused_packages_are_not_requirements():
     declared = _names(SERVER / "requirements.txt")
     assert not {"aiofiles", "python-dotenv"} & declared
+
+
+# ── svc_ctl.sh: the instance check ───────────────────────────────────────────
+
+import os  # noqa: E402
+import shutil  # noqa: E402
+import subprocess  # noqa: E402
+
+
+@pytest.fixture()
+def service_folder(tmp_path):
+    if not shutil.which("docker"):
+        pytest.skip("svc_ctl.sh needs the docker command line before it gets as far as the instance check")
+    root = tmp_path / "svc"
+    (root / "docker").mkdir(parents=True)
+    shutil.copy(DOCKER.parent / "svc_ctl.sh", root / "svc_ctl.sh")
+    for name in ("docker-compose.yml", "docker-compose.dev.yml", ".env.dev.template"):
+        shutil.copy(DOCKER / name, root / "docker" / name)
+    run(root, "dev", "init-env")
+    return root
+
+
+def run(root, *args):
+    return subprocess.run(["bash", str(root / "svc_ctl.sh"), *args], cwd=root, capture_output=True, text=True,
+                          env=dict(os.environ, NO_COLOR="1"))
+
+
+def set_wiki_root(root, value):
+    env_file = root / "docker" / ".env.dev"
+    lines = [("WIKI_ROOT=%s" % value) if line.startswith("WIKI_ROOT=") else line for line in env_file.read_text().splitlines()]
+    env_file.write_text("\n".join(lines) + "\n")
+
+
+def test_init_env_generates_a_token_in_a_private_file(service_folder):
+    env_file = service_folder / "docker" / ".env.dev"
+    token = [line for line in env_file.read_text().splitlines() if line.startswith("MANIFOLD_TOKEN=")][0].split("=", 1)[1]
+    assert len(token) >= 24 and oct(env_file.stat().st_mode & 0o777) == "0o600"
+
+
+def test_start_refuses_the_placeholder_instance_path(service_folder):
+    result = run(service_folder, "dev", "start")
+    assert result.returncode != 0 and "/path/to/your/instance" in result.stderr + result.stdout
+    assert "is not a folder" in result.stderr + result.stdout
+
+
+def test_start_refuses_a_folder_that_is_not_an_instance(service_folder, tmp_path):
+    (tmp_path / "plain").mkdir()
+    set_wiki_root(service_folder, tmp_path / "plain")
+    result = run(service_folder, "dev", "start")
+    assert result.returncode != 0 and "No manifold.yaml" in result.stderr + result.stdout
+
+
+def test_start_goes_on_to_docker_for_a_real_instance(service_folder, tmp_path):
+    (tmp_path / "inst").mkdir()
+    (tmp_path / "inst" / "manifold.yaml").write_text("version: 1\n")
+    set_wiki_root(service_folder, tmp_path / "inst")
+    output = run(service_folder, "dev", "start")
+    assert "WIKI_ROOT" not in output.stderr + output.stdout or "docker" in (output.stderr + output.stdout).lower()
+    assert "No manifold.yaml" not in output.stderr + output.stdout and "is not a folder" not in output.stderr + output.stdout
+
+
+def test_templates_ask_for_an_instance_path():
+    for env in ("dev", "staging", "production"):
+        text = (DOCKER / (".env.%s.template" % env)).read_text()
+        assert "WIKI_ROOT=/path/to/your/instance" in text and "manifold.yaml" in text

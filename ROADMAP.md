@@ -23,9 +23,16 @@ Role agents, rules, document templates and an installer that works in any reposi
 - A deterministic installer that shows what it will do first and never overwrites your edits
 - This roadmap
 
-## First UI release — Server and interface  *(Planned)*
+## First UI release — Server and interface  *(In progress)*
 
 The server, security baseline and web interface, ready together.
+
+Already in the repository, not yet released:
+
+- The server: a component registry, handoffs with etag-checked writes, onboarding, bundle information and helper export, and a log of every operation
+- A shared-token check, loopback by default, and health checks. This is a stopgap, not the security baseline below
+- A wiki browser served by the server itself, with no outside requests
+- Container files, a made-up example wiki and an empty starter wiki
 
 - Run from nothing to a working instance with one registered component and a handoff, with `manifold init` creating your instance repository from a template
 - Authentication and TLS by default
