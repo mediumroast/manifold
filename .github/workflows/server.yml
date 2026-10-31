@@ -1,0 +1,96 @@
+name: server
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: server tests (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install the locked versions
+        run: python -m pip install -r server/requirements-dev.txt -c server/requirements.lock
+      - name: Test
+        working-directory: server
+        run: python -m pytest -q
+
+  image:
+    name: image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Make an instance from the example
+        run: |
+          cp -R examples/acme "$RUNNER_TEMP/acme-wiki"
+          git -C "$RUNNER_TEMP/acme-wiki" init -q
+          git -C "$RUNNER_TEMP/acme-wiki" add -A
+          git -C "$RUNNER_TEMP/acme-wiki" -c user.name=ci -c user.email=ci@example.test commit -q -m "Start from the example"
+      - name: Create the settings file
+        run: |
+          ./svc_ctl.sh production init-env
+          sed -i "s#^WIKI_ROOT=.*#WIKI_ROOT=$RUNNER_TEMP/acme-wiki#" docker/.env.production
+      - name: Build the image and start the container
+        run: ./svc_ctl.sh production start
+      - name: Wait until it is healthy
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8686/health > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "the server did not become healthy"
+          docker logs manifold-production
+          exit 1
+      - name: Check what it serves
+        run: |
+          TOKEN=$(sed -n 's/^MANIFOLD_TOKEN=//p' docker/.env.production)
+          url=http://127.0.0.1:8686
+          code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          test "$(curl -s "$url/health")" = '{"status":"healthy"}'
+          curl -fsS -H "Authorization: Bearer $TOKEN" "$url/health" | grep -q '"manifold.yaml":"ok (3 components)"'
+          test "$(code "$url/docs/")" = 401
+          test "$(code -X POST "$url/mcp" -d '{}')" = 401
+          test "$(code -u "ci:$TOKEN" "$url/docs/")" = 200
+          test "$(code -u "ci:$TOKEN" "$url/docs/_manifold/vendor/docsify.min.js")" = 200
+          curl -fsS -X POST "$url/mcp" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' \
+            | grep -q '"name":"manifold"'
+      - name: Check how it runs
+        run: |
+          docker exec manifold-production sh -c 'test "$(id -u)" != 0'
+          test "$(docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' manifold-production)" = true
+          docker port manifold-production 8686 | grep -q '^127.0.0.1:8686$'
+          docker exec manifold-production ls /app/bundles/base/dist
+          ./svc_ctl.sh production health
+      - name: Show the logs if something failed
+        if: failure()
+        run: docker logs manifold-production || true
+      - name: Stop
+        if: always()
+        run: ./svc_ctl.sh production stop
+
+  vendored:
+    name: vendored web files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Rebuild from the pinned packages and compare
+        run: python tools/vendor_web.py --check
