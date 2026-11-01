@@ -6,7 +6,7 @@ created: 2026-10-31
 status: accepted
 affects: [server, docker, docs, svc_ctl]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay 2026-11-01
 ---
 
 # Intent: An installer that takes you from nothing to a working instance
@@ -71,4 +71,4 @@ One guided command, `manifold init`, takes a person from an empty folder to a ru
 - Installing the agent bundle into component repositories.
 
 ## Open questions
-- Does it also create the separate quality repository, or only the instance? (the product owner)
+- Does it also create the separate quality repository, or only the instance? (the product owner) Answer: Quality repo is optional to create, if the user says yes then it is created if they say no or skip then it isn not created.
