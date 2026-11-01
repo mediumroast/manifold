@@ -4,7 +4,7 @@
 **Source intent:** [INT-1 Security baseline for the Manifold server][i1] (status accepted, accepted_by Michael Hay 2026-11-01), all of it; and the local part of [INT-6 An installer that takes you from nothing to a working instance][i6] (status accepted, accepted_by Michael Hay 2026-11-01). [INT-7][i7] (accepted, same date) is not planned here; it builds on this plan.
 
 ## Objective
-When this phase is complete, one small team can run Manifold on a shared host with no GitHub and no outside service: every person, agent and service is its own principal with a hashed credential; four additive roles (reader, contributor, registrar, admin) and per-component grants and denies decide what each may do; administration happens only from the host; every change names the credential behind it; revocation is immediate and durable; requests for the wrong host or origin, repeated bad credentials, unsafe binds and the old shared token are refused; TLS is a setting served by a Caddy service; the page tool can no longer write outside the scope its caller owns; and `manifold init` takes a Linux or macOS user from an empty folder to a healthy, protected server with a first administrator, a first agent credential, two registered components and a read-back handoff.
+When this phase is complete, one small team can run Manifold on a shared host with no GitHub and no outside service: every person, agent and service is its own principal with a hashed credential; four additive roles (reader, contributor, registrar, admin) and per-component grants and denies decide what each may do; administration happens only from the host; every change names the credential behind it; revocation is immediate and durable; requests for the wrong host or origin, repeated bad credentials, unsafe binds and the old shared token are refused; TLS is a setting served by a Caddy service; the page tool can no longer write outside the scope its caller owns; and `manifold init` takes a Linux or macOS user from an empty folder to a healthy, protected server with a first administrator, the person's own contributor credential, a first agent credential, two registered components (`example-api` and `example-web`) and a read-back handoff.
 
 ## Scope
 
@@ -25,7 +25,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 | [INT-1 Constraints: One portable store][i1-c] | T25 | |
 | [INT-1 Constraints: Admin is not data][i1-c] | T7, T12 | |
 | [INT-1 Constraints: Administrative functions live on the host only][i1-c] | T7, T12, T22-T26 | agent and service kinds never admin (T5) |
-| [INT-1 Constraints: The server writes only where it should][i1-c] | T8, T9, T13 | |
+| [INT-1 Constraints: The server writes only where it should][i1-c] | T8, T9, T13 | the read confinement in T8-T9 goes beyond the intent's text (D6) |
 | [INT-1 Constraints: Revocation inside Manifold is immediate and durable][i1-c] | T2, T5, T10, T27 | The GitHub half is INT-7 |
 | [INT-1 Constraints: Deleting a component takes deliberate steps][i1-c] | T17, T18, T26 | GitHub-API purge: handed to INT-14 |
 | [INT-1 Constraints: Limits are settings, with defaults][i1-c] | T4, T18, T20, T26 | |
@@ -33,14 +33,14 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 | [INT-1 Constraints: Standards, not inventions][i1-c] | T10, T19, T29 | Bearer and 401 per common practice; the MCP OAuth surface is INT-19 |
 | [INT-1 Constraints: Offline-clean][i1-c] | T21, T29 | |
 | [INT-1 Constraints: Open license][i1-c] | T29, T36 | no new Python dependencies; Caddy image licence to verify |
-| [INT-1 Constraints: Reads][i1-c] | T12 | any signed-in reader reads; per-component read limits are not in the first version (owner's answer in [INT-1 Open questions][i1-oq]) |
+| [INT-1 Constraints: Reads][i1-c] | T12 | any signed-in reader reads; per-component read limits are not in the first version (owner's answer in [INT-1 Open questions][i1-oq]); reads are also confined to the wiki folder (D6, beyond S16's text) |
 | [INT-1 Constraints: Priority][i1-c] | whole plan | this plan is the first shared-host milestone |
 | [INT-1 S1][i1-s1] | T5, T23, T27 | |
 | [INT-1 S2][i1-s2] | T7, T14 | |
 | [INT-1 S3][i1-s3] | T15 | |
 | [INT-1 S4][i1-s4] | T10, T20 | |
 | [INT-1 S5][i1-s5] | T19 | |
-| [INT-1 S6][i1-s6] | T21 | reading of "works with a visible warning" is Open question 1 |
+| [INT-1 S6][i1-s6] | T21 | D1: starts with a warning and refuses every request until a principal exists |
 | [INT-1 S7][i1-s7] | T29, T34 | |
 | [INT-1 S8][i1-s8] | T21, T31, T34 | |
 | [INT-1 S9][i1-s9] | T7, T12 | |
@@ -51,7 +51,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 | [INT-1 S14][i1-s14] | T5, T10, T27 | |
 | [INT-1 S15][i1-s15] | T14, T35 | |
 | [INT-1 S16][i1-s16] | T8, T9, T13 | |
-| [INT-6 Outcome (local part)][i6-p] | T31-T33 | optional GitHub repository creation is deferred |
+| [INT-6 Outcome (local part)][i6-p] | T31-T33 | optional GitHub repository creation is deferred; "two registered components" (D8) |
 | [INT-6 Constraints: Two parts][i6-c] | T31-T33 | GitHub part deferred to the plan after INT-7 |
 | [INT-6 Constraints: Local part is complete without GitHub][i6-c] | T31-T33 | |
 | [INT-6 Constraints: Linux and macOS][i6-c] | T30, T31 | |
@@ -86,25 +86,38 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 **Needs from other repositories:** None.
 
 **Provides to other repositories:**
-- [INT-14][i14] (this repository, a later plan): the purge handoff. When the server has no local checkout, `registry purge` (T26) must remove the component's pages, raw documents and registry entry through the GitHub APIs. The owner's answer is recorded in [INT-1 Open questions][i1-oq]. T26 isolates the file removal behind one function so INT-14 can supply a second implementation.
+- [INT-14][i14] (this repository, a later plan): the purge handoff. When the server has no local checkout, `registry purge` (T26) must remove the component's pages, raw documents and registry entry through the GitHub APIs. The owner's answer is recorded in [INT-1 Open questions][i1-oq], and whoever writes the INT-14 plan raises this (D13). T26 isolates the file removal behind one function so INT-14 can supply a second implementation.
 - [INT-7][i7] (a later plan): the authorizer's repo-write interface (T7), the `authority` setting per component (T24), the principal model keyed for a GitHub identity (T5), and the credential mechanism with expiry (T3). INT-7's 12-hour default and 24-hour cap for sign-in credentials are not implemented here.
 
 ## Concerns flagged
-1. **INT-7 conflict (decision needed before the INT-7 spike plan, not this plan).** [INT-7 Constraints][i7-c] says: "**One App per company, created by the company.** Not a shared Manifold-owned App. Identity settings (client ID, secret, callback URLs) and automation settings (App ID, private key, installation ID) are separate configuration so the App can be split in two later. To be confirmed by a spike." The owner's answer in [INT-7 Open questions][i7-oq] says: "I presume we are talking one app create by mediumroast and then one app by the company using manifold or both. I'd opt for both because if the user allows the mediumroast app then they will make their lives easier. However for clear control then they can create and install their own following a guide and our example app." Owner decides which stands.
-2. **[INT-6 Outcome][i6-p] says "one registered component"; [INT-6 S1][i6-s1] says "two registered components".** The plan follows S1 (a handoff needs two). Owner confirms.
-3. **S15 changes documented behavior.** `docs/concepts.md` says the target may close a handoff for work that needs no review, and `assets/helpers/commands/handoff-close.md` tells the target to close. [INT-1 S15][i1-s15] forbids it. T14 and T35 change the code and texts; the target's path is request-review, then the source confirms. Owner confirms.
-4. **[INT-1 S6][i1-s6] reading.** With no principals on a loopback start, "works with a visible warning" is planned as: the server starts, warns, and refuses every request with a message naming `./manifold init`, unless the deliberate setting `MANIFOLD_AUTH=off` is set on loopback. Owner confirms (Open question 1).
-5. **Tools I assumed read-only.** I read every tool body. `wiki_agent_catalog_tool` is not read-only: it writes `wiki/guides/agents/<component>.md` and the sidebar, so it needs contributor on the component (T13). The rest of the read tools (ping, read, inventory, freshness, onboarding, reconcile_plan, bundle_info, list_helpers, export_helper, export_component_helpers, handoff list) write nothing (no `write_text` or `git_commit` in `onboarding.py`, `freshness.py`, `helpers.py`, `bundles.py`, `ping.py`, `inventory.py`, `read.py`).
-6. **Gaps beyond S16 found in the code (not run, read only).** `wiki_write_page` joins the caller's path to the wiki root with no check (`write.py`), so it could overwrite `manifold.yaml`, the sidebar, a handoff page or the log, and a `..` path may escape the root. `wiki_read` has the same join (`read.py`), so any readable file may be read, including by absolute path. `wiki_log_append` writes `Agent: <component>` from the caller's claim (`log.py`), which breaks S3. The read confinement (T9) goes beyond the text of S16; owner confirms.
-7. **Ingest before register.** The documented onboarding calls `/ingest` before the component is registered. T13 allows a registrar to ingest to a slug that is not yet registered. This rule is not in the intents; owner confirms.
-8. **SQLite across the Docker boundary.** The store is opened by the server in the container and by the CLI. SQLite's WAL mode is documented as unsafe across hosts or network file systems; I have not verified how Docker Desktop on macOS behaves for a bind-mounted data folder (unverified). The plan therefore runs the CLI where the database is used (inside the container for Docker deployments) and verifies on macOS in T1 before relying on it.
-9. **How a tool learns the caller.** FastMCP 4.1.4 (pinned in `server/requirements.lock`) is not installed here, so the mechanism for passing the authenticated principal to tool functions, including over `/sse`, is unverified. T11 verifies it with tests before T12 depends on it.
-10. **The admin principal has no credential.** Admin is host-only and "Admin is not data", so a credential would not be usable anywhere. T32 creates the first administrator as a principal record with no credential; the audit names the host user. [INT-6 S4][i6-s4] ("the administrator's host command works") is met by the host command. Owner confirms.
-11. **Numbers not in the intents.** The throttle defaults (T20) and the audit-event list are my proposals; the intents give only the 5 registrations, 1 archive and 14-day hold defaults. All are settings (T4).
+Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is recorded here, with the intent text it touches, and is built into the tasks.
+
+**Decisions (owner, 2026-11-01):**
+- **D1 Empty start.** The server starts, warns, and refuses every request until a principal exists; the message names `./manifold init`. It is never served openly, including on loopback. Built into T21. See [INT-1 S6][i1-s6].
+- **D2 Docker.** The admin CLI runs inside the container (`docker compose exec`, or `run --rm` before the server exists), on the same file system as the server and the data volume. Built into T22 and T29. T1 stays. If T1 shows SQLite unsafe on a macOS bind mount even with every access inside the container: first try rollback-journal mode (`MANIFOLD_STORE_JOURNAL_MODE=delete`, T2); if that also fails, mount `/data` as a Docker named volume with a one-shot init service that sets ownership to `HOST_UID:HOST_GID`, and back up with `admin export` instead of copying the folder (T28). If it fails only for host-and-container sharing, nothing changes, because the host never opens the database.
+- **D3 First principals.** `init` creates the administrator (host-only, no data access, no credential), a separate personal contributor principal for the person with a shown-once credential, and the first agent credential. Built into T32. See [INT-6 S4][i6-s4].
+- **D4 Throttle.** 5 failures in 10 minutes per address, delay from 1 second doubling to 15 minutes, all tunable settings with these defaults. T4, T20. See [INT-1 S4][i1-s4].
+- **D5 Ingest.** A registrar may ingest to an unregistered slug; everyone else needs a grant on a registered component. T13.
+- **D6 Reads confined too.** `wiki_read` is also confined to the wiki folder (allow-list and traversal check, failing test first). This goes beyond the text of [INT-1 S16][i1-s16], which names only the page tool; it is built in at the owner's decision. T8, T9.
+- **D7 Only the source closes.** `docs/concepts.md` and the `/handoff-close` helper text change; no-review work is request-review, then the source confirms. T14, T35. See [INT-1 S15][i1-s15].
+- **D8 Two sample components,** `example-api` and `example-web`. The owner is aligning the sentence in [INT-6 Proposed outcome][i6-p] from "one" to "two registered components" (a wording alignment of an accepted intent, at the owner's request; [INT-6 S1][i6-s1] already says two). T32, T33.
+- **D9 Credential expiry.** Credentials issued from the host have no expiry by default; an expiry can be set per credential. Expiring sign-in credentials come with INT-7 ([INT-7 Constraints][i7-c]). T3, T23.
+- **D10 TLS default.** Off on loopback, on otherwise; off on a non-loopback address only as a deliberate act with a visible warning. T29. See [INT-1 S7][i1-s7].
+- **D11 Purge** keeps completed handoff pages (they involve another component); git history keeps everything else. T26. See [INT-1 Constraints: Deleting a component takes deliberate steps][i1-c].
+- **D12 INT-7 App topology.** Not a Phase 1 matter. Note for the INT-7 spike plan: it must evaluate both options (a per-company App, as [INT-7 Constraints][i7-c] says now, and a mediumroast-owned convenience App limited to device flow with no server secrets, as the owner's answer in [INT-7 Open questions][i7-oq] suggests) and recommend; the owner then amends INT-7.
+- **D13 Purge handoff to INT-14.** Whoever writes the INT-14 plan raises it ([INT-1 Open questions][i1-oq]; see Provides above).
+- **D14 Caddy** image tag, digest and licence are confirmed in T29.
+
+**Concerns still open:**
+1. **Project commands are not yet confirmed** by the owner (listed under Prerequisites as proposed and unverified), and `.venv` must exist before approval.
+2. **SQLite on a macOS bind mount is unverified.** T1 settles it; D2 gives the fallback.
+3. **How a tool learns the caller** is unverified: FastMCP 4.1.4 (pinned in `server/requirements.lock`) is not installed here, so passing the principal to tools, including over `/sse`, is untested. T11 tests it before T12 depends on it.
+
+**Findings from reading the code that shaped the tasks** (read, not run): `wiki_agent_catalog_tool` is not read-only (it writes `wiki/guides/agents/<component>.md` and the sidebar; contributor needed, T13); the other read tools write nothing; `wiki_write_page` and `wiki_read` join the caller's path to the wiki root with no check (T8, T9); `wiki_log_append` records `Agent: <component>` from the caller's claim, which breaks S3 (T15).
 
 ## Prerequisites
 - [x] [INT-1][i1], [INT-6][i6] and [INT-7][i7] are accepted (read from the files, `accepted_by: Michael Hay 2026-11-01`).
-- [ ] The owner confirms the project commands below and the answers to Open questions 1 to 6.
+- [ ] The owner confirms the project commands below (the one remaining open item).
 - [ ] A virtual environment exists: `.venv` is missing in this worktree and `fastmcp` is not installed in the system `python3` (3.11.3). The owner agrees the coder creates `.venv` per [server/README.md](../../server/README.md) ("Directly, without Docker"); nothing outside the repository is changed.
 - [ ] Docker with Compose is available for T28 to T33 (`docker` is at `/usr/local/bin/docker` here); a macOS machine with Docker Desktop is available for T1.
 - **Project commands (PROPOSED, UNVERIFIED: none was run).** `AGENTS.md` "Project commands" is blank; I did not edit it.
@@ -150,9 +163,9 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 1 — Verify SQLite on a bind-mounted data folder
 **Files:** `experiments/sqlite-bind-mount/` (scratch; never imported by production code)
 **Action:** CREATE
-**Change:** Write a script that creates a SQLite database in WAL mode and in rollback-journal mode in a folder mounted into a container, with one writer in the container and one on the host, and reports lost writes or lock errors. Run it on macOS (Docker Desktop) and Linux. Record the result in the task note.
-**Source:** Concern 8; [INT-1 Constraints: No new service needed][i1-c].
-**Acceptance:** The note states the observed result for both systems. Whatever the result, T22 runs the CLI inside the container for Docker deployments; a result that shows host and container sharing is safe only permits a host-direct option later.
+**Change:** Write a script that creates a SQLite database in WAL mode and in rollback-journal mode in a folder mounted into a container, with (a) two processes inside the container (the server and a `docker compose exec` CLI) and (b) one in the container and one on the host, and reports lost writes or lock errors. Run it on macOS (Docker Desktop) and Linux. Record the result in the task note.
+**Source:** D2; [INT-1 Constraints: No new service needed][i1-c].
+**Acceptance:** The note states the observed result for both systems. If case (a) fails on the bind mount, apply the fallback ladder in D2 (rollback-journal mode, then a named volume) in T2 and T28 before going on. If only case (b) fails, nothing changes: the CLI runs inside the container (D2).
 **Todo:** [ ]
 
 ---
@@ -160,7 +173,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 2 — Add the security store
 **Files:** `server/manifold_security/store.py`, `server/manifold_security/migrations/0001_initial.sql`, `server/tests/test_security_store.py`
 **Action:** CREATE
-**Change:** `open_store(data_dir)` creates the folder with mode 0700 and `manifold.db` with mode 0600, refuses a `data_dir` inside `CONTAINER_WIKI_ROOT`, sets `journal_mode=WAL`, `synchronous=FULL`, `busy_timeout`, `foreign_keys=ON`, and applies numbered `.sql` migrations using `PRAGMA user_version` (refuses a database newer than the code). `0001_initial.sql` creates tables `settings`, `principals`, `credentials`, `roles`, `grants`, `denies`, `component_state`, `usage`, `audit`. Stdlib only. Add `.manifold-data/` to `.gitignore`.
+**Change:** `open_store(data_dir)` creates the folder with mode 0700 and `manifold.db` with mode 0600, refuses a `data_dir` inside `CONTAINER_WIKI_ROOT`, sets `journal_mode` from `MANIFOLD_STORE_JOURNAL_MODE` (default `wal`; `delete` is the D2 fallback), `synchronous=FULL`, `busy_timeout`, `foreign_keys=ON`, and applies numbered `.sql` migrations using `PRAGMA user_version` (refuses a database newer than the code). `0001_initial.sql` creates tables `settings`, `principals`, `credentials`, `roles`, `grants`, `denies`, `component_state`, `usage`, `audit`. Stdlib only. Add `.manifold-data/` to `.gitignore`.
 **Source:** [INT-1 Constraints: No new service needed][i1-c]; [INT-1 Constraints: Secrets stay out of the wiki][i1-c].
 **Acceptance:** `pytest tests/test_security_store.py` passes: modes 0700/0600, migration from empty and from version 0, refusal inside the wiki root and of a newer version, and no import beyond the standard library.
 **Todo:** [ ]
@@ -170,7 +183,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 3 — Add the credential module
 **Files:** `server/manifold_security/tokens.py`, `server/tests/test_tokens.py`
 **Action:** CREATE
-**Change:** `issue_credential()` returns `mf_<credential_id>_<secret>` (secret from `secrets.token_urlsafe(32)`), stores only `sha256(secret)` plus `credential_id`, `principal_id`, `expires_at` (optional), `revoked_at`, `label`. `verify(presented)` looks up by id, compares with `hmac.compare_digest`, and returns one of valid, unknown, expired, revoked. The secret is returned once and never stored, logged or exported.
+**Change:** `issue_credential()` returns `mf_<credential_id>_<secret>` (secret from `secrets.token_urlsafe(32)`), stores only `sha256(secret)` plus `credential_id`, `principal_id`, `expires_at` (optional; none by default, set per credential, D9), `revoked_at`, `label`. `verify(presented)` looks up by id, compares with `hmac.compare_digest`, and returns one of valid, unknown, expired, revoked. The secret is returned once and never stored, logged or exported.
 **Source:** [INT-1 S1][i1-s1] (never show in full after first issue); [INT-1 Constraints: Secrets stay out of the wiki][i1-c].
 **Acceptance:** `pytest tests/test_tokens.py` passes, including a test that the database file bytes do not contain the secret and that `repr()` of a credential record hides it.
 **Todo:** [ ]
@@ -181,7 +194,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 **Files:** `server/manifold_security/settings.py`, `server/tests/test_settings.py`
 **Action:** CREATE
 **Change:** One table of known settings with type, bounds and default, read from the `settings` table: `agent_registrations_per_day=5`, `agent_archives_per_day=1`, `purge_hold_days=14`, `throttle_failure_threshold=5`, `throttle_window_seconds=600`, `throttle_base_delay_seconds=1`, `throttle_max_delay_seconds=900`, `allowed_hosts`, `allowed_origins`, `trusted_proxies` (empty), `auth_mode=on`, `tls=off|on`. Unknown keys and out-of-range values are refused with a message naming the allowed range.
-**Source:** [INT-1 Constraints: Limits are settings, with defaults][i1-c]; Concern 11.
+**Source:** [INT-1 Constraints: Limits are settings, with defaults][i1-c]; D4.
 **Acceptance:** `pytest tests/test_settings.py` passes: defaults as listed, override, out-of-range refusal.
 **Todo:** [ ]
 
@@ -220,8 +233,8 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 8 — Add failing tests that show the page-tool gaps
 **Files:** `server/tests/test_path_policy.py`
 **Action:** CREATE
-**Change:** Against the temporary `wiki_root` fixture only, add tests that call `wiki_write_page` with paths `manifold.yaml`, `wiki/_sidebar.md`, `wiki/CLAUDE.md`, `wiki/log.md`, `wiki/handoffs/acme-api-to-acme-web/x.md`, `../outside.md`, an absolute path and a symlink that leaves the root, and `wiki_read` with `../outside.md` and an absolute path, each expecting a refusal and no file change. Run them, paste the failing output in the task note, and mark them `xfail(strict=True)` until T9.
-**Source:** [INT-1 S16][i1-s16]; [INT-1 Constraints: The server writes only where it should][i1-c]; Concern 6.
+**Change:** Against the temporary `wiki_root` fixture only, add tests that call `wiki_write_page` with paths `manifold.yaml`, `wiki/_sidebar.md`, `wiki/CLAUDE.md`, `wiki/log.md`, `wiki/handoffs/acme-api-to-acme-web/x.md`, `../outside.md`, an absolute path and a symlink that leaves the root, and `wiki_read` with `../outside.md`, an absolute path, `manifold.yaml`, `.git/config` and a symlink that leaves the root, each expecting a refusal and no file change (the read cases go beyond S16's text, at the owner's decision D6). Run them, paste the failing output in the task note, and mark them `xfail(strict=True)` until T9.
+**Source:** [INT-1 S16][i1-s16]; [INT-1 Constraints: The server writes only where it should][i1-c]; D6.
 **Acceptance:** `pytest tests/test_path_policy.py` reports the cases as expected failures with the reasons recorded; no real data is touched.
 **Todo:** [ ]
 
@@ -230,7 +243,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 9 — Add the path policy and enforce it in the backends
 **Files:** `server/manifold_security/scopes.py`, `server/wiki_backend/write.py`, `server/wiki_backend/read.py`, `server/tests/test_path_policy.py`
 **Action:** CREATE / MODIFY
-**Change:** `classify(path)` resolves a relative path against the wiki root (refusing absolute paths, `..`, NUL and symlinks that leave it) and returns `(kind, scope)`: `wiki/components/<slug>.md` and `wiki/guides/agents/<slug>.md` give component scope `<slug>`; `wiki/handoffs/**` is `handoff-only`; `wiki/log.md` is `log-only`; `wiki/_sidebar.md`, `wiki/CLAUDE.md` and `manifold.yaml` are `system`; other `wiki/**.md` pages (decisions, architecture, index, guides) give scope `_shared`; anything else is refused. `wiki_write_page` accepts only component or `_shared` kinds; `wiki_read` accepts only `wiki/**` and `raw/**`. Remove the `xfail` marks from T8.
+**Change:** `classify(path)` resolves a relative path against the wiki root (refusing absolute paths, `..`, NUL and symlinks that leave it) and returns `(kind, scope)`: `wiki/components/<slug>.md` and `wiki/guides/agents/<slug>.md` give component scope `<slug>`; `wiki/handoffs/**` is `handoff-only`; `wiki/log.md` is `log-only`; `wiki/_sidebar.md`, `wiki/CLAUDE.md` and `manifold.yaml` are `system`; other `wiki/**.md` pages (decisions, architecture, index, guides) give scope `_shared`; anything else is refused. `wiki_write_page` accepts only component or `_shared` kinds; `wiki_read` accepts only `wiki/**` and `raw/**` (traversal and symlink checks as for writes, D6). Remove the `xfail` marks from T8.
 **Source:** [INT-1 S16][i1-s16]; [INT-1 S12][i1-s12]; [INT-1 Constraints: The server writes only where it should][i1-c].
 **Acceptance:** `pytest tests/test_path_policy.py tests/test_write_validation.py tests/test_handoff_tool.py -k "not smoke"` passes with T8 cases now plain passes and existing tests unchanged.
 **Todo:** [ ]
@@ -252,7 +265,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 **Files:** `server/tests/test_principal_propagation.py`, `server/manifold_security/context.py`, `server/server.py`
 **Action:** CREATE / MODIFY
 **Change:** Using the real-server pattern in `test_server_smoke.py`, add a temporary tool that returns `current_principal`; call it over `/mcp` with two credentials in turn and over `/sse` with two sessions. If FastMCP runs SSE tool calls outside the request context, bind each session id to the principal that opened it and refuse a POST whose credential differs from the session's. Remove the temporary tool; add `principal` (name, kind, roles) to the result of `wiki_ping_tool`.
-**Source:** Concern 9; [INT-1 S3][i1-s3]; [INT-1 S2][i1-s2]. Unverified until run: confirm with the FastMCP 4.1.4 source after install.
+**Source:** Concern 3; [INT-1 S3][i1-s3]; [INT-1 S2][i1-s2]. Unverified until run: confirm with the FastMCP 4.1.4 source after install.
 **Acceptance:** `pytest tests/test_principal_propagation.py tests/test_ping.py` passes: each call is attributed to its own credential on both transports, and a mismatched SSE POST is refused.
 **Todo:** [ ]
 
@@ -281,9 +294,9 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 13 — Guard the writing tools and ingest
 **Files:** `server/server.py`, `server/wiki_backend/write.py`, `server/wiki_backend/agent_guide.py`, `server/wiki_backend/ingest.py`, `server/tests/test_write_validation.py`, `server/tests/test_ingest.py`
 **Action:** MODIFY
-**Change:** `wiki_write_page_tool`: authorize `write` on the scope from `scopes.classify` (component slug or `_shared`); refuse a write that changes the `component` or `owner` frontmatter of a component page, or its `**Repository:**` line. `wiki_log_append_tool`: authorize `write` on the given component, or on `_shared` when none. `wiki_agent_catalog_tool`: authorize `write` on the component. `POST /ingest`: authorize `ingest` on the slug (`raw/shared` maps to `_shared`); a registrar may also ingest to a slug that is not yet registered. An archived component refuses all of these (T17).
-**Source:** [INT-1 S10][i1-s10]; [INT-1 S12][i1-s12]; [INT-1 S16][i1-s16]; Concerns 5 and 7.
-**Acceptance:** `pytest tests/test_write_validation.py tests/test_ingest.py` passes: a contributor writes its own component page and not another's; only a `_shared` grant writes a decision page; a contributor's attempt to edit `owner` or `repo` in the component page is refused; an unregistered slug is refused for a non-registrar.
+**Change:** `wiki_write_page_tool`: authorize `write` on the scope from `scopes.classify` (component slug or `_shared`); refuse a write that changes the `component` or `owner` frontmatter of a component page, or its `**Repository:**` line. `wiki_log_append_tool`: authorize `write` on the given component, or on `_shared` when none. `wiki_agent_catalog_tool`: authorize `write` on the component. `POST /ingest`: authorize `ingest` on the slug (`raw/shared` maps to `_shared`); only a registrar may ingest to a slug that is not yet registered; everyone else needs a grant on a registered component (D5). An archived component refuses all of these (T17).
+**Source:** [INT-1 S10][i1-s10]; [INT-1 S12][i1-s12]; [INT-1 S16][i1-s16]; D5 and the findings under Concerns flagged.
+**Acceptance:** `pytest tests/test_write_validation.py tests/test_ingest.py` passes: a contributor writes its own component page and not another's; only a `_shared` grant writes a decision page; a contributor's attempt to edit `owner` or `repo` in the component page is refused; an unregistered slug is refused for a non-registrar and accepted for a registrar (D5).
 **Todo:** [ ]
 
 ---
@@ -291,8 +304,8 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 14 — Enforce the handoff rules
 **Files:** `server/wiki_backend/handoff.py`, `server/server.py`, `server/tests/test_handoff_authz.py`, `server/tests/test_handoff_tool.py`
 **Action:** MODIFY / CREATE
-**Change:** Read `source_component` and `target_component` from the handoff page and authorize: `create` (source from the argument), `confirm`, `reject`, `close` on the source; `claim`, `request-review` on the target; `list` as read. Replace the `wiki_handoff_tool` docstring text "target closes after implementing" with the source-only rule.
-**Source:** [INT-1 S2][i1-s2]; [INT-1 S15][i1-s15]; [INT-1 Outcome 2][i1-p]; Concern 3.
+**Change:** Read `source_component` and `target_component` from the handoff page and authorize: `create` (source from the argument), `confirm`, `reject`, `close` on the source; `claim`, `request-review` on the target; `list` as read. Replace the `wiki_handoff_tool` docstring text "target closes after implementing" with the source-only rule; no-review work is request-review, then the source confirms (D7).
+**Source:** [INT-1 S2][i1-s2]; [INT-1 S15][i1-s15]; [INT-1 Outcome 2][i1-p]; D7.
 **Acceptance:** `pytest tests/test_handoff_authz.py tests/test_handoff_tool.py tests/test_handoff_lifecycle.py` passes: the target's close, and any other principal's confirm, reject or close, return a clear reason and write nothing; the source's close succeeds.
 **Todo:** [ ]
 
@@ -361,7 +374,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 21 — Add the startup rules and the legacy-token notice
 **Files:** `server/manifold_security/startup.py`, `server/server.py`, `server/tests/test_startup.py`, `server/tests/test_offline_clean.py`
 **Action:** CREATE / MODIFY
-**Change:** At startup (including under `uvicorn server:asgi_app`): open the store, run migrations, and apply these rules. A non-loopback `MANIFOLD_HOST` with no principals refuses to start with a message naming `./manifold init`. `auth_mode=off` is allowed only on loopback and logs a loud warning; request-time middleware also refuses non-loopback peers in that mode. On loopback with no principals and `auth_mode=on`, start with a visible warning and refuse each request with the same message (Concern 4). If `MANIFOLD_TOKEN` or `MANIFOLD_TOKEN_FILE` is set, log that it is no longer accepted and name the host command that creates the first administrator. Add `test_offline_clean.py`, which fails if any server module imports an HTTP client library.
+**Change:** At startup (including under `uvicorn server:asgi_app`): open the store, run migrations, and apply these rules. A non-loopback `MANIFOLD_HOST` with no principals refuses to start with a message naming `./manifold init`. With no principals on any address, including loopback, the server starts with a visible warning and refuses every request with the same message (D1); it is never served openly. The separate deliberate setting `auth_mode=off` (kept from [INT-1 Constraints: Safe by default][i1-c]) is allowed only on loopback, logs a loud warning, and the request-time middleware refuses non-loopback peers in that mode. If `MANIFOLD_TOKEN` or `MANIFOLD_TOKEN_FILE` is set, log that it is no longer accepted and name the host command that creates the first administrator. Add `test_offline_clean.py`, which fails if any server module imports an HTTP client library.
 **Source:** [INT-1 S6][i1-s6]; [INT-1 S8][i1-s8]; [INT-1 S13][i1-s13]; [INT-1 Constraints: Safe by default][i1-c]; [INT-1 Constraints: Offline-clean][i1-c]; [INT-1 Constraints: A complete local mode][i1-c].
 **Acceptance:** `pytest tests/test_startup.py tests/test_offline_clean.py` passes: each rule has a case; the old token is not accepted and the message names the command.
 **Todo:** [ ]
@@ -371,8 +384,8 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 22 — Add the host command skeleton and runner
 **Files:** `manifold`, `server/manifold_cli/__main__.py`, `server/manifold_cli/runner.py`, `server/tests/test_cli_runner.py`
 **Action:** CREATE
-**Change:** `manifold` is a Python launcher (checks Python 3.11 or newer and prints the fix if not) that runs `python -m manifold_cli` from `server/`; stdlib only. Subcommands are `init` and `admin <group> <verb>`. The runner picks where `admin` runs: with `--env <name>` and a Docker environment file, through `./svc_ctl.sh <name> admin ...` (T29), which runs the CLI inside the container so that only one kernel opens the database; with `--data-dir <path>`, directly. Output never contains a stored secret; failures exit non-zero with a message that says what to fix. The `svc_ctl.sh ... admin` route is added in T29 and exercised against a real container in T30; T23 to T26 test the commands directly with `--data-dir`.
-**Source:** [INT-1 Constraints: Administrative functions live on the host only][i1-c]; [INT-1 Outcome 1][i1-p]; Concern 8.
+**Change:** `manifold` is a Python launcher (checks Python 3.11 or newer and prints the fix if not) that runs `python -m manifold_cli` from `server/`; stdlib only. Subcommands are `init` and `admin <group> <verb>`. The runner picks where `admin` runs: with `--env <name>` and a Docker environment file (the default for Docker deployments), through `./svc_ctl.sh <name> admin ...` (T29), which runs the CLI inside the container (`compose exec`; `compose run --rm` before the server exists, as `init` needs) so that it shares the server's file system and data volume (D2); with `--data-dir <path>`, directly, for a non-Docker run. Output never contains a stored secret; failures exit non-zero with a message that says what to fix. The `svc_ctl.sh ... admin` route is added in T29 and exercised against a real container in T30; T23 to T26 test the commands directly with `--data-dir`.
+**Source:** [INT-1 Constraints: Administrative functions live on the host only][i1-c]; [INT-1 Outcome 1][i1-p]; D2.
 **Acceptance:** `pytest tests/test_cli_runner.py` passes with a fake `docker`: runner choice, exit codes, and a check that `import manifold_cli` needs no third-party package.
 **Todo:** [ ]
 
@@ -381,7 +394,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 23 — Add the principal and credential commands
 **Files:** `server/manifold_cli/admin.py`, `server/tests/test_cli_principals.py`
 **Action:** CREATE
-**Change:** `admin principal create|list|show|disable|enable`; `admin credential issue|rotate|revoke` (`--expires`, shows the secret once on a TTY or to a `--secret-file` created 0600, never to a log); `admin role set|unset`. Every action records `host:<os user>` in the audit. Revoke and disable print which lever was used.
+**Change:** `admin principal create|list|show|disable|enable`; `admin credential issue|rotate|revoke` (`--expires` optional; no expiry by default, D9; shows the secret once on a TTY or to a `--secret-file` created 0600, never to a log); `admin role set|unset`. Every action records `host:<os user>` in the audit. Revoke and disable print which lever was used.
 **Source:** [INT-1 S1][i1-s1]; [INT-1 S14][i1-s14]; [INT-1 Outcome 1][i1-p].
 **Acceptance:** `pytest tests/test_cli_principals.py` passes: issue shows the secret once and `show` never does; revoke affects only that credential; `role set admin` on an agent is refused.
 **Todo:** [ ]
@@ -411,7 +424,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 26 — Add the registry purge command
 **Files:** `server/manifold_cli/purge.py`, `server/wiki_backend/config.py`, `server/wiki_backend/register.py`, `server/tests/test_cli_purge.py`
 **Action:** CREATE / MODIFY
-**Change:** `registry purge <slug> --confirm-slug <slug>`: refuses unless the component is archived and `purge_after` has passed (`purge_hold_days`, default 14), re-checks for open handoffs, prints what it will remove, and requires the slug typed exactly. It removes the component page, `raw/<slug>/`, the agent guide, the sidebar entry and the registry entry (add `remove_from_config` and a sidebar remover beside their adders), then makes one git commit authored `host:<os user>`. Completed handoff pages are kept as history. Put file removal behind one function (`remove_component_files`) so INT-14 can add a GitHub implementation. Not available over MCP.
+**Change:** `registry purge <slug> --confirm-slug <slug>`: refuses unless the component is archived and `purge_after` has passed (`purge_hold_days`, default 14), re-checks for open handoffs, prints what it will remove, and requires the slug typed exactly. It removes the component page, `raw/<slug>/`, the agent guide, the sidebar entry and the registry entry (add `remove_from_config` and a sidebar remover beside their adders), then makes one git commit authored `host:<os user>`. Completed handoff pages are kept as history (D11); git history keeps everything else. Put file removal behind one function (`remove_component_files`) so INT-14 can add a GitHub implementation. Not available over MCP.
 **Source:** [INT-1 S11][i1-s11]; [INT-1 Constraints: Deleting a component takes deliberate steps][i1-c]; [INT-1 Open questions][i1-oq] (INT-14 handoff).
 **Acceptance:** `pytest tests/test_cli_purge.py` passes: purge before the hold, without archive, with an open handoff, or with a mistyped slug is refused with no change; a valid purge leaves a clean `git status` and one commit.
 **Rollback:** the purge is one git commit; `git revert <sha>` in the instance restores the files; the database row is re-created by restoring the component.
@@ -443,8 +456,8 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 29 — Add Caddy, the TLS switch and the service-script commands
 **Files:** `docker/docker-compose.yml`, `docker/caddy/Caddyfile.on`, `docker/caddy/Caddyfile.off`, `svc_ctl.sh`, `server/tests/test_deploy_files.py`
 **Action:** CREATE / MODIFY
-**Change:** Add a `caddy` service (image pinned by tag and digest, verified current in the task note; read-only root, writable volumes for its data and config) that publishes `${BIND_ADDRESS}:${PORT}` and proxies to `manifold`. `MANIFOLD_TLS=on` mounts `Caddyfile.on` (`tls internal` or provided certificate files; never a public ACME path, to keep the server offline-clean); `off` mounts `Caddyfile.off` (plain). Pass the Caddy network address as `trusted_proxies` and `MANIFOLD_TLS` to the server. In `svc_ctl.sh`: `init-env` stops creating a token and creates `DATA_DIR` (0700); `start` refuses a non-loopback `BIND_ADDRESS` with `MANIFOLD_TLS=off` unless `MANIFOLD_ALLOW_PLAIN_ON_NETWORK=yes`, and then prints a visible warning; warn if the env file still has `MANIFOLD_TOKEN`; add `admin <args>` which runs `python -m manifold_cli admin <args>` in the container (`compose exec` when running, `compose run --rm` otherwise). Verified this session in Caddy docs: `tls internal`, `tls <cert> <key>`, `reverse_proxy` with `trusted_proxies`, and that SSE responses are flushed by default. Unverified: the exact Caddyfile for a plain-HTTP site and for `auto_https`; confirm with the Caddy documentation and the Caddy licence (believed Apache-2.0) in the task note.
-**Source:** [INT-1 S7][i1-s7]; [INT-1 Constraints: TLS can be switched on and off][i1-c]; [INT-1 Constraints: Offline-clean][i1-c]; [INT-1 Constraints: Open license][i1-c]; [INT-1 S4][i1-s4] (trusted forwarding).
+**Change:** Add a `caddy` service (image pinned by tag and digest, verified current in the task note; read-only root, writable volumes for its data and config) that publishes `${BIND_ADDRESS}:${PORT}` and proxies to `manifold`. `MANIFOLD_TLS=on` mounts `Caddyfile.on` (`tls internal` or provided certificate files; never a public ACME path, to keep the server offline-clean); `off` mounts `Caddyfile.off` (plain). Pass the Caddy network address as `trusted_proxies` and `MANIFOLD_TLS` to the server. `init-env` sets `MANIFOLD_TLS=off` when `BIND_ADDRESS` is loopback and `on` otherwise (D10). If T1 chose the named-volume fallback (D2), mount `/data` as a named volume with a one-shot ownership service. In `svc_ctl.sh`: `init-env` stops creating a token and creates `DATA_DIR` (0700); `start` refuses a non-loopback `BIND_ADDRESS` with `MANIFOLD_TLS=off` unless `MANIFOLD_ALLOW_PLAIN_ON_NETWORK=yes`, and then prints a visible warning; warn if the env file still has `MANIFOLD_TOKEN`; add `admin <args>` which runs `python -m manifold_cli admin <args>` in the container (`compose exec` when running, `compose run --rm` otherwise). Verified this session in Caddy docs: `tls internal`, `tls <cert> <key>`, `reverse_proxy` with `trusted_proxies`, and that SSE responses are flushed by default. Unverified: the exact Caddyfile for a plain-HTTP site and for `auto_https`; confirm with the Caddy documentation and the Caddy licence (believed Apache-2.0) in the task note.
+**Source:** [INT-1 S7][i1-s7]; D10, D14; [INT-1 Constraints: TLS can be switched on and off][i1-c]; [INT-1 Constraints: Offline-clean][i1-c]; [INT-1 Constraints: Open license][i1-c]; [INT-1 S4][i1-s4] (trusted forwarding).
 **Acceptance:** `pytest tests/test_deploy_files.py` passes (both Caddyfiles exist, neither names a public ACME issuer, the server port is not published directly); `./svc_ctl.sh dev config` renders for `MANIFOLD_TLS=on` and `off`; the CI job in T30 passes.
 **Todo:** [ ]
 
@@ -473,8 +486,8 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 32 — Add `manifold init`: create with undo, and the first credentials
 **Files:** `server/manifold_cli/init_cmd.py`, `server/manifold_cli/journal.py`, `server/tests/test_init.py`
 **Action:** MODIFY
-**Change:** After the yes, record every created path in the journal and undo them in reverse order if any step fails. Steps: copy `examples/starter` to the instance folder and make the first commit with `-c user.name -c user.email` flags (no global git config); create the data folder (0700) and the store; write `docker/.env.<env>` (0600, no secret); create the first administrator as a principal with the `admin` role and no credential (Concern 10); create the first agent principal with `reader`, `contributor` and `registrar` roles and grants for the two sample component slugs, issue its credential, show it once and write it only to a 0600 file the person names. No default or shared credential remains.
-**Source:** [INT-6 S4][i6-s4]; [INT-6 S1][i6-s1] (no half-created instance); [INT-6 Constraints: Secrets][i6-c]; [INT-1 S1][i1-s1].
+**Change:** After the yes, record every created path in the journal and undo them in reverse order if any step fails. Steps: copy `examples/starter` to the instance folder and make the first commit with `-c user.name -c user.email` flags (no global git config); create the data folder (0700) and the store; write `docker/.env.<env>` (0600, no secret); create the first administrator as a principal with the `admin` role and no credential (host-only, no data access, D3); create a separate personal principal for the person (name asked for; kind `human`; roles `reader` and `contributor`; grants for `example-api`, `example-web` and `_shared`) and issue its credential with no expiry (D9); create the first agent principal with `reader`, `contributor` and `registrar` roles and grants for the two sample slugs and issue its credential. Each credential is shown once and written only to a 0600 file the person names. No default or shared credential remains.
+**Source:** [INT-6 S4][i6-s4]; D3, D8; [INT-6 S1][i6-s1] (no half-created instance); [INT-6 Constraints: Secrets][i6-c]; [INT-1 S1][i1-s1].
 **Acceptance:** `pytest tests/test_init.py -k "create or undo or credential"` passes: forcing a failure at each step leaves no created path; the credential never appears in captured output after the first display, in logs or in any file but the one named.
 **Todo:** [ ]
 
@@ -483,8 +496,8 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 33 — Add `manifold init`: start, check and the first handoff
 **Files:** `server/manifold_cli/init_cmd.py`, `server/manifold_cli/mcp_client.py`, `server/tests/test_init.py`
 **Action:** MODIFY / CREATE
-**Change:** Start the service through `./svc_ctl.sh <env> start`, wait for `/health` (bounded wait, message on timeout), check that a request without a credential is refused and the host `admin principal list` works, then use a small stdlib MCP client (`initialize`, `tools/call` over `/mcp`) with the agent credential to register the two sample components, create a handoff between them and read it back. On any failure run the journal undo and `svc_ctl stop`. Print the client steps for Claude Code and VS Code.
-**Source:** [INT-6 S1][i6-s1]; [INT-6 S4][i6-s4]; [INT-6 Constraints: Local part is complete without GitHub][i6-c]; Concern 2.
+**Change:** Start the service through `./svc_ctl.sh <env> start`, wait for `/health` (bounded wait, message on timeout), check that a request without a credential is refused and the host `admin principal list` works, then use a small stdlib MCP client (`initialize`, `tools/call` over `/mcp`) with the agent credential to register the two sample components `example-api` and `example-web` (D8), create a handoff between them and read it back; then check that the personal credential reads the handoff and cannot create a component. On any failure run the journal undo and `svc_ctl stop`. Print the client steps for Claude Code and VS Code.
+**Source:** [INT-6 S1][i6-s1]; [INT-6 S4][i6-s4]; [INT-6 Constraints: Local part is complete without GitHub][i6-c]; D8.
 **Acceptance:** `pytest tests/test_init.py` passes against the real server pattern of `test_server_smoke.py` (no Docker); on a Docker machine, `./manifold init --yes` in a temporary folder ends with a healthy server, two components and a handoff read back, and `./manifold init` again changes nothing (observed by the coder, to be covered by the test plan).
 **Todo:** [ ]
 
@@ -503,7 +516,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 ### Task 35 — Rewrite the quickstart, READMEs, concepts, client examples and helper texts
 **Files:** `docs/quickstart.md`, `README.md`, `server/README.md`, `docs/concepts.md`, `examples/clients/claude-code-mcp.json`, `examples/clients/vscode-mcp.json`, `assets/helpers/commands/handoff-close.md`, `assets/helpers/prompts/handoff-close.prompt.md`, `assets/helpers/tools/ingest_doc.py`
 **Action:** MODIFY
-**Change:** Make `manifold init` the quickstart path and move the manual steps to an "advanced" section. In `server/README.md` remove the shared-token banner, the `MANIFOLD_TOKEN*` rows and the matching "Known limits"; add the new variables (`MANIFOLD_DATA_DIR`, `MANIFOLD_AUTH`, `MANIFOLD_TLS`, allowed hosts, origins, trusted proxies), the tool count (16) and the new tool. In `docs/concepts.md` replace "close lets the target mark a handoff completed" with request-review then confirm, and describe roles. Keep `MANIFOLD_TOKEN` only as the name of the client-side variable holding a person's own credential, and say so. Add the Claude Desktop and claude.ai known limitation with a pointer to [INT-18][i18]. Replace the target-close wording in the two `handoff-close` helper files.
+**Change:** Make `manifold init` the quickstart path and move the manual steps to an "advanced" section. In `server/README.md` remove the shared-token banner, the `MANIFOLD_TOKEN*` rows and the matching "Known limits"; add the new variables (`MANIFOLD_DATA_DIR`, `MANIFOLD_AUTH`, `MANIFOLD_TLS`, allowed hosts, origins, trusted proxies), the tool count (16) and the new tool. In `docs/concepts.md` replace "close lets the target mark a handoff completed" with request-review then source confirms (D7), and describe roles. Keep `MANIFOLD_TOKEN` only as the name of the client-side variable holding a person's own credential, and say so. Add the Claude Desktop and claude.ai known limitation with a pointer to [INT-18][i18]. Replace the target-close wording in the two `handoff-close` helper files.
 **Source:** [INT-1 S15][i1-s15]; [INT-1 S8][i1-s8]; [INT-1 Constraints: Client compatibility][i1-c]; [INT-6 S1][i6-s1].
 **Acceptance:** `pytest tests/test_helpers.py tests/test_example_starter.py tests/test_example_acme.py tests/test_deploy_files.py` passes; `grep -rn "target may also: close" docs assets examples` returns nothing; every relative link in the changed files resolves.
 **Todo:** [ ]
@@ -539,21 +552,10 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 -->
 
 ## Open questions
-Ranked by how much they change the plan; each names who answers.
-1. For [INT-1 S6][i1-s6]: with no principals on a loopback start, is "starts with a warning and refuses every request until `./manifold init`" right, or should it serve openly? (the product owner)
-2. The CLI runs inside the container for Docker deployments, because SQLite's WAL is documented as unsafe across hosts or network file systems (unverified for Docker Desktop on macOS). Is that acceptable, subject to T1? (the product owner)
-3. The first administrator has no credential (Concern 10). Is that right? Should `init` also create a personal reader or contributor principal for the person? (the product owner)
-4. Throttle defaults (5 failures in 10 minutes, delay from 1 second doubling to 15 minutes) and the audit-event list are proposals. Accept or change. (the product owner)
-5. A registrar may ingest to an unregistered slug (Concern 7). Accept? (the product owner)
-6. Confining `wiki_read` as well as the page-write path (Concern 6) goes beyond S16's text. Accept? (the product owner)
-7. The target can no longer close a handoff (Concern 3); is request-review plus the source's confirm the intended path for no-review work, and may the shipped helper texts change? (the product owner)
-8. [INT-6 Outcome vs S1][i6-p]: one or two components? The plan uses two (Concern 2). Names of the two sample components (default `example-api` and `example-web`)? (the product owner)
-9. Do host-issued credentials for `human` principals expire by default? The plan sets none (mechanism only); INT-7's 12-hour default and 24-hour cap apply to sign-in credentials in that plan. (the product owner)
-10. TLS default: `off` when `BIND_ADDRESS` is loopback and `on` otherwise, set by `init-env`? (the product owner)
-11. Purge keeps completed handoff pages as history; remove them too? (the product owner)
-12. The INT-7 conflict in Concern 1, needed before the INT-7 spike plan. (the product owner)
-13. The INT-14 purge handoff: who raises it in INT-14 when that plan is written? (the product owner, with INT-14)
-14. Pin the Caddy image tag and digest and confirm its licence (T29). (the coder, reported to the product owner)
+Resolved by the owner on 2026-11-01: see Decisions D1 to D14 under Concerns flagged. Remaining:
+1. Confirm the proposed project commands under Prerequisites (none was run; `.venv` must exist before approval). (the product owner)
+2. New, raised by D1 and D3: keep the deliberate `auth_mode=off` loopback setting that [INT-1 Constraints: Safe by default][i1-c] implies (T21 keeps it), or remove it since an empty start now refuses every request? (the product owner)
+3. New, raised by D3: the personal principal gets `reader`, `contributor` and grants for the two samples and `_shared`, but not `registrar`, so changing a component's repository or owner (human registrar only) needs the role added by `admin role set`. Is that the intent? (the product owner)
 
 [i1]: ../../intent/INT-1-security-baseline.md
 [i1-p]: ../../intent/INT-1-security-baseline.md#proposed-outcome

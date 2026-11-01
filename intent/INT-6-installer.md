@@ -15,7 +15,7 @@ accepted_by: Michael Hay 2026-11-01
 Getting a first instance running takes about ten manual steps: copy an example, make it a git repository, create a settings file, edit a path, start the container, check health, connect a client. Each step is a place to go wrong, and the quickstart already found three bugs this way. A second company adopting Manifold would repeat all of it. Creating the repository for the instance on GitHub is a further manual chore.
 
 ## Proposed outcome
-One guided command, `manifold init`, takes a person from an empty folder to a running server with a first administrator, one registered component and a working handoff, on Linux or macOS. It can optionally create the instance's repository on GitHub, private by default, through the GitHub API with the user's explicit approval. The local path works without GitHub or Docker knowledge beyond what the guide states.
+One guided command, `manifold init`, takes a person from an empty folder to a running server with a first administrator, two registered components and a working handoff, on Linux or macOS. It can optionally create the instance's repository on GitHub, private by default, through the GitHub API with the user's explicit approval. The local path works without GitHub or Docker knowledge beyond what the guide states.
 
 ## Affected users and systems
 - **Anyone installing Manifold for the first time,** including a technical advisor setting it up for a company.
