@@ -1,18 +1,18 @@
 {
   "inputs": [
     {
-      "id": "manifold-token",
+      "id": "manifold-credential",
       "type": "promptString",
-      "description": "Manifold server token",
+      "description": "Your own Manifold credential (mf_...), not a shared token",
       "password": true
     }
   ],
   "servers": {
     "manifold": {
       "type": "http",
-      "url": "http://localhost:8686/mcp",
+      "url": "http://127.0.0.1:8686/mcp",
       "headers": {
-        "Authorization": "Bearer ${input:manifold-token}"
+        "Authorization": "Bearer ${input:manifold-credential}"
       }
     }
   }

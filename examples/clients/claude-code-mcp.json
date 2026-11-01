@@ -2,7 +2,7 @@
   "mcpServers": {
     "manifold": {
       "type": "http",
-      "url": "http://localhost:8686/mcp",
+      "url": "http://127.0.0.1:8686/mcp",
       "headers": {
         "Authorization": "Bearer ${MANIFOLD_TOKEN}"
       }

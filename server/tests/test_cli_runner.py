@@ -124,6 +124,7 @@ def test_a_refused_command_exits_1_with_one_line_on_stderr(cli):
     assert code == 1 and err.startswith("error: ") and err.count("\n") == 1 and out.count("empty one was created") == 1
 
 
-def test_init_is_not_available_yet_and_says_so(cli):
-    code, _, err = cli(group="init")
-    assert code == 1 and "not available" in err
+def test_init_checks_its_environment_name():
+    err = io.StringIO()
+    assert runner.main(["init", "--env", "nonsense"], err=err) == 1
+    assert "dev, staging or production" in err.getvalue()

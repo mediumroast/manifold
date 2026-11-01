@@ -41,7 +41,16 @@ def build_parser() -> argparse.ArgumentParser:
     where.add_argument("--env", metavar="NAME", help="a Docker environment (dev, staging, production): run inside its container")
     where.add_argument("--data-dir", metavar="PATH", help="open the security store in this folder directly")
     where.add_argument("--wiki-root", metavar="PATH", help="the instance repository (default: CONTAINER_WIKI_ROOT or /workspace)")
-    sub.add_parser("init", parents=[common], help="set up a first administrator and a first agent (not available yet)")
+    init = sub.add_parser("init", help="set up an instance, a protected server, a first administrator, you, a first agent "
+                                       "and a first handoff")
+    init.add_argument("--env", default="production", metavar="NAME", help="dev, staging or production (default production)")
+    init.add_argument("--instance", metavar="PATH", help="the instance folder (default: manifold-instance beside this checkout)")
+    init.add_argument("--data-dir", metavar="PATH", help="the folder for the security store (default: .manifold-data/<env>)")
+    init.add_argument("--port", type=int, help="the port on 127.0.0.1 (default 8686)")
+    init.add_argument("--name", help="the name of your own principal (default: your user name)")
+    init.add_argument("--person-secret-file", metavar="FILE", help="where to write your credential (mode 0600)")
+    init.add_argument("--agent-secret-file", metavar="FILE", help="where to write the first agent's credential (mode 0600)")
+    init.add_argument("--yes", action="store_true", help="answer yes to the question after the plan (for scripts)")
     adm = sub.add_parser("admin", parents=[common], help="principals, credentials, roles, grants, settings, audit, export, purge")
     admin.add_parsers(adm.add_subparsers(dest="group", metavar="GROUP", required=True))
     return parser
@@ -115,8 +124,16 @@ def main(argv: Optional[Sequence[str]] = None, out: Optional[TextIO] = None, err
     args = build_parser().parse_args(argv)
     try:
         if args.command == "init":
-            raise admin.CliError("manifold init is not available in this build yet. Create the first administrator "
-                                 "with: admin principal create NAME, admin role set NAME admin.")
+            from . import init_cmd
+            if args.env not in ("dev", "staging", "production"):
+                raise admin.CliError("--env must be dev, staging or production.")
+            options = init_cmd.Options(
+                env_name=args.env, instance=Path(args.instance) if args.instance else None,
+                data_dir=Path(args.data_dir) if args.data_dir else None, port=args.port, yes=args.yes, name=args.name,
+                person_secret_file=Path(args.person_secret_file) if args.person_secret_file else None,
+                agent_secret_file=Path(args.agent_secret_file) if args.agent_secret_file else None)
+            return init_cmd.run_init(options, init_cmd.Runtime(repo_root=REPO_ROOT, out=out, err=err,
+                                                               is_tty=bool(sys.stdin.isatty())))
         if args.env:
             if args.data_dir:
                 raise admin.CliError("Use either --env or --data-dir, not both.")

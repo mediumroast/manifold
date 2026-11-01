@@ -108,6 +108,7 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 - **D13 Purge handoff to INT-14.** Whoever writes the INT-14 plan raises it ([INT-1 Open questions][i1-oq]; see Provides above).
 - **D14 Caddy** image tag, digest and licence are confirmed in T29.
 - **D15 No off switch.** There is no setting that turns protection off. An empty start (no principals) starts, warns and refuses every request, including on loopback, until `manifold init`. The owner reworded the "Safe by default" constraint and the S6 "We will know when" in INT-1 to say so; see [INT-1 Constraints: Safe by default][i1-c] and [INT-1 S6][i1-s6]. Built into T4, T21, T35. Nothing in this plan depends on an open server (checked: the old `test_auth.py` cases "no token means authentication is off" and "loopback without a token starts with a warning", the shared-token smoke tests and the CI image job are all rewritten in T10, T21, T27 and T30; the quickstart only calls the open `/health`; `tests/live`, `tools` and the helpers never ran against an open server).
+- **D17 `MANIFOLD_PUBLIC_ADDRESS` (owner accepted, 2026-11-01; found in T29).** Inside the container the server listens on `0.0.0.0` behind Caddy, so the T21 rule "no principal yet: refuse to start on a non-loopback address" would stop every first start. The rule reads `MANIFOLD_PUBLIC_ADDRESS` (set by compose to `BIND_ADDRESS`, the address Caddy publishes on) before `MANIFOLD_HOST`. Built into T21/T29.
 - **D16 The personal principal is not a registrar** (D3). To change a component's repository or owner, an administrator first adds the registrar role with `admin role set`. Built into T32.
 
 **Concerns still open:**
@@ -120,7 +121,7 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 - [x] [INT-1][i1], [INT-6][i6] and [INT-7][i7] are accepted (read from the files, `accepted_by: Michael Hay 2026-11-01`).
 - [x] The owner confirmed the project commands below (2026-11-01).
 - [x] The virtual environment exists and the commands below were run by the coordinator: `python3 -m venv .venv`, then the install line; this plan does not create it.
-- [ ] Docker with Compose is available for T28 to T33 (`docker` is at `/usr/local/bin/docker` here); a macOS machine with Docker Desktop is available for T1.
+- [x] Docker with Compose is available for T28 to T33; a macOS machine with Docker Desktop is available for T1 (Docker Desktop 29.9.2 on macOS arm64, used throughout).
 - **Project commands (confirmed by the owner 2026-11-01; run and verified by the coordinator).** `AGENTS.md` "Project commands" is not edited by this plan.
   - Install: `python3 -m venv .venv`, then `.venv/bin/pip install -r server/requirements-dev.txt -c server/requirements.lock`.
   - Server tests: `cd server && ../.venv/bin/python -m pytest -q` (399 passed).
@@ -525,82 +526,112 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 ---
 
 ### Task 31 — Add `manifold init`: preflight, state detection and the plan
+> **Note (CP6):** `server/manifold_cli/init_cmd.py` (`Options`, `Runtime` with every outside call injectable, `preflight`, `detect`, `validate_paths`, `show_plan`, `run_init`) wired to `./manifold init [--env NAME] [--instance PATH] [--data-dir PATH] [--port N] [--name N] [--person-secret-file F] [--agent-secret-file F] [--yes]`. Preflight lists every problem at once: platform (Linux or macOS; Windows refused with "use WSL2"), Python 3.11+, git, docker, `docker compose`, the checkout, and the port (something else listening is refused; our own healthy server is fine). Detection reads the settings file, the instance, the data folder and the store (read-only: principal count). The plan lists the instance, data folder, settings file, TLS (off, loopback), the three principals and the credential files, and waits for a yes (`--yes` for scripts; no terminal and no `--yes` is refused with nothing created). Refusals: the instance inside the checkout, a data folder inside the instance (and the reverse), a folder that is not an instance, an instance inside another git repository, a settings file that already points elsewhere, the names `admin` and `first-agent` for the person. **Interpretations:** default environment is `production` (the image as built, not the dev reload); default instance is `manifold-instance` beside the checkout; the person's name is asked on a terminal and defaults to the OS user. `cd server && ../.venv/bin/python -m pytest -q tests/test_init.py -k "preflight or detect or plan or refused or yes or second"`: part of the 40 passed in the file (below). New `tests/test_init.py` uses a fake `docker`/`svc_ctl.sh` runner that runs the real host command and the real `python server.py`.
 **Files:** `server/manifold_cli/init_cmd.py`, `server/manifold_cli/journal.py`, `server/tests/test_init.py`
 **Action:** CREATE
 **Change:** `manifold init [--env NAME] [--instance PATH] [--data-dir PATH] [--yes]`. Preflight: Linux or macOS (`platform.system()`; Windows refused with a message), Python 3.11 or newer, `git`, `docker` and `docker compose`, port free. Detect an existing instance, data folder, environment file or store; if any exists, say what exists and offer repair (create only what is missing, never change credentials, never overwrite content) or stop. Show the full plan (instance folder, data folder, environment file, TLS setting, principals) and wait for a yes; nothing is created before it. Each step reports a clear message that says what to fix.
 **Source:** [INT-6 S2][i6-s2]; [INT-6 Constraints: Safe to run twice][i6-c]; [INT-6 Constraints: Linux and macOS][i6-c]; [INT-6 Constraints: Show before creating][i6-c]; [INT-6 Constraints: Clear failure messages][i6-c]; [INT-1 S8][i1-s8] (an existing shared-token instance is adopted through repair).
 **Acceptance:** `pytest tests/test_init.py -k "preflight or detect or plan"` passes with fake `git` and `docker` runners: a second run changes nothing without a yes; Windows is refused.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 32 — Add `manifold init`: create with undo, and the first credentials
+> **Note (CP6):** `server/manifold_cli/journal.py` records every path a step is about to create (refusing one that exists) and undoes in reverse, removing only what the run made, restoring appended files, running registered actions (stopping the service); a failure, an `OSError` or an interrupt triggers it. Steps: copy `examples/starter` and make the first commit with `-c user.name=Manifold -c user.email=manifold@localhost` (no global git config); create the data folder (0700) with `credentials/`, `caddy/data`, `caddy/config`; write `docker/.env.<env>` (0600, no secret) from its template, or add only the missing keys to an older file (WIKI_ROOT/DATA_DIR, `MANIFOLD_TLS`, `TLS_NAMES`, `ALLOWED_HOSTS`) leaving every existing line, including an old `MANIFOLD_TOKEN`, untouched (INT-1 S8 adoption); build the image; create the principals. **Interpretation:** the host never opens the store (D2), so the three principals are created by one new host command, `admin bootstrap` (an administrator with the admin role and no credential; the person with reader and contributor and grants on `example-api`, `example-web`, `_shared` and a credential with no expiry; the first agent with reader, contributor, registrar and the same grants and a credential), run in a one-off container through `svc_ctl.sh <env> admin`; it refuses a store that already has principals. **Interpretation:** a credential is written only to a 0600 file (default `<DATA_DIR>/credentials/<name>.secret`, or the path the person names, to which it is moved; an existing file is never overwritten) and is **never printed**, not even once; the plan says so. `cd server && ../.venv/bin/python -m pytest -q tests/test_init.py -k "create or undo or credential or principals or named"`: passed (forcing a failure at git init, the first commit, the principals, the service start and the host-command check leaves no created path and stops the service; a server that never becomes healthy, a failed walk-through and an interrupt are undone; a pre-existing instance is untouched by an undo; a secret appears in no output, no log and no file but its own, checked over the whole temporary tree). A real run that failed (a stale image without `admin bootstrap`) showed the undo working with real containers and led to the explicit `build` step before the principals.
 **Files:** `server/manifold_cli/init_cmd.py`, `server/manifold_cli/journal.py`, `server/tests/test_init.py`
 **Action:** MODIFY
 **Change:** After the yes, record every created path in the journal and undo them in reverse order if any step fails. Steps: copy `examples/starter` to the instance folder and make the first commit with `-c user.name -c user.email` flags (no global git config); create the data folder (0700) and the store; write `docker/.env.<env>` (0600, no secret); create the first administrator as a principal with the `admin` role and no credential (host-only, no data access, D3); create a separate personal principal for the person (name asked for; kind `human`; roles `reader` and `contributor`; grants for `example-api`, `example-web` and `_shared`) and issue its credential with no expiry (D9); create the first agent principal with `reader`, `contributor` and `registrar` roles and grants for the two sample slugs and issue its credential. Each credential is shown once and written only to a 0600 file the person names. No default or shared credential remains.
 **Source:** [INT-6 S4][i6-s4]; D3, D8; [INT-6 S1][i6-s1] (no half-created instance); [INT-6 Constraints: Secrets][i6-c]; [INT-1 S1][i1-s1].
 **Acceptance:** `pytest tests/test_init.py -k "create or undo or credential"` passes: forcing a failure at each step leaves no created path; the credential never appears in captured output after the first display, in logs or in any file but the one named.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 33 — Add `manifold init`: start, check and the first handoff
+> **Note (CP6):** `server/manifold_cli/mcp_client.py` (stdlib client: `initialize`, `tools/call` over `/mcp`, JSON or event-stream answers, session header, the credential never in `repr` or errors). `init` then starts the service through `svc_ctl.sh <env> start`, waits for `/health` (bounded; a clear message with the logs command on timeout), checks that a request with no or a wrong credential is refused and that `admin principal list` works, acts as the first agent to register `example-api` and `example-web` (D8; placeholder repository `https://example.invalid/...`, no GitHub), creates a handoff between them and reads it back, then checks that the person's credential reads it and **cannot** register a component; any failure runs the journal undo and `svc_ctl stop`. At the end it prints the client steps from `examples/clients/` (Claude Code: `MANIFOLD_TOKEN="$(cat FILE)" claude`, noting the variable is only a name; VS Code; the browser; Claude Desktop unsupported, INT-18). **Observed on a Docker machine (macOS, Docker Desktop 29.9.2, fresh folders under the scratchpad, port 28686):** `./manifold init --yes --instance <dir> --data-dir <dir> --port 28686 --name pat --person-secret-file ... --agent-secret-file ...` ended with a healthy server, both components registered, the handoff created and read back, the person's credential able to read and unable to register; both credential files mode 0600; commits in the instance authored by `first-agent`; the same command run again printed the plan ("3 already exist: none are created or changed"), skipped the walk-through (it needs a credential) and left the instance, the credential files and the settings file byte-identical (same checksum). Then `svc_ctl.sh production stop`, settings file removed. `cd server && ../.venv/bin/python -m pytest -q tests/test_init.py`: 40 passed (the real-server pattern of `test_server_smoke.py`, no Docker). The Linux run is pending CI.
 **Files:** `server/manifold_cli/init_cmd.py`, `server/manifold_cli/mcp_client.py`, `server/tests/test_init.py`
 **Action:** MODIFY / CREATE
 **Change:** Start the service through `./svc_ctl.sh <env> start`, wait for `/health` (bounded wait, message on timeout), check that a request without a credential is refused and the host `admin principal list` works, then use a small stdlib MCP client (`initialize`, `tools/call` over `/mcp`) with the agent credential to register the two sample components `example-api` and `example-web` (D8), create a handoff between them and read it back; then check that the personal credential reads the handoff and cannot create a component. On any failure run the journal undo and `svc_ctl stop`. Print the client steps for Claude Code and VS Code.
 **Source:** [INT-6 S1][i6-s1]; [INT-6 S4][i6-s4]; [INT-6 Constraints: Local part is complete without GitHub][i6-c]; D8.
 **Acceptance:** `pytest tests/test_init.py` passes against the real server pattern of `test_server_smoke.py` (no Docker); on a Docker machine, `./manifold init --yes` in a temporary folder ends with a healthy server, two components and a handoff read back, and `./manifold init` again changes nothing (observed by the coder, to be covered by the test plan).
-**Todo:** [ ]
+**Todo:** [x] (observed on macOS with Docker; the Linux run is pending CI)
 
 ---
 
 ### Task 34 — Write the operations and TLS guides and the upgrade steps
+> **Note (CP6):** `docs/operations.md` rewritten: the service script (with `admin`), settings, the two containers, people/agents/credentials (shown once, host-only commands, immediate and durable revocation, the sign-in delay), the four roles and the matrix, grants and denies (why a deny; why removing a grant may not end access), archiving and the host-only purge, the settings table with defaults, export/import/backup, update, **Upgrade from the shared token** in ordered steps, and a refreshed troubleshooting table. New `docs/tls.md`: the setting, `start`'s checks, trusting Caddy's local root (`<DATA_DIR>/caddy/data/caddy/pki/authorities/local/root.crt`), client steps for Claude Code, VS Code and a browser, each marked **unverified**, never advising to turn certificate checks off, and the one verified check (`curl --cacert`). **Not done, as the acceptance says "observed by the coder":** connecting Claude Code, VS Code and a browser over HTTPS on a clean machine was not run; only `curl --cacert` was observed (T29). Links: `tests/test_docs_links.py` checks every relative link and heading anchor in the changed documents (11 passed).
 **Files:** `docs/operations.md`, `docs/tls.md`
 **Action:** MODIFY / CREATE
 **Change:** Replace "The token" in `docs/operations.md` with: principals and credentials, the four roles and the matrix in T12, grants and denies (why a deny, why removing a grant may not end access), the purge hold and procedure, settings and their defaults, export and import, backup of the data folder, and "Upgrade from the shared token" as ordered steps (stop, pull, `./manifold init` repair or `admin principal create`, issue credentials, start, check the notice). Create `docs/tls.md`: the TLS setting, trusting Caddy's local root, and client steps for Claude Code, VS Code and a browser (mark each client's certificate-trust step "unverified" until confirmed by running it, and never advise turning off certificate checks).
 **Source:** [INT-1 S7][i1-s7]; [INT-1 S8][i1-s8]; [INT-1 S11][i1-s11]; [INT-1 Constraints: TLS can be switched on and off][i1-c].
 **Acceptance:** A person following the TLS guide on a clean machine connects Claude Code, VS Code and a browser over HTTPS (observed by the coder; to be covered by the test plan); every relative link in the two files resolves.
-**Todo:** [ ]
+**Todo:** [~] the guides are written and their links checked; connecting Claude Code, VS Code and a browser over HTTPS was not observed (pending a human)
 
 ---
 
 ### Task 35 — Rewrite the quickstart, READMEs, concepts, client examples and helper texts
+> **Note (CP6):** `docs/quickstart.md` makes `./manifold init` the path (manual steps and the no-Docker steps are under "Advanced"); `server/README.md` has no token banner, no `MANIFOLD_TOKEN*` rows (the old variables are said to be ignored; `MANIFOLD_TOKEN` is kept only as the client-side variable name), the new variables (`MANIFOLD_DATA_DIR`, `MANIFOLD_STORE_JOURNAL_MODE`, `MANIFOLD_PUBLIC_ADDRESS`, `MANIFOLD_TLS`, allowed hosts and origins, trusted proxies), 16 tools including `wiki_component_manage_tool`, and updated known limits (Claude Desktop/claude.ai, with a pointer to INT-18); `docs/concepts.md` has request-review then the source confirms or closes (D7), a roles section and the Claude Desktop limitation; `README.md` and `docs/README.md` updated; both client examples use `127.0.0.1` and the credential wording; the two `handoff-close` helper files now say only the source closes (the target requests review with /handoff-update); `ingest_doc.py` says the server always requires your own credential (D15) and explains 401/403; two helper descriptions in `helpers.py` updated. `cd server && ../.venv/bin/python -m pytest -q tests/test_helpers.py tests/test_example_starter.py tests/test_example_acme.py tests/test_deploy_files.py tests/test_docs_links.py`: 78 passed (which includes the check that "target may also: close" appears nowhere under `docs`, `assets`, `examples`, and that every relative link resolves).
 **Files:** `docs/quickstart.md`, `README.md`, `server/README.md`, `docs/concepts.md`, `examples/clients/claude-code-mcp.json`, `examples/clients/vscode-mcp.json`, `assets/helpers/commands/handoff-close.md`, `assets/helpers/prompts/handoff-close.prompt.md`, `assets/helpers/tools/ingest_doc.py`
 **Action:** MODIFY
 **Change:** Make `manifold init` the quickstart path and move the manual steps to an "advanced" section. In `server/README.md` remove the shared-token banner, the `MANIFOLD_TOKEN*` rows and the matching "Known limits"; add the new variables (`MANIFOLD_DATA_DIR`, `MANIFOLD_TLS`, allowed hosts, origins, trusted proxies), the tool count (16) and the new tool. In `docs/concepts.md` replace "close lets the target mark a handoff completed" with request-review then source confirms (D7), and describe roles. Keep `MANIFOLD_TOKEN` only as the name of the client-side variable holding a person's own credential, and say so. Add the Claude Desktop and claude.ai known limitation with a pointer to [INT-18][i18]. Replace the target-close wording in the two `handoff-close` helper files. Remove every statement that the token is optional or that authentication is off on loopback (`server/README.md`, and the "If the server requires a token" wording in `assets/helpers/tools/ingest_doc.py`: the server always requires a credential, D15).
 **Source:** [INT-1 S15][i1-s15]; [INT-1 S8][i1-s8]; [INT-1 Constraints: Client compatibility][i1-c]; [INT-6 S1][i6-s1].
 **Acceptance:** `pytest tests/test_helpers.py tests/test_example_starter.py tests/test_example_acme.py tests/test_deploy_files.py` passes; `grep -rn "target may also: close" docs assets examples` returns nothing; every relative link in the changed files resolves.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 36 — Run everything
+> **Note (CP6):** Run on macOS (Darwin arm64, Python 3.11.3, Docker Desktop 29.9.2), after the last edit: `cd server && ../.venv/bin/python -m pytest -q`: 895 passed; `.venv/bin/python -m pytest bundles/base/tests -q`: 148 passed, 1 skipped; `.venv/bin/python tools/vendor_web.py --check`: vendored files match a fresh build; `server/requirements.txt`, `requirements.lock` and `requirements-dev.txt` unchanged (`git diff --stat`: none) and the only distributions installed that are not in the lock are the development tools (pytest, pluggy, iniconfig, pip, setuptools), so no new Python dependency; `tests/test_offline_clean.py` (an AST scan of every server module) passes, so a run with no GitHub settings makes no outside request. The end-to-end walk-through ran on macOS with real containers (T29, T30 rehearsal, T33). **Marked `[~]`, pending a human or CI:** the same walk-through on Linux, and the GitHub Actions `server` workflow (tests on 3.11 and 3.12, the image job, the macOS job); neither can be run here. Also still unobserved: connecting Claude Code, VS Code and a browser over HTTPS (T34).
 **Files:** none
 **Action:** none
 **Change:** Run the full checks and the end-to-end walk-through on Linux and macOS.
 **Source:** [INT-1 S13][i1-s13]; [INT-1 Constraints: Open license][i1-c]; [INT-6 S1][i1-s1].
 **Acceptance:** The commands in the Completion checklist pass; `pip list` shows no new Python dependency beyond `server/requirements.lock`; a run with no GitHub settings makes no outside request (`test_offline_clean.py`).
-**Todo:** [ ]
+**Todo:** [~] macOS parts done and recorded; the Linux walk-through and the GitHub Actions run are pending a human or CI
 
 ---
 
 ## Completion checklist
-- [ ] All tasks marked [x] by the coder
-- [ ] Verify command: none exists (no lint or type-check); `pytest` below is the gate
-- [ ] `cd server && ../.venv/bin/python -m pytest -q` passes clean (no regressions; baseline 399 passed)
-- [ ] `.venv/bin/python -m pytest bundles/base/tests -q` (baseline 148 passed, 1 skipped) and `.venv/bin/python tools/vendor_web.py --check` pass
-- [ ] The CI workflow `server` passes (tests on 3.11 and 3.12, image job, macOS job)
-- [ ] The traceability table above still matches the finished work; any omission is recorded below
-- [ ] No [~] blocked items outstanding
-- [ ] Summary note added by the coder below this line
+- [ ] All tasks marked [x] by the coder: **no, four are `[~]`**: T1 (native Linux pending CI), T30 (the GitHub Actions run), T34 (HTTPS client connections not observed), T36 (Linux walk-through and CI pending)
+- [x] Verify command: none exists (no lint or type-check); `pytest` below is the gate
+- [x] `cd server && ../.venv/bin/python -m pytest -q` passes clean (895 passed; baseline 399 passed)
+- [x] `.venv/bin/python -m pytest bundles/base/tests -q` (148 passed, 1 skipped; baseline the same) and `.venv/bin/python tools/vendor_web.py --check` (matches) pass
+- [ ] The CI workflow `server` passes (tests on 3.11 and 3.12, image job, macOS job): **not observed**; the image job was rehearsed locally step by step on macOS (T30)
+- [x] The traceability table above still matches the finished work; omissions are recorded below
+- [ ] No [~] blocked items outstanding: **four remain** (T1, T30, T34, T36), all waiting for CI or a human
+- [x] Summary note added by the coder below this line
 
-<!--
-  coder: add your completion summary here:
-  - Files changed
-  - Deviations from the plan, and why ("None." if none)
-  - Verification evidence: command and result for each check; anything not run, and why
-  - Deferred items and follow-ups
--->
+### Completion summary (coder)
+
+**Files changed** (by area; commits CP1 b199077, CP2 8e33f87, CP3 99fd37e, CP4 7bf5a98, CP5 832e377, the store fix 0eed790, AGENTS.md 7a4493b, and CP6):
+- `server/manifold_security/` (new, standard library only): store, credentials, settings, principals, audit, authorizer and tool policy, limits, path policy (`scopes`), context, request guard, throttle, startup rules, export.
+- `server/manifold_cli/` (new) and `manifold` (launcher): the host command (`admin ...`, `init`), the runner, purge, journal, MCP client.
+- `server/wiki_backend/` (modified): principal authentication, the guard and acting principal, git/log attribution, handoff/register/write/read/config/inventory/ping/onboarding/helpers changes; `server/server.py`.
+- `docker/`, `svc_ctl.sh`, `.dockerignore`, `.github/workflows/server.yml`: data volume, Caddy and the TLS switch, the `admin` route, the CI image and macOS jobs.
+- `docs/`, `README.md`, `server/README.md`, `examples/clients/*`, `assets/helpers/*`, `AGENTS.md`: documentation and helper texts.
+- Tests: about 500 new cases across 40 new files (baseline 399 to 895), plus adapted fixtures.
+
+**Deviations from the plan** (each recorded in the task notes and approved by the owner where it was a decision):
+- T9 "strict everywhere": `wiki_write_page` accepts only component and shared pages; handoff pages have their own writer; the existing handoff tests were moved to it.
+- D2 rung 1 applied: the container runs with `MANIFOLD_STORE_JOURNAL_MODE=delete`; the code default stays `wal`.
+- D17 `MANIFOLD_PUBLIC_ADDRESS` (found in T29): the "no principal yet" start rule reads the published address, not the bind inside the container.
+- Settings may take a starting value from `MANIFOLD_TRUSTED_PROXIES`, `MANIFOLD_ALLOWED_HOSTS`, `MANIFOLD_ALLOWED_ORIGINS` and `MANIFOLD_TLS` (how compose passes "the Caddy network address as trusted_proxies").
+- A new host command, `admin bootstrap`, creates the three first principals in one container run for `init` (the host never opens the store).
+- The acting principal is carried in a context variable instead of an argument on every backend function (T15).
+- Credentials are never printed by `init`; they are written only to 0600 files (T32).
+- `AGENTS.md` "Project commands" was filled in by the coder at the owner's instruction (the plan said not to).
+- The launcher does not change the working folder (T22). T13/T15 tests are in new files rather than in `test_write_validation.py`/`test_ingest.py`/`test_git_root.py`.
+
+**Found by running it, not by reading** (all fixed and recorded): `open_store` dropped the process's POSIX locks (stale reads, revocation unseen, T2/T27); two start-up races on a new store; the container could not start with no principal (D17); Caddy needs `NET_BIND_SERVICE` back and `default_sni` for IP clients (T29); the image must be built before `admin` runs (T32).
+
+**Verification evidence** (macOS; after the last edit): the three gate commands above; `tests/test_deploy_files.py` renders `docker compose config` for TLS on and off with real docker; the CI image job rehearsed as a script against production-style containers ("CI REHEARSAL PASSED"); `./manifold init --yes` and a second run observed with real containers (T33). **Not run, and why:** native Linux (no Linux host here), the GitHub Actions workflow and its macOS job (cannot be run locally), connecting Claude Code, VS Code and a browser over HTTPS (needs those clients; only `curl --cacert` was observed), `docker compose` behavior of Docker versions other than 29.9.2.
+
+**Deferred items and follow-ups:**
+- INT-6 GitHub part and all of INT-7 (sign-in with GitHub, the repository-write arm, the App), INT-18/INT-19 (Claude Desktop, an authorization server), per-component read limits, an admin screen, webhooks (all out of scope here).
+- INT-14: the purge when the server has no local checkout needs a GitHub-API implementation of `remove_component_files` (D13).
+- Observe in CI: the `server` workflow (3.11 and 3.12, image, macOS), the Linux walk-through, the T1 Linux case.
+- A human should confirm the HTTPS trust steps for Claude Code, VS Code and a browser in `docs/tls.md` (each marked unverified).
+- Noticed, not done: `docs/tls.md` was listed in the file inventory without a task text before T34; the `--secret-file` path for `svc_ctl.sh admin` is a container path under `/data` (documented); refusing a repository already used by another component and automatic audit pruning (out of scope in the plan).
 
 ## Open questions
 None for the owner. Resolved on 2026-11-01: see Decisions D1 to D16 under Concerns flagged. The two technical unknowns are Concerns still open 1 (T1, SQLite on a macOS bind mount) and 2 (T11, how FastMCP hands the caller to a tool).

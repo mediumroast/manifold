@@ -393,6 +393,58 @@ def import_command(ctx, a):
         ctx.say("Imported: %s." % (summary or "nothing"))
 
 
+# ── the first principals, for `manifold init` ────────────────────────────────
+
+@command("bootstrap", "")
+def bootstrap_command(ctx, a):
+    """
+    Create the first three principals in an empty store (PHASE_1_PLAN D3): an administrator (the admin role,
+    no credential, no data access), the person (reader and contributor, grants on the sample components and
+    _shared) and a first agent (reader, contributor, registrar, the same grants).  Each of the two credentials
+    is written to a new 0600 file and never printed.  Refuses a store that already has principals.
+    """
+    names = [a.admin, a.person, a.agent]
+    if len(set(names)) != 3:
+        raise CliError("The administrator, the person and the agent need three different names.")
+    existing = principals.count_principals(ctx.conn)
+    if existing:
+        raise CliError("The store already has %d principal(s); bootstrap only fills an empty one. "
+                       "Use admin principal create for more." % existing)
+    slugs = [s for s in a.slugs.split(",") if s]
+    for scope in slugs:
+        principals.check_scope(scope, allow_shared=False)
+    person_delivery = prepare_delivery(ctx, a.person_secret_file)
+    agent_delivery = prepare_delivery(ctx, a.agent_secret_file)
+    if person_delivery[0] != "file" or agent_delivery[0] != "file":
+        raise CliError("bootstrap writes the two credentials to files: give --person-secret-file and --agent-secret-file.")
+
+    admin_principal = principals.create_principal(ctx.conn, a.admin, "human")
+    principals.set_role(ctx.conn, a.admin, "admin")
+    record(ctx, audit.PRINCIPAL_CHANGED, admin_principal.id, "created human %s (administrator, no credential)" % a.admin)
+    issued = {}
+    for name, kind, roles, delivery in ((a.person, "human", ("reader", "contributor"), person_delivery),
+                                         (a.agent, "agent", ("reader", "contributor", "registrar"), agent_delivery)):
+        created = principals.create_principal(ctx.conn, name, kind)
+        record(ctx, audit.PRINCIPAL_CHANGED, created.id, "created %s %s" % (kind, name))
+        for role in roles:
+            principals.set_role(ctx.conn, name, role)
+            record(ctx, audit.ROLE_CHANGED, created.id, "set %s" % role)
+        for scope in slugs + [principals.SHARED_SCOPE]:
+            principals.add_grant(ctx.conn, name, scope)
+            record(ctx, audit.GRANT_CHANGED, created.id, "grant added on %s" % scope)
+        credential = tokens.issue_credential(ctx.conn, created.id, "init", None)
+        try:
+            deliver(ctx, delivery, credential)
+        except OSError as exc:
+            tokens.revoke_credential(ctx.conn, credential.credential_id)
+            raise CliError("The secret of %s could not be written (%s); its credential was revoked." % (name, exc))
+        record(ctx, audit.CREDENTIAL_ISSUED, created.id, "credential %s (init)" % credential.credential_id)
+        issued[name] = credential.credential_id
+    ctx.say("Created the administrator %s (admin role, no credential, no access to the wiki's content)." % a.admin)
+    ctx.say("Created %s (human: reader, contributor; grants %s, _shared) and %s (agent: reader, contributor, "
+            "registrar; same grants)." % (a.person, ", ".join(slugs), a.agent))
+
+
 # ── the registry purge (see purge.py) ────────────────────────────────────────
 
 @command("registry", "purge")
@@ -475,6 +527,15 @@ def add_parsers(sub: argparse._SubParsersAction) -> None:
     flag = p.add_mutually_exclusive_group()
     flag.add_argument("--merge", action="store_true", help="add to what the store already holds")
     flag.add_argument("--replace", action="store_true", help="replace what the store holds")
+    p.set_defaults(verb="")
+
+    p = sub.add_parser("bootstrap", help="create the first administrator, person and agent in an empty store (used by init)")
+    p.add_argument("--admin", required=True)
+    p.add_argument("--person", required=True)
+    p.add_argument("--agent", required=True)
+    p.add_argument("--slugs", required=True, help="comma separated component slugs the person and the agent may write to")
+    p.add_argument("--person-secret-file", required=True)
+    p.add_argument("--agent-secret-file", required=True)
     p.set_defaults(verb="")
 
     g = group("registry", "the component registry")

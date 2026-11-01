@@ -37,17 +37,28 @@ The people (or agents) on each side move it along with `wiki_handoff_tool`:
    target: claim  ──► in-progress
    target: request-review ──► needs-review
    source: confirm ──► completed          source: reject ──► in-progress (feedback added to Blockers)
-   (target may also: close ──► completed)
+   (source may also: close ──► completed)
 ```
 
 - `create` and `claim` are the first two steps. `request-review` says the work is done and ready for the source to check.
 - The source then either `confirm`s (completed) or `reject`s with feedback, which sends it back to in-progress.
-- `close` lets the target mark a handoff completed directly, for work that needs no review.
+- **Only the source closes a handoff.** The component that asked for the work is the one that says it is done: `close` is the source's shortcut to completed, for work it accepts without a review step. The target never closes; when there is no review to ask for, it still calls `request-review` and the source confirms. The server refuses any other combination, with the reason, and writes nothing.
 - Nothing is ever deleted. A handoff that will not be done is closed as `wont-fix` by editing its status.
 
 Each step updates the page's `updated` date, the sidebar (a symbol in front of the title shows the state: ○ open, ◉ in progress, ◑ needs review, ✓ completed) and the log. A handoff that finishes should also update the target component's page; the schema page says so.
 
 The handoff commands are also available to people in their editors: `wiki_export_component_helpers_tool` returns slash commands for Claude Code (`.claude/commands/`) and Copilot (`.github/prompts/`): `/handoff-create`, `/handoff-pickup`, `/handoff-close`, `/handoff-update`, `/handoff-confirm`, `/handoff-reject` and `/manifold-update`, which refreshes them.
+
+## People, agents and roles
+
+Everyone who uses the server is a **principal** with a credential of their own: a person (`human`), an agent or a service. Four roles say what a principal may do, and they add up:
+
+- **reader**: read everything (pages, inventory, the wiki browser). A reader writes nothing.
+- **contributor**: a reader who can also write pages, append to the log, ingest documents and work handoffs, **only on the components it has a grant for**, and on `_shared` (the pages that belong to no component). A deny on a component beats a grant.
+- **registrar**: registers, updates, archives and restores components. An agent that is a registrar is limited per day; changing a component's repository or owner is for a human registrar only.
+- **admin**: administers the system from the host with the host command, and is refused every read and write over MCP and HTTP. An admin cannot read the wiki, and an agent can never be an admin.
+
+Every change in git names the principal behind the credential, whatever the request claims. Taking a credential away is immediate. The details and the commands are in [Operations](operations.md#people-agents-and-credentials).
 
 ## Pages, etags and the log
 
@@ -73,6 +84,6 @@ A repository can use the bundle alone, the server alone, or both. With both, the
 ## What the server does not do
 
 - It does not call a language model. Agents and tools do that; the server stores and serves.
-- It does not push to a git remote. You decide when and where the instance is pushed ([back it up](operations.md#back-it-up)).
-- It does not serve more than one instance, and it has no per-person sign-in yet ([known limits](../server/README.md#known-limits)).
-- It sends no telemetry.
+- It does not push to a git remote. You decide when and where the instance is pushed ([back it up](operations.md#export-import-and-backup)).
+- It does not serve more than one instance, and it does not yet sign people in through GitHub or accept access from Claude Desktop or claude.ai (**a known limitation**: those clients need an authorization flow the server does not have; the work is planned as [INT-18](../intent/INT-18-claude-desktop-access.md); see also the [known limits](../server/README.md#known-limits)).
+- It sends no telemetry and makes no outgoing request.
