@@ -64,9 +64,22 @@ def main():
     ]
     for p in procs:
         p.start()
-    results = [out.get() for _ in procs]
+    # Collect results without blocking forever: a worker that dies without reporting (for
+    # example killed by a signal) must show up as a failure with its exit code, not hang the run.
+    results = []
+    deadline = time.time() + 300
+    while len(results) < len(procs) and time.time() < deadline:
+        try:
+            results.append(out.get(timeout=1))
+        except Exception:
+            if all(not p.is_alive() for p in procs) and out.empty():
+                break
     for p in procs:
-        p.join()
+        p.join(timeout=5)
+    dead = [(p.name, p.exitcode) for p in procs if p.exitcode != 0]
+    if dead or len(results) < len(procs):
+        print("tag=%s WORKER FAILURE: exit codes %s, %d of %d workers reported"
+              % (args.tag, [p.exitcode for p in procs], len(results), len(procs)))
     expected = sum(r[1] for r in results)
     errors = sum(r[2] for r in results)
     conn = sqlite3.connect(path, timeout=10)
@@ -75,7 +88,7 @@ def main():
     conn.close()
     print("tag=%s mode=%s acknowledged=%d found=%d lost=%d lock_errors=%d integrity=%s"
           % (args.tag, args.mode, expected, found, expected - found, errors, check))
-    return 0 if (expected == found and errors == 0 and check == "ok") else 1
+    return 0 if (expected == found and errors == 0 and check == "ok" and not dead and len(results) == len(procs)) else 1
 
 
 if __name__ == "__main__":
