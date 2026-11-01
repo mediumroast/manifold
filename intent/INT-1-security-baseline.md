@@ -3,10 +3,10 @@ id: INT-1
 title: Security baseline for the Manifold server
 author: Michael Hay
 created: 2026-10-31
-status: draft
+status: accepted
 affects: [server, docker, docs, ci]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay 2026-11-01
 ---
 
 # Intent: Security baseline for the Manifold server
@@ -182,7 +182,7 @@ In addition, the server is hard to misuse by accident: it refuses to listen beyo
 - Keeping the old shared token working beside individual credentials.
 
 ## Open questions
-- What lockout behavior should the shared host use? Recommendation: slow down repeated failures per address with a growing delay, never lock a credential (credentials are long random values, so locking one would only let an attacker lock out its owner), and trust the forwarded address only from the Caddy service. (the product owner, once the choice is explained)
-- Should per-component read limits be in the first version after all, given the wiki is read into agent context? (the product owner, with the company that will use it)
-- When content moves to GitHub (INT-14) and the server has no local checkout, how does the host-only purge reach the content? (the product owner, with INT-14)
-- May an administrator turn on the per-principal setting that lets an agent registrar receive a grant on the component it registers? The default is off. (the product owner)
+- What lockout behavior should the shared host use? Answer: slow down repeated failures per address with a growing delay, never lock a credential (credentials are long random values, so locking one would only let an attacker lock out its owner), and trust the forwarded address only from the Caddy service. (the product owner, once the choice is explained)
+- Should per-component read limits be in the first version after all, given the wiki is read into agent context? (the product owner, with the company that will use it) Answer: No they should not be in the first version.
+- When content moves to GitHub (INT-14) and the server has no local checkout, how does the host-only purge reach the content? (the product owner, with INT-14) Answer: We need to use the GitHub APIs.
+- May an administrator turn on the per-principal setting that lets an agent registrar receive a grant on the component it registers? The default is off. (the product owner) Answer: yes
