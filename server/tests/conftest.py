@@ -64,3 +64,19 @@ def wiki_root(tmp_path: Path) -> Path:
     git("commit", "-m", "test: init wiki skeleton")
 
     return tmp_path
+
+
+@pytest.fixture()
+def security_conn(tmp_path: Path):
+    """
+    Isolated security store (a fresh SQLite file in a temporary folder).
+
+    The data folder is ``<tmp>/security-data`` and the wiki root passed to the
+    store is ``<tmp>/wiki-root``, so the "not inside the instance repository"
+    rule is exercised without touching any real data folder.
+    """
+    from manifold_security.store import open_store
+
+    conn = open_store(tmp_path / "security-data", wiki_root=tmp_path / "wiki-root")
+    yield conn
+    conn.close()

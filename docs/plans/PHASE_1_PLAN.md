@@ -162,72 +162,86 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 > Tests use isolated temporary folders and generated credentials, never real data or real secrets (AGENTS.md "Test isolation"). Stage explicit paths only.
 
 ### Task 1 — Verify SQLite on a bind-mounted data folder
+> **Note (CP1):** BLOCKED (partial). Wrote `experiments/sqlite-bind-mount/probe.py` (N processes insert and check lost writes, lock errors and integrity). Observed on macOS (Darwin arm64, Python 3.11.3), native folder, two probe processes at once x 4 workers x 200 inserts each, `wal` and `delete` modes: 800 acknowledged, 800 found, 0 lost, 0 lock errors, integrity ok, in all four runs (`python3 probe.py --dir <tmp> --mode <wal|delete> --tag A` and `--tag B` together). NOT run: the Docker Desktop bind-mount cases (a) and (b) and the Linux case, because the Docker daemon is not running here (`docker info`: cannot connect to ~/.docker/run/docker.sock; Docker.app is installed). Per the owner's answer these are pending: start Docker Desktop and run the container commands in the probe header (twice at once for (a); host plus container for (b)); Linux is covered by CI (T30). T2 already supports the D2 fallback (`MANIFOLD_STORE_JOURNAL_MODE=delete`); T28 must apply the named-volume fallback only if case (a) fails.
+
 **Files:** `experiments/sqlite-bind-mount/` (scratch; never imported by production code)
 **Action:** CREATE
 **Change:** Write a script that creates a SQLite database in WAL mode and in rollback-journal mode in a folder mounted into a container, with (a) two processes inside the container (the server and a `docker compose exec` CLI) and (b) one in the container and one on the host, and reports lost writes or lock errors. Run it on macOS (Docker Desktop) and Linux. Record the result in the task note.
 **Source:** D2; [INT-1 Constraints: No new service needed][i1-c].
 **Acceptance:** The note states the observed result for both systems. If case (a) fails on the bind mount, apply the fallback ladder in D2 (rollback-journal mode, then a named volume) in T2 and T28 before going on. If only case (b) fails, nothing changes: the CLI runs inside the container (D2).
-**Todo:** [ ]
+**Todo:** [~]
 
 ---
 
 ### Task 2 — Add the security store
+> **Note (CP1):** Added `server/manifold_security/{__init__,store}.py`, `migrations/0001_initial.sql` (9 tables), `.manifold-data/` in `.gitignore`, and a `security_conn` fixture in `tests/conftest.py`. `cd server && ../.venv/bin/python -m pytest -q tests/test_security_store.py`: 14 passed.
+
 **Files:** `server/manifold_security/store.py`, `server/manifold_security/migrations/0001_initial.sql`, `server/tests/test_security_store.py`
 **Action:** CREATE
 **Change:** `open_store(data_dir)` creates the folder with mode 0700 and `manifold.db` with mode 0600, refuses a `data_dir` inside `CONTAINER_WIKI_ROOT`, sets `journal_mode` from `MANIFOLD_STORE_JOURNAL_MODE` (default `wal`; `delete` is the D2 fallback), `synchronous=FULL`, `busy_timeout`, `foreign_keys=ON`, and applies numbered `.sql` migrations using `PRAGMA user_version` (refuses a database newer than the code). `0001_initial.sql` creates tables `settings`, `principals`, `credentials`, `roles`, `grants`, `denies`, `component_state`, `usage`, `audit`. Stdlib only. Add `.manifold-data/` to `.gitignore`.
 **Source:** [INT-1 Constraints: No new service needed][i1-c]; [INT-1 Constraints: Secrets stay out of the wiki][i1-c].
 **Acceptance:** `pytest tests/test_security_store.py` passes: modes 0700/0600, migration from empty and from version 0, refusal inside the wiki root and of a newer version, and no import beyond the standard library.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 3 — Add the credential module
+> **Note (CP1):** Added `server/manifold_security/tokens.py` (`issue_credential`, `verify`, `revoke_credential`; `mf_<id>_<secret>`, sha256 only, id is hex so parsing is unambiguous) and `now_iso` in `store.py`. `cd server && ../.venv/bin/python -m pytest -q tests/test_tokens.py tests/test_security_store.py`: 35 passed (includes DB-file and WAL bytes not containing the secret, repr hiding it).
+
 **Files:** `server/manifold_security/tokens.py`, `server/tests/test_tokens.py`
 **Action:** CREATE
 **Change:** `issue_credential()` returns `mf_<credential_id>_<secret>` (secret from `secrets.token_urlsafe(32)`), stores only `sha256(secret)` plus `credential_id`, `principal_id`, `expires_at` (optional; none by default, set per credential, D9), `revoked_at`, `label`. `verify(presented)` looks up by id, compares with `hmac.compare_digest`, and returns one of valid, unknown, expired, revoked. The secret is returned once and never stored, logged or exported.
 **Source:** [INT-1 S1][i1-s1] (never show in full after first issue); [INT-1 Constraints: Secrets stay out of the wiki][i1-c].
 **Acceptance:** `pytest tests/test_tokens.py` passes, including a test that the database file bytes do not contain the secret and that `repr()` of a credential record hides it.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 4 — Add the settings registry
+> **Note (CP1):** Added `server/manifold_security/settings.py` (11 settings with defaults/bounds, no off switch, `base_delay <= max_delay` check). `cd server && ../.venv/bin/python -m pytest -q tests/test_settings.py`: 22 passed.
+
 **Files:** `server/manifold_security/settings.py`, `server/tests/test_settings.py`
 **Action:** CREATE
 **Change:** One table of known settings with type, bounds and default, read from the `settings` table: `agent_registrations_per_day=5`, `agent_archives_per_day=1`, `purge_hold_days=14`, `throttle_failure_threshold=5`, `throttle_window_seconds=600`, `throttle_base_delay_seconds=1`, `throttle_max_delay_seconds=900`, `allowed_hosts`, `allowed_origins`, `trusted_proxies` (empty), `tls=off|on`. There is no setting that turns authentication off. Unknown keys and out-of-range values are refused with a message naming the allowed range.
 **Source:** [INT-1 Constraints: Limits are settings, with defaults][i1-c]; D4.
 **Acceptance:** `pytest tests/test_settings.py` passes: defaults as listed, override, out-of-range refusal.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 5 — Add principals, roles, grants, denies and component state
+> **Note (CP1):** Added `server/manifold_security/principals.py` (principals, roles, grants/denies, self-grant flag, authority, component_state archive/restore; every mutation in `BEGIN IMMEDIATE`). Slug rule is duplicated from `wiki_backend.config` because the package is stdlib-only; a test keeps them equal. `cd server && ../.venv/bin/python -m pytest -q tests/test_principals.py`: 17 passed (includes a separate-process read of a committed change).
+
 **Files:** `server/manifold_security/principals.py`, `server/tests/test_principals.py`
 **Action:** CREATE
 **Change:** Functions to create, list, disable and enable principals (`kind` is `human`, `agent` or `service`; unique `name`); set and unset roles (`reader`, `contributor`, `registrar`, `admin`; refuse `admin` for `agent` and `service`); add and remove grants and denies by `scope` (a component slug or the reserved `_shared`, which no valid slug can equal); a per-principal flag `may_self_grant_on_register` (default off); per-component `authority` (`grants`, `repo-write`, `either`; default `either`); `component_state` (`active`, `archived`, reason, `archived_at`, `purge_after`). Every mutation runs in `BEGIN IMMEDIATE`, commits, and only then returns.
 **Source:** [INT-1 Outcome 1 and 2][i1-p]; [INT-1 Constraints: Administrative functions live on the host only][i1-c] (agents never admin); [INT-1 S1][i1-s1]; [INT-1 S14][i1-s14].
 **Acceptance:** `pytest tests/test_principals.py` passes, including: admin refused for agent and service; after a mutation returns, a second connection opened from another process-like handle sees it; `_shared` is rejected as a component slug.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 6 — Add the authentication audit
+> **Note (CP1):** Added `server/manifold_security/audit.py` (`record`, `record_failed_signin`, `show` with since/principal/event filters; credential-like text is redacted). `cd server && ../.venv/bin/python -m pytest -q tests/test_audit.py`: 6 passed.
+
 **Files:** `server/manifold_security/audit.py`, `server/tests/test_audit.py`
 **Action:** CREATE
 **Change:** `record(event, actor, subject, detail)` writes an `audit` row synchronously for: credential issued, rotated or revoked; role, grant, deny or setting changes; refusals by the authorizer; failed sign-ins (address and a generic reason, never the presented credential); component lifecycle operations; startup notices. `actor` is the principal or `host:<os user>` for the CLI. A filter function serves `audit show`.
 **Source:** [INT-1 S4][i1-s4] (refusals recorded, guess never written); [INT-1 S3][i1-s3]; [INT-1 Constraints: Secrets stay out of the wiki][i1-c].
 **Acceptance:** `pytest tests/test_audit.py` passes, including a test that a presented credential string never appears in any audit row.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 7 — Add the authorizer
+> **Note (CP1):** Added `server/manifold_security/authorizer.py` (capability set, role matrix, deny before grant, `RepoAuthority` default 'not available', authority honoured, refusals audited, no cache). Interpretation recorded: `read` ignores denies (no per-component read limits in v1); registrar capabilities need the role only. `cd server && ../.venv/bin/python -m pytest -q tests/test_authorizer.py`: 20 passed. Full CP1 gate: `cd server && ../.venv/bin/python -m pytest -q`: 499 passed (399 baseline + 100 new); `.venv/bin/python -m pytest bundles/base/tests -q`: 148 passed, 1 skipped; `.venv/bin/python tools/vendor_web.py --check`: passed.
+
 **Files:** `server/manifold_security/authorizer.py`, `server/tests/test_authorizer.py`
 **Action:** CREATE
 **Change:** `authorize(principal, capability, scope)` evaluates in this order and returns `allow(via)` or `refuse(reason_code)`: (1) principal active and credential valid; (2) a role grants the capability (contributor implies reader; registrar and admin imply nothing; admin holds no data capability); (3) a deny for (principal, scope) refuses; (4) a grant allows with `via=grant`; (5) a `RepoAuthority` interface, whose default implementation answers "not available", is asked only when the component's `authority` allows it; (6) refuse. Define the capability set: `read`, `write`, `handoff.create`, `handoff.confirm`, `handoff.reject`, `handoff.close` (all on the source component), `handoff.claim`, `handoff.request_review` (target), `component.register`, `component.update`, `component.protected_update` (human registrar only), `component.archive`, `component.restore`, `ingest`. Reads state from the database on every call; no cache.
 **Source:** [INT-1 Outcome 2][i1-p]; [INT-1 S2][i1-s2]; [INT-1 S9][i1-s9]; [INT-1 S12][i1-s12]; [INT-1 S15][i1-s15]; [INT-1 Constraints: Revocation inside Manifold is immediate and durable][i1-c].
 **Acceptance:** `pytest tests/test_authorizer.py` passes: a deny beats a grant; a grant for the wrong component is refused; an admin-only principal is refused every data capability; the repo arm never allows; a revocation committed by one connection is seen by the next call.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
