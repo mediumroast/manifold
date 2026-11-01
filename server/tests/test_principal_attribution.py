@@ -68,7 +68,7 @@ def test_every_commit_of_a_registration_names_the_registrar(tool_world):
 
 def test_an_ingest_commit_names_the_principal(tool_world):
     tool_world.who("ann", roles=["contributor"], grants=["acme-api"])
-    response = TestClient(tool_world.server.asgi_app).post(
+    response = TestClient(tool_world.server.asgi_app, base_url="http://127.0.0.1:8686").post(
         "/ingest", json={"component": "acme-api", "content": "# d\n"},
         headers={"Authorization": "Bearer " + tool_world.tokens["ann"]})
     assert response.status_code == 200

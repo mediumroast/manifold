@@ -81,7 +81,7 @@ def test_an_archived_component_refuses_writes_handoffs_log_and_ingest_and_restor
     reverse = {**HANDOFF, "source": "acme-web", "target": "acme-api"}
     assert world.call("ann", "wiki_handoff_tool", **reverse)["reason"] == "archived"  # as target
     assert world.call("ann", "wiki_log_append_tool", action="a", message="m", component="acme-api")["reason"] == "archived"
-    ingest = TestClient(world.server.asgi_app).post(
+    ingest = TestClient(world.server.asgi_app, base_url="http://127.0.0.1:8686").post(
         "/ingest", json={"component": "acme-api", "content": "# d\n"},
         headers={"Authorization": "Bearer " + world.tokens["ann"]})
     assert ingest.status_code == 403 and "archived" in ingest.json()["message"]

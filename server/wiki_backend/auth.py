@@ -24,7 +24,6 @@ secret that was revoked or has expired (or whose principal was disabled) is told
 
 import base64
 import binascii
-import ipaddress
 import os
 import re
 import threading
@@ -32,9 +31,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
-from manifold_security import principals, tokens
+from manifold_security import audit, principals, tokens
 from manifold_security.context import SCOPE_KEY, Caller, current_caller_var
+from manifold_security.startup import is_loopback  # noqa: F401  (re-exported: the one definition lives with the startup rules)
 from manifold_security.store import StoreError, open_store
+from manifold_security.throttle import Throttle, client_address
 
 OPEN_PATHS = ("/health",)
 DEFAULT_DATA_DIR = "/data"
@@ -45,15 +46,7 @@ FORBIDDEN_BODY = b'{"status":"error","message":"this session belongs to another 
 UNAVAILABLE_BODY = b'{"status":"error","message":"the security store is unavailable"}'
 
 
-def is_loopback(host: str) -> bool:
-    """True for ``localhost`` and loopback addresses; anything else is reachable from elsewhere."""
-    host = (host or "").strip().strip("[]")
-    if host.lower() == "localhost":
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
+THROTTLED_BODY = b'{"status":"error","message":"too many failed attempts; try again later"}'
 
 
 def data_dir_from_env() -> Path:
@@ -142,6 +135,12 @@ class StoreAccess:
         with self._lock:
             return fn(self._connection())
 
+    def close(self) -> None:
+        with self._lock:
+            if self._conn is not None:
+                self._conn.close()
+                self._conn = None
+
     def principal_count(self) -> int:
         with self._lock:
             return principals.count_principals(self._connection())
@@ -171,11 +170,33 @@ _CHALLENGES: List[Tuple[bytes, bytes]] = [
 class PrincipalAuthMiddleware:
     """Pure ASGI middleware (it does not buffer, so streaming and SSE responses are unaffected)."""
 
-    def __init__(self, app, store: Optional[StoreAccess] = None, open_paths: Iterable[str] = OPEN_PATHS):
+    def __init__(self, app, store: Optional[StoreAccess] = None, open_paths: Iterable[str] = OPEN_PATHS,
+                 throttle: Optional[Throttle] = None, trusted_proxies=None):
         self.app = app
         self.store = store or StoreAccess()
         self.open_paths = tuple(open_paths)
+        self.throttle = throttle
+        self._trusted_proxies = trusted_proxies or (lambda: [])
         self._sessions = {}  # SSE session id -> id of the principal that opened the stream
+
+    def _address(self, scope) -> str:
+        peer = (scope.get("client") or (None,))[0]
+        forwarded = None
+        for name, value in scope.get("headers", []):
+            if name == b"x-forwarded-for":
+                forwarded = value.decode("latin-1")
+        try:
+            proxies = self._trusted_proxies()
+        except Exception:
+            proxies = []
+        return client_address(peer, forwarded, proxies)
+
+    def _audit(self, event: str, address: str) -> None:
+        """Record a refused sign-in with the address and a generic reason; never the credential."""
+        try:
+            self.store.use(lambda conn: audit.record(conn, event, "anonymous", address, audit.GENERIC_FAILURE))
+        except Exception:
+            pass  # the refusal stands even if the audit cannot be written
 
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
@@ -184,6 +205,17 @@ class PrincipalAuthMiddleware:
         header = _authorization(scope)
         presented = _presented_secret(header) if header else None
         is_open = scope.get("path") in self.open_paths
+        address = self._address(scope)
+        if self.throttle is not None:
+            wait = self.throttle.retry_after(address)
+            if wait:
+                # A delay is running: the credential is not looked at, so the delay cannot be used to test guesses.
+                self._audit(audit.SIGNIN_THROTTLED, address)
+                if is_open:
+                    await self.app(scope, receive, send)  # /health stays reachable, anonymous
+                else:
+                    await self._refuse(scope, send, 429, THROTTLED_BODY, retry_after=wait)
+                return
         try:
             outcome = self.store.authenticate(presented)
         except StoreError:
@@ -192,6 +224,12 @@ class PrincipalAuthMiddleware:
                 return
             await self._refuse(scope, send, 503, UNAVAILABLE_BODY)
             return
+        if header is not None and self.throttle is not None:
+            if outcome.caller is None:
+                self.throttle.record_failure(address)
+                self._audit(audit.SIGNIN_FAILED, address)
+            else:
+                self.throttle.record_success(address)
         if outcome.caller is not None:
             scope[SCOPE_KEY] = outcome.caller
             if scope["type"] == "http" and scope.get("method") == "POST" and scope.get("path", "").startswith("/messages"):
@@ -233,12 +271,14 @@ class PrincipalAuthMiddleware:
                 self._sessions.pop(session_id, None)
 
     @staticmethod
-    async def _refuse(scope, send, status, body):
+    async def _refuse(scope, send, status, body, retry_after=None):
         if scope["type"] == "websocket":
             await send({"type": "websocket.close", "code": 1008})
             return
         headers = [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]
         if status == 401:
             headers += _CHALLENGES
+        if retry_after:
+            headers.append((b"retry-after", str(retry_after).encode()))
         await send({"type": "http.response.start", "status": status, "headers": headers})
         await send({"type": "http.response.body", "body": body})

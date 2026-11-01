@@ -115,7 +115,7 @@ def test_the_wiki_browser_needs_the_read_capability(tool_world, wiki_root, monke
     (wiki_root / "wiki" / "index.md").write_text("# hi\n")
     tool_world.who("root", "human", roles=["admin"])
     tool_world.who("rita", "human", roles=["reader"])
-    client = TestClient(server.asgi_app)
+    client = TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")
     admin = client.get("/docs/log.md", headers={"Authorization": "Bearer " + tool_world.tokens["root"]})
     reader = client.get("/docs/log.md", headers={"Authorization": "Bearer " + tool_world.tokens["rita"]})
     assert admin.status_code == 403

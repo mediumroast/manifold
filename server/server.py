@@ -39,7 +39,10 @@ from wiki_backend.auth import PrincipalAuthMiddleware, StoreAccess
 from wiki_backend.guard import Guard, Refused, RoutePolicyMiddleware
 from manifold_security import audit, authorizer, limits, principals, scopes, settings as security_settings
 from manifold_security.context import caller_from_scope, current_caller_var
+from manifold_security.request_guard import RequestGuardMiddleware
+from manifold_security.startup import StartupError, check_startup
 from manifold_security.store import StoreError
+from manifold_security.throttle import Throttle
 from wiki_backend.bundles import wiki_bundle_info
 from wiki_backend.ingest import (
     wiki_ingest_doc, classify_doc_type, read_body_capped, max_ingest_bytes, BodyTooLarge,
@@ -944,13 +947,51 @@ _http_app = app.http_app(transport="http")  # /mcp  – Streamable HTTP
 _sse_app = app.http_app(transport="sse")    # /sse + /messages/ – SSE
 
 
-def _check_auth_settings() -> None:
-    """Open the security store (raises StoreError with the fix if it cannot be); warn when no principal exists."""
+def _guard_settings():
+    """The extra Host and Origin values to accept, read from the store on every request."""
+    return _store_access.use(lambda conn: (security_settings.get(conn, "allowed_hosts"),
+                                           security_settings.get(conn, "allowed_origins")))
+
+
+def _trusted_proxies():
+    return _store_access.use(lambda conn: security_settings.get(conn, "trusted_proxies"))
+
+
+def _throttle_limits():
+    keys = ("throttle_failure_threshold", "throttle_window_seconds",
+            "throttle_base_delay_seconds", "throttle_max_delay_seconds")
+    return _store_access.use(lambda conn: tuple(security_settings.get(conn, key) for key in keys))
+
+
+_throttle = Throttle(_throttle_limits)
+
+
+def _check_auth_settings(record: bool = True) -> None:
+    """
+    Apply the startup rules (``manifold_security.startup``): open the security store (a store that cannot
+    be opened raises StoreError, a start that must not happen raises StartupError), warn when no principal
+    exists or a legacy token variable is set, and write each notice to the audit.
+    """
     import logging
-    if _store_access.principal_count() == 0:
-        logging.getLogger(__name__).warning(
-            "No principals exist: every request is refused until the first administrator is created "
-            "(run ./manifold init).")
+    report = _store_access.use(lambda conn: check_startup(
+        conn, os.getenv("MANIFOLD_HOST") or None, os.environ, record=record))
+    for notice in report.notices:
+        logging.getLogger(__name__).warning(notice)
+
+
+def _preflight() -> None:
+    """
+    Fail fast, with a clean message, before uvicorn starts: apply the startup rules on a connection that
+    is closed again at once.  (Leaving this process's own ``_store_access`` connection open here made the
+    running server read a stale snapshot of the store after another process changed it; see the T27 note.)
+    """
+    probe = StoreAccess()
+    try:
+        report = probe.use(lambda conn: check_startup(conn, os.getenv("MANIFOLD_HOST") or None, os.environ,
+                                                      record=False))
+    finally:
+        probe.close()
+    del report
 
 
 @asynccontextmanager
@@ -1010,7 +1051,10 @@ async def _redirect_root(request: Request) -> RedirectResponse:
 
 asgi_app = Starlette(
     routes=[Route("/", _redirect_root)] + list(_http_app.routes) + _extra_sse_routes + _docs_routes,
-    middleware=[Middleware(RequestContextMiddleware), Middleware(PrincipalAuthMiddleware, store=_store_access),
+    middleware=[Middleware(RequestContextMiddleware),
+                Middleware(RequestGuardMiddleware, settings=_guard_settings, port=int(os.getenv("PORT", "8686"))),
+                Middleware(PrincipalAuthMiddleware, store=_store_access, throttle=_throttle,
+                           trusted_proxies=_trusted_proxies),
                 Middleware(RoutePolicyMiddleware, store=_store_access)],
     lifespan=_combined_lifespan,
 )
@@ -1021,8 +1065,8 @@ if __name__ == "__main__":
     # Loopback unless MANIFOLD_HOST says otherwise; reload only when asked for (development).
     host = os.getenv("MANIFOLD_HOST", "127.0.0.1")
     try:
-        _check_auth_settings()
-    except StoreError as exc:
+        _preflight()  # the same rules run, and are recorded, when the server starts
+    except (StoreError, StartupError) as exc:
         raise SystemExit("error: %s" % exc)
     reload = os.getenv("MANIFOLD_RELOAD", "").lower() in ("1", "true", "yes")
     uvicorn.run("server:asgi_app", host=host, port=port, reload=reload)

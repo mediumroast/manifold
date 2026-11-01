@@ -66,6 +66,15 @@ def wiki_root(tmp_path: Path) -> Path:
     return tmp_path
 
 
+@pytest.fixture(autouse=True)
+def _fresh_throttle():
+    """The server module keeps one in-memory sign-in throttle; start every test with it empty."""
+    module = sys.modules.get("server")
+    if module is not None and hasattr(module, "_throttle"):
+        module._throttle._state.clear()
+    yield
+
+
 class AuthWorld:
     """A security store holding two principals with a credential each (generated, never real)."""
 
@@ -173,6 +182,32 @@ def tool_world(tmp_path: Path, wiki_root: Path, monkeypatch):
     world = ToolWorld(conn, data_dir, wiki_root, server)
     yield world
     conn.close()
+
+
+class CliRunner:
+    """Runs the host command in-process against a temporary data folder (never a real one)."""
+
+    def __init__(self, data_dir: Path, wiki_root: Path):
+        self.data_dir = data_dir
+        self.wiki_root = wiki_root
+
+    def __call__(self, *args, tty=False, group="admin"):
+        import io
+        from manifold_cli.runner import main
+        out, err = io.StringIO(), io.StringIO()
+        argv = [group, "--data-dir", str(self.data_dir), "--wiki-root", str(self.wiki_root), *args]
+        code = main(argv, out=out, err=err, is_tty=tty)
+        return code, out.getvalue(), err.getvalue()
+
+    def store(self):
+        from manifold_security.store import open_store
+        return open_store(self.data_dir, wiki_root=self.wiki_root)
+
+
+@pytest.fixture()
+def cli(tmp_path: Path):
+    """A :class:`CliRunner` whose data folder is outside its wiki root (``tmp_path/wiki-root``)."""
+    return CliRunner(tmp_path / "cli-data", tmp_path / "wiki-root")
 
 
 @pytest.fixture()

@@ -27,6 +27,10 @@ SIGNIN_FAILED = "signin.failed"
 SIGNIN_THROTTLED = "signin.throttled"
 COMPONENT_LIFECYCLE = "component.lifecycle"
 STARTUP_NOTICE = "startup.notice"
+PRINCIPAL_CHANGED = "principal.changed"
+AUTHORITY_CHANGED = "authority.changed"
+STORE_EXPORTED = "store.exported"
+STORE_IMPORTED = "store.imported"
 
 GENERIC_FAILURE = "authentication failed"
 

@@ -388,93 +388,102 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 ---
 
 ### Task 19 — Add the Host and Origin guard
+> **Note (CP4):** `manifold_security/request_guard.py` (`RequestGuardMiddleware`, placed first, before authentication). Host must be `127.0.0.1`, `localhost` or `[::1]` with the served port (`PORT`, default 8686) or an `allowed_hosts` entry (an entry without a port also matches with the served port): 421, no body. POST/PUT/PATCH/DELETE with an `Origin` outside the served origins (http and https of every allowed host) and `allowed_origins`: 403, no body; no `Origin` passes. Settings are read from the store on every request, so a change applies at once. **Interpretation:** the settings only add to the defaults, so the "/health exemption for the container probe address" is implemented as: `/health` accepts a loopback name on any port (the probe may run on a mapped port) and nothing else. Existing tests that use `TestClient` now pass `base_url="http://127.0.0.1:8686"`. New `tests/test_request_guard.py`: `cd server && ../.venv/bin/python -m pytest -q tests/test_request_guard.py`: 27 passed.
 **Files:** `server/manifold_security/request_guard.py`, `server/server.py`, `server/tests/test_request_guard.py`
 **Action:** CREATE / MODIFY
 **Change:** Add middleware, placed before authentication, that refuses (421 or 403, no detail) any request whose `Host` is not in `allowed_hosts` (default `127.0.0.1`, `localhost`, `[::1]` with the served port, plus the configured public host) and any request using POST, PUT, PATCH or DELETE that carries an `Origin` not in `allowed_origins` (default: the served origins). Requests with no `Origin` (MCP clients, scripts) pass this check. `/health` is exempt from the Host check only for the container health probe address.
 **Source:** [INT-1 S5][i1-s5]; [INT-1 Constraints: Standards, not inventions][i1-c].
 **Acceptance:** `pytest tests/test_request_guard.py` passes: wrong Host refused; foreign Origin on POST refused; documented address and origin accepted; no-Origin POST accepted.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 20 — Add the per-address throttle
+> **Note (CP4):** `manifold_security/throttle.py` (`Throttle`, `client_address`), used by `PrincipalAuthMiddleware`. After `throttle_failure_threshold` failures in `throttle_window_seconds` the address gets 429 with `Retry-After`; each failure after a delay ends doubles the next delay from `throttle_base_delay_seconds` up to `throttle_max_delay_seconds`; while a delay runs the credential is not checked; a whole quiet window, or a success, resets the address; a credential is never locked; other addresses are unaffected. Failures (a header was presented and did not authenticate) are audited as `signin.failed` and refusals as `signin.throttled`, both with the address and a generic reason. The address is the socket peer, or the last `X-Forwarded-For` entry only when the peer is in `trusted_proxies`. **Interpretations:** a request with no `Authorization` header is not counted (a browser's first request); `/health` stays reachable during a delay (anonymous) but a bad credential presented there counts, so it cannot be used to test guesses. The server keeps one in-memory throttle; `conftest.py` clears it before each test. New `tests/test_throttle.py`: 13 passed.
 **Files:** `server/manifold_security/throttle.py`, `server/server.py`, `server/tests/test_throttle.py`
 **Action:** CREATE / MODIFY
 **Change:** Count failed authentications per client address in memory. After `throttle_failure_threshold` failures within `throttle_window_seconds`, answer 429 with `Retry-After`, doubling the delay from `throttle_base_delay_seconds` up to `throttle_max_delay_seconds`, and do not check the credential while the delay runs. Never lock a credential. The client address is the socket peer, or the last `X-Forwarded-For` entry only when the peer is in `trusted_proxies` (the Caddy service, T29). Audit each refusal with the address.
 **Source:** [INT-1 S4][i1-s4]; [INT-1 Open questions][i1-oq] (lockout answer: per-address growing delay, never lock a credential, trust the forwarded address only from the Caddy service).
 **Acceptance:** `pytest tests/test_throttle.py` passes: delay grows and resets after quiet; a correct credential from another address works during it; a spoofed `X-Forwarded-For` from an untrusted peer is ignored; the credential is never in the audit.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 21 — Add the startup rules and the legacy-token notice
+> **Note (CP4):** `manifold_security/startup.py` (`check_startup`, `StartupError`, `is_loopback`), applied when the server starts (`server._check_auth_settings`, from the lifespan, so also under `uvicorn server:asgi_app`) and, to fail fast, before uvicorn in `python server.py`. A `MANIFOLD_HOST` that is not loopback with no principal refuses to start, naming `./manifold init`; an empty store on any address warns and the server refuses every request (D1); `MANIFOLD_TOKEN`/`MANIFOLD_TOKEN_FILE` set: a notice that they are no longer accepted, naming `./manifold init`; notices are written to the audit. Tests assert no setting, environment variable or flag turns authentication off (a pattern check over `settings.SPECS` and every `MANIFOLD_*` name in the server). New `tests/test_offline_clean.py` (an AST scan of every server module for HTTP client imports; `manifold_cli` is not scanned). `cd server && ../.venv/bin/python -m pytest -q tests/test_startup.py tests/test_offline_clean.py`: 57 passed. **Interpretation / limit:** under `uvicorn server:asgi_app --host 0.0.0.0` the bind address is not known to the app, so the non-loopback refusal applies only when `MANIFOLD_HOST` is set (as `svc_ctl.sh`/compose do); the empty-store warning and the refusal of every request apply always. **Finding (see T27):** `python server.py` must not leave a database connection open before uvicorn starts, so the pre-check uses a throwaway connection (`_preflight`).
 **Files:** `server/manifold_security/startup.py`, `server/server.py`, `server/tests/test_startup.py`, `server/tests/test_offline_clean.py`
 **Action:** CREATE / MODIFY
 **Change:** At startup (including under `uvicorn server:asgi_app`): open the store, run migrations, and apply these rules. A non-loopback `MANIFOLD_HOST` with no principals refuses to start with a message naming `./manifold init`. With no principals on any address, including loopback, the server starts with a visible warning and refuses every request with the same message (D1); it is never served openly. There is no setting, flag or environment variable that turns authentication off, on any address (D15); a test fails if one is added. If `MANIFOLD_TOKEN` or `MANIFOLD_TOKEN_FILE` is set, log that it is no longer accepted and name the host command that creates the first administrator. Add `test_offline_clean.py`, which fails if any server module imports an HTTP client library.
 **Source:** [INT-1 S6][i1-s6]; D1, D15; [INT-1 S8][i1-s8]; [INT-1 S13][i1-s13]; [INT-1 Constraints: Safe by default][i1-c]; [INT-1 Constraints: Offline-clean][i1-c]; [INT-1 Constraints: A complete local mode][i1-c].
 **Acceptance:** `pytest tests/test_startup.py tests/test_offline_clean.py` passes: each rule has a case, including that an empty start refuses every request and that no off switch exists; the old token is not accepted and the message names the command.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 22 — Add the host command skeleton and runner
+> **Note (CP4):** `manifold` (repo-root launcher: checks Python 3.11+, prints the fix, runs `python -m manifold_cli` with `server/` on `PYTHONPATH`; **deviation:** it does not change the working folder, so a relative `--secret-file` means what the person typed), `server/manifold_cli/{__init__,__main__,runner,admin,purge}.py`. `admin [--env NAME | --data-dir PATH] [--wiki-root PATH] <group> <verb>`: `--env` hands the command to `./svc_ctl.sh NAME admin ...` (its `admin` route is T29); `--data-dir`, or `MANIFOLD_DATA_DIR` (how it finds the volume inside the container), opens the store directly. Exit codes: 0 ok, 1 refused or failed (one `error:` line on stderr), 2 usage. `init` exists as a command that says it is not available yet (T31). **Interpretation:** the test uses a fake `svc_ctl.sh` instead of a fake `docker`, because the `svc_ctl.sh admin` route that calls docker does not exist until T29 (T30 exercises it for real). New `tests/test_cli_runner.py`: 13 passed (includes a `python -S` import of the package proving it needs no third-party module).
 **Files:** `manifold`, `server/manifold_cli/__main__.py`, `server/manifold_cli/runner.py`, `server/tests/test_cli_runner.py`
 **Action:** CREATE
 **Change:** `manifold` is a Python launcher (checks Python 3.11 or newer and prints the fix if not) that runs `python -m manifold_cli` from `server/`; stdlib only. Subcommands are `init` and `admin <group> <verb>`. The runner picks where `admin` runs: with `--env <name>` and a Docker environment file (the default for Docker deployments), through `./svc_ctl.sh <name> admin ...` (T29), which runs the CLI inside the container (`compose exec`; `compose run --rm` before the server exists, as `init` needs) so that it shares the server's file system and data volume (D2); with `--data-dir <path>`, directly, for a non-Docker run. Output never contains a stored secret; failures exit non-zero with a message that says what to fix. The `svc_ctl.sh ... admin` route is added in T29 and exercised against a real container in T30; T23 to T26 test the commands directly with `--data-dir`.
 **Source:** [INT-1 Constraints: Administrative functions live on the host only][i1-c]; [INT-1 Outcome 1][i1-p]; D2.
 **Acceptance:** `pytest tests/test_cli_runner.py` passes with a fake `docker`: runner choice, exit codes, and a check that `import manifold_cli` needs no third-party package.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 23 — Add the principal and credential commands
+> **Note (CP4):** `admin principal create|list|show|disable|enable`, `admin credential issue|rotate|revoke` (`--label`, `--expires 30d|12h|2w|date`, none by default; the secret is shown once on a terminal or written to a new `--secret-file` of mode 0600, never overwritten; with neither, the command refuses before issuing anything), `admin role set|unset`. Every action is audited with `host:<os user>`. Revoke and disable print the lever used and what still works (other credentials; nothing deleted). New `tests/test_cli_principals.py`: 12 passed (issue shows the secret once and `show`/`list`/`audit show`/the database never do; revoke affects only that credential; `role set admin` on an agent is refused).
 **Files:** `server/manifold_cli/admin.py`, `server/tests/test_cli_principals.py`
 **Action:** CREATE
 **Change:** `admin principal create|list|show|disable|enable`; `admin credential issue|rotate|revoke` (`--expires` optional; no expiry by default, D9; shows the secret once on a TTY or to a `--secret-file` created 0600, never to a log); `admin role set|unset`. Every action records `host:<os user>` in the audit. Revoke and disable print which lever was used.
 **Source:** [INT-1 S1][i1-s1]; [INT-1 S14][i1-s14]; [INT-1 Outcome 1][i1-p].
 **Acceptance:** `pytest tests/test_cli_principals.py` passes: issue shows the secret once and `show` never does; revoke affects only that credential; `role set admin` on an agent is refused.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 24 — Add the grant, deny, authority and settings commands
+> **Note (CP4):** `admin grant|deny add|remove`, `admin authority set <component> grants|repo-write|either`, `admin settings list|get|set|unset`, `admin registrar-flag set <principal> --self-grant on|off`. `grant remove` lists the routes that remain (read through the reader/contributor roles; the repository arm when the authority allows it, which gives nothing in this version; no grant left) and advises `deny add` or `principal disable`. Out-of-range settings are refused with the range. New `tests/test_cli_grants.py`: 15 passed.
 **Files:** `server/manifold_cli/admin.py`, `server/tests/test_cli_grants.py`
 **Action:** MODIFY / CREATE
 **Change:** `admin grant add|remove`, `admin deny add|remove` (scope is a slug or `_shared`), `admin authority set <component> grants|repo-write|either`, `admin settings list|get|set`, and `admin registrar-flag set <principal> --self-grant on|off`. `grant remove` says whether other routes (a role, another grant) still give access, and advises `deny add` or `disable` to end it.
 **Source:** [INT-1 S2][i1-s2]; [INT-1 S14][i1-s14] (never leave access in place without saying so); [INT-1 S12][i1-s12]; [INT-1 Constraints: Limits are settings, with defaults][i1-c].
 **Acceptance:** `pytest tests/test_cli_grants.py` passes: out-of-range settings are refused with the range; grant removal output names remaining routes.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 25 — Add the audit, export and import commands
+> **Note (CP4):** `manifold_security/export.py` (`export_store`, `validate`, `import_store`), `admin audit show [--since --principal --event --limit]`, `admin export [--with-hashes] FILE` (new file, mode 0600; principals with roles, grants, denies, active flag and ids; component authority; settings; credential hashes only with the flag, never secrets), `admin import FILE [--dry-run] [--merge|--replace]` (validated whole, applied in one transaction; a store that already has principals needs `--merge` or `--replace`; `--dry-run` rolls back and reports counts). Interpretation: merge matches principals by name and unions roles/grants/denies; replace clears principals, credentials, settings and resets authority. New `tests/test_cli_export.py`: 15 passed (export then import into an empty store reproduces the snapshot; default export has no hash or secret; hashed export lets an existing credential verify after import).
 **Files:** `server/manifold_security/export.py`, `server/manifold_cli/admin.py`, `server/tests/test_cli_export.py`
 **Action:** CREATE / MODIFY
 **Change:** `admin audit show [--since --principal --event]`; `admin export [--with-hashes] FILE` writes a versioned JSON of principals, roles, grants, denies, component authority and settings (no credentials; hashes only with the flag); `admin import FILE [--dry-run] [--merge|--replace]` validates the version and refuses to overwrite without a flag.
 **Source:** [INT-1 Constraints: One portable store][i1-c]; [INT-1 S9][i1-s9] (audit read by admin).
 **Acceptance:** `pytest tests/test_cli_export.py` passes: export then import into an empty store reproduces roles and grants; the default export contains no hash and no secret.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 26 — Add the registry purge command
+> **Note (CP4):** `admin registry purge <slug> --confirm-slug <slug>` (`manifold_cli/purge.py`): refuses unless archived, the hold has passed, no open handoff involves the component and the slug is typed exactly (without it, it prints what it would remove and changes nothing). `remove_component_files` is the one replaceable file-removal function (page, agent guide, `raw/<slug>/`). Also removes the registry entry (`config.remove_component`), sidebar links and index row (`register.remove_from_sidebar/_index`), resyncs the schema slug list, deletes the component's grants, denies and state row, audits, and makes one commit authored `host:<os user>` with trailer `Manifold-Principal: host-<user> (host)`. Completed handoff pages stay (D11). **Interpretation:** grants and denies on the purged slug are deleted so that registering the same name later cannot revive old access. The command is not offered over MCP (a test checks the tool names). New `tests/test_cli_purge.py`: 13 passed (valid purge leaves a clean `git status` and exactly one new commit).
 **Files:** `server/manifold_cli/purge.py`, `server/wiki_backend/config.py`, `server/wiki_backend/register.py`, `server/tests/test_cli_purge.py`
 **Action:** CREATE / MODIFY
 **Change:** `registry purge <slug> --confirm-slug <slug>`: refuses unless the component is archived and `purge_after` has passed (`purge_hold_days`, default 14), re-checks for open handoffs, prints what it will remove, and requires the slug typed exactly. It removes the component page, `raw/<slug>/`, the agent guide, the sidebar entry and the registry entry (add `remove_from_config` and a sidebar remover beside their adders), then makes one git commit authored `host:<os user>`. Completed handoff pages are kept as history (D11); git history keeps everything else. Put file removal behind one function (`remove_component_files`) so INT-14 can add a GitHub implementation. Not available over MCP.
 **Source:** [INT-1 S11][i1-s11]; [INT-1 Constraints: Deleting a component takes deliberate steps][i1-c]; [INT-1 Open questions][i1-oq] (INT-14 handoff).
 **Acceptance:** `pytest tests/test_cli_purge.py` passes: purge before the hold, without archive, with an open handoff, or with a mistyped slug is refused with no change; a valid purge leaves a clean `git status` and one commit.
 **Rollback:** the purge is one git commit; `git revert <sha>` in the instance restores the files; the database row is re-created by restoring the component.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 27 — Add the cross-process revocation test
+> **Note (CP4):** `tests/test_revocation_smoke.py` (new `ServerProcess` in `tests/realserver.py`: real `python server.py` on a temporary instance and data folder, restartable; principals and credentials are made with `./manifold admin` in separate processes). Four scenarios, each checked on the very next request with no restart and again after a restart: revoke one of two credentials; a deny (writes refused, reads not); a disabled principal (then enabled again); a role removed. `cd server && ../.venv/bin/python -m pytest -q tests/test_revocation_smoke.py`: 4 passed. **Finding:** the first version of this test failed. With `python server.py`, the server kept answering as if a credential were still valid after another process revoked it (the database showed it revoked). Cause narrowed, not fully explained: `__main__` ran the startup check on the server's own long-lived connection before uvicorn imported the app a second time; with that early idle connection open, the serving connection read a stale snapshot under WAL. The same flow under `uvicorn server:asgi_app`, with `MANIFOLD_STORE_JOURNAL_MODE=delete`, or with the check on a throwaway connection, was correct. Fix: `server._preflight()` uses a connection that is closed at once (`StoreAccess.close`). The test runs the real `python server.py` path and guards this. **Risk to keep in mind (T30/T36):** any extra long-lived connection to the store inside the server process might do the same; the server uses a single shared connection.
 **Files:** `server/tests/test_revocation_smoke.py`
 **Action:** CREATE
 **Change:** Following `test_server_smoke.py`, start the real server on a temporary instance and data folder, issue two credentials through the CLI in a separate process, confirm both work, revoke one, confirm its next request is refused and the other still works, restart the server, and confirm the revoked one is still refused. Repeat for a deny and a disabled principal.
 **Source:** [INT-1 S14][i1-s14]; [INT-1 S1][i1-s1]; [INT-1 Constraints: Revocation inside Manifold is immediate and durable][i1-c].
 **Acceptance:** `pytest tests/test_revocation_smoke.py` passes; the test needs no restart between revoke and the refused request.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 

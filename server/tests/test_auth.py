@@ -66,7 +66,7 @@ def _client(monkeypatch, root):
     from starlette.testclient import TestClient
     import server
     monkeypatch.setattr(server, "WIKI_ROOT", root)
-    return TestClient(server.asgi_app)
+    return TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")  # an address the Host guard accepts
 
 
 @pytest.mark.parametrize("method,path", [

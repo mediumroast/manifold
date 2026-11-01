@@ -68,6 +68,38 @@ def wiki_update_component(wiki_root: Path, slug: str, description: Optional[str]
     return {"status": "updated", "name": slug, "changed": changed}
 
 
+def remove_from_sidebar(wiki_root: Path, slug: str) -> Optional[Path]:
+    """
+    Remove a component's links (its page and its agent guide) from wiki/_sidebar.md.
+
+    The counterpart of the sidebar adders, used by the purge; it does not commit (the caller makes
+    one commit for the whole purge).  Handoff entries stay: they are history.  Returns the path if it changed.
+    """
+    sidebar = wiki_root / "wiki" / "_sidebar.md"
+    if not sidebar.exists():
+        return None
+    lines = sidebar.read_text(encoding="utf-8").splitlines(keepends=True)
+    markers = ("(/components/%s.md)" % slug, "(/guides/agents/%s.md)" % slug)
+    kept = [line for line in lines if not any(m in line for m in markers)]
+    if kept == lines:
+        return None
+    sidebar.write_text("".join(kept), encoding="utf-8")
+    return sidebar
+
+
+def remove_from_index(wiki_root: Path, slug: str) -> Optional[Path]:
+    """Remove a component's row from the Components table in wiki/index.md (no commit). Returns the path if it changed."""
+    index = wiki_root / "wiki" / "index.md"
+    if not index.exists():
+        return None
+    lines = index.read_text(encoding="utf-8").splitlines(keepends=True)
+    kept = [line for line in lines if not line.startswith("| %s |" % slug)]
+    if kept == lines:
+        return None
+    index.write_text("".join(kept), encoding="utf-8")
+    return index
+
+
 def _title(slug: str) -> str:
     """Title-case a slug: 'acme-api' → 'Acme Api'."""
     return slug.replace("-", " ").replace("_", " ").title()

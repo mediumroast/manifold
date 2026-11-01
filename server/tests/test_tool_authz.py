@@ -103,7 +103,7 @@ def test_the_agent_catalog_needs_a_write_grant_on_the_component(tool_world):
 # ── POST /ingest ─────────────────────────────────────────────────────────────
 
 def ingest(world, who, component, content="# doc\n"):
-    client = TestClient(world.server.asgi_app)
+    client = TestClient(world.server.asgi_app, base_url="http://127.0.0.1:8686")
     return client.post("/ingest", json={"component": component, "content": content},
                        headers={"Authorization": "Bearer " + world.tokens[who]})
 
