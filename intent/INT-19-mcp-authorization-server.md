@@ -3,10 +3,10 @@ id: INT-19
 title: Manifold as an MCP authorization server
 author: Michael Hay
 created: 2026-11-01
-status: draft
+status: accepted
 affects: [server, docs]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay 2026-11-01
 ---
 
 # Intent: Manifold as an MCP authorization server
@@ -62,5 +62,5 @@ A Manifold server can act as an authorization server for MCP clients. A client f
 
 ## Open questions
 - Which of the clients' sign-in behaviors (registration, redirect addresses) work against such a server? (answered by a spike)
-- Does this ship before or after INT-18, given that Claude Desktop may need it? (the product owner)
+- Does this ship before or after INT-18, given that Claude Desktop may need it? (the product owner) Answer: We are building in the open and will ship when the product owner believes there is enough function to warrant it. That may be after 18 or before depending on the build status.
 - Which revision of the MCP authorization guidance applies when the plan is written? (answered at planning)
