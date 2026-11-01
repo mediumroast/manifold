@@ -66,6 +66,51 @@ ROLE_CAPABILITIES = {
     "admin": frozenset(),  # administration happens on the host; admin holds no data capability
 }
 
+# --- the tool policy -------------------------------------------------------------------
+#
+# Every MCP tool (and every ``wiki_handoff_tool`` / ``wiki_component_manage_tool`` action) maps
+# to the capability it needs; a tool with no entry is refused.  A plain capability is
+# checked by the guard before the tool runs (``read``).  The others depend on the page,
+# component or handoff the call names, so the tool asks the guard for that scope itself.
+# Nothing here is administrative: credentials, roles, grants and settings are not reachable
+# over MCP or HTTP at all (they live in the host command).
+
+AUTHENTICATED = "authenticated"  # any signed-in principal, whatever its roles
+
+TOOL_POLICY = {
+    "wiki_ping_tool": AUTHENTICATED,
+    "wiki_read_tool": READ,
+    "wiki_inventory_tool": READ,
+    "wiki_freshness_tool": READ,
+    "wiki_onboarding_tool": READ,
+    "wiki_reconcile_plan_tool": READ,
+    "wiki_bundle_info_tool": READ,
+    "wiki_list_helpers_tool": READ,
+    "wiki_export_helper_tool": READ,
+    "wiki_export_component_helpers_tool": READ,
+    "wiki_write_page_tool": WRITE,
+    "wiki_log_append_tool": WRITE,
+    "wiki_agent_catalog_tool": WRITE,
+    "wiki_handoff_tool": {
+        "create": HANDOFF_CREATE,
+        "confirm": HANDOFF_CONFIRM,
+        "reject": HANDOFF_REJECT,
+        "close": HANDOFF_CLOSE,
+        "claim": HANDOFF_CLAIM,
+        "request-review": HANDOFF_REQUEST_REVIEW,
+        "list": READ,
+    },
+    "wiki_register_component_tool": COMPONENT_REGISTER,
+    "wiki_component_manage_tool": {
+        "update": COMPONENT_UPDATE,
+        "archive": COMPONENT_ARCHIVE,
+        "restore": COMPONENT_RESTORE,
+    },
+}
+
+# HTTP routes other than the MCP endpoints.  /health is open (it shows detail to a signed-in caller only).
+ROUTE_POLICY = {"/ingest": INGEST, "/docs": READ}
+
 # --- decisions ------------------------------------------------------------------------
 
 VIA_ROLE = "role"

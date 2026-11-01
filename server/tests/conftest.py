@@ -102,6 +102,79 @@ def auth_world(tmp_path: Path, monkeypatch):
     conn.close()
 
 
+class ToolWorld:
+    """
+    Calls the real MCP tools in-process as chosen principals, against a temporary wiki and store.
+
+    ``who(name, ...)`` creates a principal (with its roles, grants and denies and a generated
+    credential); ``call(name, tool, **args)`` runs the tool the way the server does, with that
+    principal as the authenticated caller.  Nothing real is touched: the wiki is the ``wiki_root``
+    fixture and the store is a temporary folder.
+    """
+
+    def __init__(self, conn, data_dir, root, server_module):
+        self.conn = conn
+        self.data_dir = data_dir
+        self.root = root
+        self.server = server_module
+        self.callers = {}
+        self.tokens = {}
+
+    def who(self, name, kind="human", roles=(), grants=(), denies=(), self_grant=False):
+        from manifold_security import principals, tokens
+        from manifold_security.context import Caller
+        principal = principals.create_principal(self.conn, name, kind)
+        for role in roles:
+            principals.set_role(self.conn, name, role)
+        for scope in grants:
+            principals.add_grant(self.conn, name, scope)
+        for scope in denies:
+            principals.add_deny(self.conn, name, scope)
+        if self_grant:
+            principals.set_may_self_grant(self.conn, name, True)
+        credential = tokens.issue_credential(self.conn, principal.id, "test")
+        self.tokens[name] = credential.token
+        self.callers[name] = Caller(principal.id, name, kind, tuple(sorted(roles)), credential.credential_id)
+        return self.callers[name]
+
+    def call(self, who, tool, **arguments):
+        import asyncio
+        from fastmcp import Client
+        from manifold_security.context import current_caller_var
+        caller = self.callers[who]
+
+        async def run():
+            token = current_caller_var.set(caller)
+            try:
+                async with Client(self.server.app) as client:
+                    result = await client.call_tool(tool, arguments, raise_on_error=False)
+                    return result.data
+            finally:
+                current_caller_var.reset(token)
+        return asyncio.run(run())
+
+    def git_log(self, fmt="%an|%b|%s", count=5):
+        return subprocess.run(["git", "log", "--format=" + fmt, "-%d" % count], cwd=self.root,
+                              capture_output=True, text=True, check=True).stdout
+
+
+@pytest.fixture()
+def tool_world(tmp_path: Path, wiki_root: Path, monkeypatch):
+    """A :class:`ToolWorld` over the ``wiki_root`` fixture (see the class)."""
+    pytest.importorskip("fastmcp")
+    from manifold_security.store import open_store
+    import server
+
+    data_dir = tmp_path.parent / (tmp_path.name + "-store")  # outside the wiki root, which is tmp_path
+    conn = open_store(data_dir, wiki_root=wiki_root)
+    monkeypatch.setenv("MANIFOLD_DATA_DIR", str(data_dir))
+    monkeypatch.setenv("CONTAINER_WIKI_ROOT", str(wiki_root))
+    monkeypatch.setattr(server, "WIKI_ROOT", wiki_root)
+    world = ToolWorld(conn, data_dir, wiki_root, server)
+    yield world
+    conn.close()
+
+
 @pytest.fixture()
 def security_conn(tmp_path: Path):
     """

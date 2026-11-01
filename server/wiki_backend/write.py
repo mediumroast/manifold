@@ -63,6 +63,43 @@ def _validate_frontmatter(path: str, content: str) -> Optional[str]:
     return " ".join(errors) if errors else None
 
 
+_REPOSITORY_LINE = re.compile(r"^\*\*Repository:\*\*.*$", re.MULTILINE)
+PROTECTED_FRONTMATTER = ("component", "owner", "repo")
+
+
+def _frontmatter_of(content: str) -> dict:
+    if not content.startswith("---"):
+        return {}
+    rest = content[3:]
+    close = rest.find("\n---")
+    if close < 0:
+        return {}
+    try:
+        data = yaml.safe_load(rest[:close]) or {}
+    except yaml.YAMLError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def protected_field_change(old_content: str, new_content: str) -> Optional[str]:
+    """
+    The name of the first protected field an edit of a component page changes, or None.
+
+    The ``component``, ``owner`` and ``repo`` frontmatter keys and the ``**Repository:**`` line map
+    the page to its component and repository; they change only through
+    ``wiki_component_manage_tool`` (a human registrar), never through a page write.  A field the
+    page did not have before may be added.
+    """
+    old_fm, new_fm = _frontmatter_of(old_content), _frontmatter_of(new_content)
+    for key in PROTECTED_FRONTMATTER:
+        if key in old_fm and old_fm.get(key) != new_fm.get(key):
+            return key
+    old_lines = _REPOSITORY_LINE.findall(old_content)
+    if old_lines and old_lines != _REPOSITORY_LINE.findall(new_content):
+        return "Repository line"
+    return None
+
+
 def wiki_write_page(wiki_root: Path, request: WikiWriteRequest) -> WikiWriteResponse:
     """
     Create or update a component page or a shared wiki page with etag-based optimistic concurrency.

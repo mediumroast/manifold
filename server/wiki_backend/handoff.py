@@ -33,6 +33,50 @@ _VALID_TYPES = {"feature", "bug", "breaking-change", "integration-spec"}
 _PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
 
+def handoff_parties(wiki_root: Path, path: str) -> tuple:
+    """
+    The ``(source_component, target_component)`` named in a handoff page's frontmatter.
+
+    Raises ``ValueError`` (with a message for the caller) if ``path`` is not a handoff page,
+    the page does not exist, or it does not name both components.
+    """
+    try:
+        kind, _ = scopes.classify(wiki_root, path)
+    except scopes.PathRefused as exc:
+        raise ValueError(str(exc))
+    if kind != scopes.HANDOFF_ONLY:
+        raise ValueError("%s is not a handoff page." % path)
+    try:
+        page = wiki_read(wiki_root, path)
+    except FileNotFoundError:
+        raise ValueError("Handoff not found: %s" % path)
+    source = page.frontmatter.get("source_component")
+    target = page.frontmatter.get("target_component")
+    if not isinstance(source, str) or not isinstance(target, str) or not source or not target:
+        raise ValueError("%s does not name its source_component and target_component." % path)
+    return source, target
+
+
+def open_handoffs_of(wiki_root: Path, slug: str) -> list:
+    """
+    Paths of the handoffs that involve ``slug`` (as source or target) and are not completed yet.
+
+    Reads every handoff page's frontmatter; a page that cannot be read is skipped.
+    """
+    found = []
+    base = wiki_root / "wiki" / "handoffs"
+    if not base.is_dir():
+        return found
+    for page in sorted(base.glob("*/*.md")):
+        try:
+            fm = _parse_frontmatter(page.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError):
+            continue
+        if slug in (fm.get("source_component"), fm.get("target_component")) and fm.get("status") != "completed":
+            found.append(str(page.relative_to(wiki_root)))
+    return found
+
+
 def _make_id(title: str) -> str:
     """Convert a title to a kebab-case slug, max 40 chars."""
     slug = title.lower()
@@ -222,7 +266,7 @@ def handoff_claim(wiki_root: Path, path: str) -> dict:
         return {
             "error": (
                 f"Handoff is already {current_status}. "
-                f"Use action='close' to complete it."
+                f"When the work is ready, use action='request-review'; the source confirms or closes it."
             )
         }
 

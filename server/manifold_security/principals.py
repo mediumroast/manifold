@@ -226,6 +226,11 @@ def get_component_state(conn: sqlite3.Connection, slug: str) -> ComponentState:
                           row["archived_at"], row["purge_after"])
 
 
+def archived_components(conn: sqlite3.Connection) -> List[str]:
+    """Slugs of the archived components."""
+    return [r["slug"] for r in conn.execute("SELECT slug FROM component_state WHERE state = 'archived' ORDER BY slug")]
+
+
 def archive_component(conn: sqlite3.Connection, slug: str, reason: str, hold_days: int) -> ComponentState:
     check_scope(slug, allow_shared=False)
     if not isinstance(reason, str) or not reason.strip():

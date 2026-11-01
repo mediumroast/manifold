@@ -315,7 +315,6 @@ def wiki_reconcile_plan(wiki_root: Path, component: str, repo: Optional[str] = N
     owner_val = discovered_owner or "<owner>"
     repo_val = repo or "<repo>"
     source_doc_paths = [d["path"] for d in docs_found]
-    doc_summary = ", ".join(source_doc_paths[:2]) + ("..." if len(source_doc_paths) > 2 else "")
 
     action_plan = [
         {
@@ -335,18 +334,6 @@ def wiki_reconcile_plan(wiki_root: Path, component: str, repo: Optional[str] = N
         },
         {
             "step": 2,
-            "action": "log_reconcile",
-            "ready": True,
-            "tool_call": (
-                f"wiki_log_append_tool(\n"
-                f"  action='reconcile-component',\n"
-                f"  component={slug!r},\n"
-                f"  message='Page reconciled from raw docs: {doc_summary}'\n"
-                f")"
-            ),
-        },
-        {
-            "step": 3,
             "action": "freshness_check",
             "ready": True,
             "tool_call": f"wiki_freshness_tool(component={slug!r})",
@@ -355,7 +342,7 @@ def wiki_reconcile_plan(wiki_root: Path, component: str, repo: Optional[str] = N
 
     if not agents_found:
         action_plan.append({
-            "step": 4,
+            "step": 3,
             "type": "mcp_tool",
             "action": "install_agent_bundle",
             "ready": True,
@@ -366,7 +353,7 @@ def wiki_reconcile_plan(wiki_root: Path, component: str, repo: Optional[str] = N
             ),
         })
         action_plan.append({
-            "step": 5,
+            "step": 4,
             "type": "mcp_tool",
             "action": "install_handoff_helpers",
             "ready": True,
@@ -374,10 +361,10 @@ def wiki_reconcile_plan(wiki_root: Path, component: str, repo: Optional[str] = N
             "note": "Returns a 'files' list; write each file's content to its output_path in the component repository.",
         })
         action_plan.append({
-            "step": 6,
+            "step": 5,
             "type": "mcp_tool",
             "action": "publish_agent_catalog",
-            "depends_on_step": 4,
+            "depends_on_step": 3,
             "ready": True,
             "tool_call": f"wiki_agent_catalog_tool(component={slug!r})",
             "note": (
@@ -538,18 +525,12 @@ def wiki_onboarding_protocol() -> dict:
             },
             {
                 "order": 4,
-                "action": "log_registration",
-                "tool": "wiki_log_append_tool",
-                "notes": "Use action='register'. Always log immediately after register.",
-            },
-            {
-                "order": 5,
                 "action": "check_freshness",
                 "tool": "wiki_freshness_tool",
                 "notes": "Resolve any stale pages before ending the session.",
             },
             {
-                "order": 6,
+                "order": 5,
                 "action": "verify_inventory",
                 "tool": "wiki_inventory_tool",
                 "notes": "Confirm the component appears in the inventory with correct metadata.",

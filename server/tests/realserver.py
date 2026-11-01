@@ -34,8 +34,8 @@ def running_server(base_dir: Path, principals_spec):
     """
     Yield ``{"base", "root", "tokens"}`` for a running server.
 
-    ``principals_spec`` is a list of ``(name, kind, roles)``; ``tokens`` maps each name to the
-    credential generated for it.
+    ``principals_spec`` is a list of ``(name, kind, roles)`` or ``(name, kind, roles, grant scopes)``;
+    ``tokens`` maps each name to the credential generated for it.
     """
     from manifold_security import principals, tokens
     from manifold_security.store import open_store
@@ -49,10 +49,12 @@ def running_server(base_dir: Path, principals_spec):
     data_dir = base_dir / "security-data"
     conn = open_store(data_dir, wiki_root=root)
     issued = {}
-    for name, kind, roles in principals_spec:
+    for name, kind, roles, *rest in principals_spec:
         principal = principals.create_principal(conn, name, kind)
         for role in roles:
             principals.set_role(conn, name, role)
+        for scope in (rest[0] if rest else []):
+            principals.add_grant(conn, name, scope)
         issued[name] = tokens.issue_credential(conn, principal.id, "test").token
     conn.close()
 

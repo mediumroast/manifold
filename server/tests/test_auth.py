@@ -78,6 +78,8 @@ def test_server_routes_refuse_a_request_without_a_credential(monkeypatch, wiki_r
 
 
 def test_ingest_writes_only_with_a_credential(monkeypatch, wiki_root, auth_world):
+    from manifold_security import principals
+    principals.add_grant(auth_world.conn, "alice", "acme-api")  # a contributor still needs a grant on the component
     client = _client(monkeypatch, wiki_root)
     body = {"component": "acme-api", "content": "# hi"}
     assert client.post("/ingest", json=body).status_code == 401

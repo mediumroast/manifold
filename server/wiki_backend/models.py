@@ -53,6 +53,7 @@ class InventoryComponent(BaseModel):
     description: str
     owner: Optional[str] = None
     repo: Optional[str] = None
+    status: str = "active"  # "archived" for a component a registrar has archived
 
 
 class InventoryHandoff(BaseModel):

@@ -130,6 +130,18 @@ class StoreAccess:
             roles = tuple(sorted(principals.roles_of(conn, principal.id)))
             return Outcome(Caller(principal.id, principal.name, principal.kind, roles, result.credential_id))
 
+    def authorize(self, principal_id: str, capability: str, scope: Optional[str] = None,
+                  credential_id: Optional[str] = None):
+        """The authorizer's decision for this principal now (a refusal is audited)."""
+        from manifold_security import authorizer
+        with self._lock:
+            return authorizer.authorize(self._connection(), principal_id, capability, scope, credential_id)
+
+    def use(self, fn):
+        """Run ``fn(connection)`` under the lock and return its result (the connection is shared between threads)."""
+        with self._lock:
+            return fn(self._connection())
+
     def principal_count(self) -> int:
         with self._lock:
             return principals.count_principals(self._connection())

@@ -14,6 +14,7 @@ _TOOL_NAMES = [
     "wiki_log_append_tool",
     "wiki_inventory_tool",
     "wiki_register_component_tool",
+    "wiki_component_manage_tool",
     "wiki_freshness_tool",
     "wiki_onboarding_tool",
     "wiki_reconcile_plan_tool",

@@ -22,17 +22,22 @@ from wiki_backend.models import (
     WikiRegisterRequest,
 )
 from wiki_backend.read import wiki_read
-from wiki_backend.write import wiki_write_page
+from wiki_backend.write import wiki_write_page, protected_field_change
 from wiki_backend.log import wiki_log_append
 from wiki_backend.inventory import wiki_inventory
-from wiki_backend.register import wiki_register_component, update_sidebar_handoff, update_sidebar_handoff_status
+from wiki_backend.register import (
+    wiki_register_component, wiki_update_component, update_sidebar_handoff, update_sidebar_handoff_status,
+)
 from wiki_backend.freshness import wiki_freshness
 from wiki_backend.onboarding import wiki_onboarding_protocol, wiki_onboarding_preflight, wiki_reconcile_plan
 from wiki_backend.ping import wiki_ping
-from wiki_backend.config import ConfigError, DEFAULT_SERVER_NAME, load_config
+from wiki_backend.config import ConfigError, DEFAULT_SERVER_NAME, load_config, registered_slugs, valid_slug
+from wiki_backend.actor import acting_var
 from wiki_backend.health import wiki_health
 from wiki_backend.web import VENDOR_URL, instance_shell, render_shell, vendor_dir
 from wiki_backend.auth import PrincipalAuthMiddleware, StoreAccess
+from wiki_backend.guard import Guard, Refused, RoutePolicyMiddleware
+from manifold_security import audit, authorizer, limits, principals, scopes, settings as security_settings
 from manifold_security.context import caller_from_scope, current_caller_var
 from manifold_security.store import StoreError
 from wiki_backend.bundles import wiki_bundle_info
@@ -43,7 +48,7 @@ from wiki_backend.helpers import wiki_export_helper, wiki_list_helpers, wiki_exp
 from wiki_backend.agent_guide import wiki_agent_guide
 from wiki_backend.handoff import (
     handoff_create, handoff_claim, handoff_close, handoff_list,
-    handoff_request_review, handoff_confirm, handoff_reject,
+    handoff_request_review, handoff_confirm, handoff_reject, handoff_parties, open_handoffs_of,
 )
 
 
@@ -72,8 +77,35 @@ def _server_name() -> str:
 
 app = FastMCP(_server_name(), lifespan=lifespan)
 
+_store_access = StoreAccess()
+
+
+def current_caller():
+    """
+    The authenticated caller of the tool call being served, or None.
+
+    Reads the scope of the HTTP request that carried the call (``get_http_request``), which is
+    the POST for both /mcp and /messages/ (SSE); falls back to the context variable the
+    middleware sets.
+    """
+    try:
+        from fastmcp.server.dependencies import get_http_request
+        caller = caller_from_scope(get_http_request().scope)
+        if caller is not None:
+            return caller
+    except RuntimeError:
+        pass
+    return current_caller_var.get()
+
+
+# Every tool is wrapped by guard.guarded (under @app.tool()); a tool with no entry in
+# authorizer.TOOL_POLICY is refused.  Tools that depend on a page, component or handoff call
+# guard.require(capability, scope) themselves before they change anything.
+guard = Guard(_store_access, current_caller)
+
 
 @app.tool()
+@guard.guarded
 def wiki_ping_tool() -> dict:
     """
     Verify connectivity to the wiki MCP server and return the list of available
@@ -88,7 +120,48 @@ def wiki_ping_tool() -> dict:
     return wiki_ping(WIKI_ROOT, principal=caller.as_dict() if caller else None)
 
 
+def _slug_scope(value: str) -> str:
+    """A component slug as a scope, or a ValueError saying what is wrong with it."""
+    try:
+        return principals.check_scope((value or "").strip().lower(), allow_shared=False)
+    except principals.PrincipalError as exc:
+        raise ValueError(str(exc))
+
+
+def _authorize_handoff(action: str, source: str, target: str, path: str):
+    """
+    Authorize a handoff action on the right component: the source for create, confirm,
+    reject and close; the target for claim and request-review; ``read`` for list.
+
+    Returns None when allowed, or an error dict (a refusal, or a problem with the arguments).
+    An unknown action is left to the tool, which names the valid ones.
+    """
+    capability = authorizer.TOOL_POLICY["wiki_handoff_tool"].get(action)
+    if capability is None:
+        return None
+    try:
+        if capability == authorizer.READ:
+            guard.require(capability)
+        elif action == "create":
+            source_slug, target_slug = _slug_scope(source), _slug_scope(target)
+            guard.require(capability, source_slug)
+            guard.require_active(source_slug)
+            guard.require_active(target_slug)
+        else:
+            if not path:
+                return {"error": "action=%r requires path." % action}
+            source_slug, target_slug = handoff_parties(WIKI_ROOT, path)
+            side = target_slug if action in ("claim", "request-review") else source_slug
+            guard.require(capability, side)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    except Refused as exc:
+        return exc.as_dict()
+    return None
+
+
 @app.tool()
+@guard.guarded
 def wiki_handoff_tool(
     action: str,
     source: str = "",
@@ -115,7 +188,10 @@ def wiki_handoff_tool(
     action="claim"          — Claim an open handoff and mark it in-progress.
                               Required: path. Returns: summary and what_needs_to_happen.
 
-    action="close"          — Mark a handoff completed (target closes after implementing).
+    action="close"          — Mark a handoff completed. Only the SOURCE component (the one that
+                              asked for the work) can close; the target never does. With
+                              no review step, the target calls request-review and the
+                              source then confirms.
                               Required: path, resolution.
                               Returns: confirmation and prompt to update component page.
 
@@ -138,6 +214,9 @@ def wiki_handoff_tool(
     Valid types: feature | bug | breaking-change | integration-spec
     Valid priorities: critical | high | medium | low
     """
+    refusal = _authorize_handoff(action, source, target, path)
+    if refusal is not None:
+        return refusal
     if action == "create":
         return handoff_create(
             WIKI_ROOT, source, target, type, priority,
@@ -170,6 +249,7 @@ def wiki_handoff_tool(
 
 
 @app.tool()
+@guard.guarded
 def wiki_read_tool(path: str) -> dict:
     """
     Read a wiki page.
@@ -193,6 +273,7 @@ def wiki_read_tool(path: str) -> dict:
 
 
 @app.tool()
+@guard.guarded
 def wiki_write_page_tool(path: str, content: str, etag: str = None, message: str = "") -> dict:
     """
     Create or update a wiki page with etag-based conflict detection.
@@ -206,6 +287,26 @@ def wiki_write_page_tool(path: str, content: str, etag: str = None, message: str
         etag: Current etag for optimistic concurrency (None for create)
         message: Commit message describing the change
     """
+    # Authorize on the scope of the page: a component's pages need a write grant on that
+    # component, other wiki pages need one on _shared.  Handoff, log and system pages are not
+    # writable here at all.
+    try:
+        kind, scope = scopes.classify(WIKI_ROOT, path)
+    except scopes.PathRefused as exc:
+        return {"path": path, "status": "error", "error": "Write refused: %s" % exc}
+    if kind not in (scopes.COMPONENT, scopes.SHARED):
+        return {"path": path, "status": "error",
+                "error": "Write refused: %s is a %s page and cannot be written with this tool." % (path, kind)}
+    guard.require(authorizer.WRITE, scope)
+    if kind == scopes.COMPONENT:
+        guard.require_active(scope)
+        existing = WIKI_ROOT / path
+        if etag is not None and existing.is_file():
+            changed = protected_field_change(existing.read_text(encoding="utf-8"), content)
+            if changed:
+                return {"path": path, "status": "error",
+                        "error": "Refused: the %s of a component page changes only through "
+                                 "wiki_component_manage_tool (a human registrar)." % changed}
     try:
         request = WikiWriteRequest(
             path=path,
@@ -226,6 +327,7 @@ def wiki_write_page_tool(path: str, content: str, etag: str = None, message: str
 
 
 @app.tool()
+@guard.guarded
 def wiki_log_append_tool(action: str, message: str, component: str = None) -> dict:
     """
     Append an entry to the operation log (wiki/log.md).
@@ -237,6 +339,14 @@ def wiki_log_append_tool(action: str, message: str, component: str = None) -> di
         message: Detailed message describing the action
         component: Optional component name involved in the action
     """
+    # The entry is a write about one component (or about _shared when none is named).
+    try:
+        scope = _slug_scope(component) if component else principals.SHARED_SCOPE
+    except ValueError as exc:
+        return {"error": str(exc)}
+    guard.require(authorizer.WRITE, scope)
+    if component:
+        guard.require_active(scope)
     try:
         request = WikiLogRequest(
             action=action,
@@ -250,6 +360,7 @@ def wiki_log_append_tool(action: str, message: str, component: str = None) -> di
 
 
 @app.tool()
+@guard.guarded
 def wiki_inventory_tool() -> dict:
     """
     Get a complete inventory of the wiki graph.
@@ -257,7 +368,7 @@ def wiki_inventory_tool() -> dict:
     Returns components, handoffs, and all files in the wiki.
     """
     try:
-        response = wiki_inventory(WIKI_ROOT)
+        response = wiki_inventory(WIKI_ROOT, _store_access.use(principals.archived_components))
         return {
             "components": [c.dict() for c in response.components],
             "handoffs": [h.dict() for h in response.handoffs],
@@ -268,6 +379,7 @@ def wiki_inventory_tool() -> dict:
 
 
 @app.tool()
+@guard.guarded
 def wiki_register_component_tool(
     name: str,
     description: str,
@@ -313,6 +425,26 @@ def wiki_register_component_tool(
                    preserved. Requires source_docs or inline_docs to be provided.
                    Use when wiki_onboarding_tool returns status "reconcile_available".
     """
+    guard.require(authorizer.COMPONENT_REGISTER)
+    caller = guard.caller()
+    slug = (name or "").strip().lower()
+    try:
+        entry = next((c for c in load_config(WIKI_ROOT).components if c.slug == slug), None)
+    except ConfigError as exc:
+        return {"error": str(exc)}
+    page_exists = (WIKI_ROOT / "wiki" / "components" / ("%s.md" % slug)).exists() if valid_slug(slug) else False
+    # Reconciling, or naming a repository or owner other than the registry's, changes the mapping
+    # from a component to its repository: that is for a human registrar only.
+    changes_mapping = bool(entry and ((entry.repo and entry.repo != repo) or (entry.owner and entry.owner != owner)))
+    if reconcile or changes_mapping:
+        guard.require(authorizer.COMPONENT_PROTECTED_UPDATE)
+    counted = valid_slug(slug) and not page_exists and not reconcile
+    if counted:
+        try:
+            _store_access.use(lambda conn: limits.consume(conn, caller.principal_id, caller.kind, limits.REGISTRATIONS))
+        except limits.LimitReached as exc:
+            return {"error": str(exc), "refused": True, "reason": "limit"}
+    registered = False
     try:
         request = WikiRegisterRequest(
             name=name,
@@ -325,6 +457,7 @@ def wiki_register_component_tool(
             reconcile=reconcile,
         )
         response = wiki_register_component(WIKI_ROOT, request)
+        registered = response.status == "created"
         result = {
             "name": response.name,
             "path": response.path,
@@ -339,18 +472,125 @@ def wiki_register_component_tool(
                 f"wiki_read_tool(path='{response.path}') — read current content",
                 "wiki_write_page_tool(...) + wiki_log_append_tool(...) — update if stale",
             ]
-        if response.status == "reconciled":
-            result["next_step"] = (
-                f"Call wiki_log_append_tool(action='reconcile-component', "
-                f"component='{response.name}', message='Page reconciled from raw docs') "
-                "to record this operation."
-            )
+        # Registration and reconcile write their own log entry, attributed to the principal.
+        if registered:
+            result["self_granted"] = _self_grant(caller.principal_id, response.name)
+            wiki_log_append(WIKI_ROOT, WikiLogRequest(
+                action="register", component=response.name, message=f"Registered component: {description}"))
+        elif response.status == "reconciled":
+            wiki_log_append(WIKI_ROOT, WikiLogRequest(
+                action="reconcile-component", component=response.name, message="Page reconciled from raw docs"))
         return result
     except Exception as e:
         return {"error": str(e)}
+    finally:
+        if counted and not registered:
+            _store_access.use(lambda conn: limits.refund(conn, caller.principal_id, limits.REGISTRATIONS))
+
+
+def _self_grant(principal_id: str, slug: str) -> bool:
+    """A new registration gives its registrar no grant, unless an administrator set the self-grant flag."""
+    def grant(conn):
+        principal = principals.get_principal(conn, principal_id)
+        if principal is None or not principal.may_self_grant_on_register:
+            return False
+        principals.add_grant(conn, principal_id, slug)
+        audit.record(conn, audit.GRANT_CHANGED, principal_id, slug, "grant added on registration (self-grant flag)")
+        return True
+    return _store_access.use(grant)
 
 
 @app.tool()
+@guard.guarded
+def wiki_component_manage_tool(
+    action: str,
+    name: str,
+    reason: str = "",
+    description: str = "",
+    repo: str = "",
+    owner: str = "",
+) -> dict:
+    """
+    Update, archive or restore a registered component. For registrars.
+
+    action="update"  — Change the description (any registrar) and/or the repository and
+                       owner (a human registrar only; an agent registrar cannot).
+                       Required: name, and at least one of description, repo, owner.
+
+    action="archive" — Take a component out of use. An archived component refuses page
+                       writes, new handoffs and document ingest until it is restored, and
+                       is held for the purge period before the host can remove it for good
+                       (there is no purge over MCP).
+                       Required: name, reason. Refused while a handoff that involves the
+                       component is not completed; the refusal names the handoffs.
+
+    action="restore" — Bring an archived component back into use. Required: name.
+    """
+    capability = authorizer.TOOL_POLICY["wiki_component_manage_tool"].get(action)
+    if capability is None:
+        return {"error": "Unknown action %r. Valid: update | archive | restore" % action}
+    try:
+        slug = _slug_scope(name)
+        if slug not in registered_slugs(WIKI_ROOT):
+            return {"error": "%s is not a registered component." % slug}
+    except (ValueError, ConfigError) as exc:
+        return {"error": str(exc)}
+    guard.require(capability, slug)
+    caller = guard.caller()
+
+    if action == "update":
+        if not (description or repo or owner):
+            return {"error": "action='update' needs at least one of description, repo, owner."}
+        if repo or owner:
+            guard.require(authorizer.COMPONENT_PROTECTED_UPDATE, slug)
+        result = wiki_update_component(WIKI_ROOT, slug, description=description or None,
+                                       repo=repo or None, owner=owner or None)
+        if result.get("status") == "updated":
+            _store_access.use(lambda conn: audit.record(
+                conn, audit.COMPONENT_LIFECYCLE, caller.principal_id, slug, "update: " + ", ".join(result["changed"])))
+            wiki_log_append(WIKI_ROOT, WikiLogRequest(
+                action="update-component", component=slug, message="Updated " + ", ".join(result["changed"])))
+        return result
+
+    state = _store_access.use(lambda conn: principals.get_component_state(conn, slug))
+    if action == "restore":
+        if not state.archived:
+            return {"error": "%s is not archived." % slug}
+        _store_access.use(lambda conn: principals.restore_component(conn, slug))
+        _store_access.use(lambda conn: audit.record(conn, audit.COMPONENT_LIFECYCLE, caller.principal_id, slug, "restore"))
+        wiki_log_append(WIKI_ROOT, WikiLogRequest(action="restore-component", component=slug,
+                                                  message="Component restored"))
+        return {"status": "restored", "name": slug}
+
+    # archive
+    if not reason.strip():
+        return {"error": "action='archive' needs a reason."}
+    if state.archived:
+        return {"error": "%s is already archived (reason: %s)." % (slug, state.reason)}
+    open_pages = open_handoffs_of(WIKI_ROOT, slug)
+    if open_pages:
+        return {"error": "Cannot archive %s while handoffs involving it are not completed. Complete or "
+                         "reject them first: %s" % (slug, ", ".join(open_pages)),
+                "open_handoffs": open_pages}
+    try:
+        _store_access.use(lambda conn: limits.consume(conn, caller.principal_id, caller.kind, limits.ARCHIVES))
+    except limits.LimitReached as exc:
+        return {"error": str(exc), "refused": True, "reason": "limit"}
+    try:
+        hold_days = _store_access.use(lambda conn: security_settings.get(conn, "purge_hold_days"))
+        archived = _store_access.use(lambda conn: principals.archive_component(conn, slug, reason, hold_days))
+    except Exception:
+        _store_access.use(lambda conn: limits.refund(conn, caller.principal_id, limits.ARCHIVES))
+        raise
+    _store_access.use(lambda conn: audit.record(
+        conn, audit.COMPONENT_LIFECYCLE, caller.principal_id, slug, "archive: " + reason.strip()))
+    wiki_log_append(WIKI_ROOT, WikiLogRequest(action="archive-component", component=slug,
+                                              message="Component archived: " + reason.strip()))
+    return {"status": "archived", "name": slug, "purge_after": archived.purge_after}
+
+
+@app.tool()
+@guard.guarded
 def wiki_freshness_tool(component: str = None) -> dict:
     """
     Check which component wiki pages are stale relative to their raw source docs.
@@ -373,6 +613,7 @@ def wiki_freshness_tool(component: str = None) -> dict:
 
 
 @app.tool()
+@guard.guarded
 def wiki_onboarding_tool(component: str = None, verbose: bool = False) -> dict:
     """
     Return onboarding instructions for registering a new component.
@@ -399,11 +640,10 @@ def wiki_onboarding_tool(component: str = None, verbose: bool = False) -> dict:
                 "1. Call wiki_onboarding_tool(component='your-slug') to check existing state",
                 "2. Review preflight.options and ask the human which option they prefer",
                 "3. Call wiki_register_component_tool(name, description, repo, owner, [source_docs or skip_source_docs])",
-                "4. Call wiki_log_append_tool(action='register', message='...', component='your-slug')",
-                "5. Call wiki_freshness_tool(component='your-slug')",
-                "6. Call wiki_inventory_tool() to confirm registration",
-                "7. Call wiki_bundle_info_tool() and install the agent bundle in the component repository",
-                "8. Call wiki_export_component_helpers_tool() and write the helper files into the component repository",
+                "4. Call wiki_freshness_tool(component='your-slug')",
+                "5. Call wiki_inventory_tool() to confirm registration",
+                "6. Call wiki_bundle_info_tool() and install the agent bundle in the component repository",
+                "7. Call wiki_export_component_helpers_tool() and write the helper files into the component repository",
             ],
             "register_args": {
                 "required": ["name", "description", "repo", "owner"],
@@ -444,6 +684,7 @@ def wiki_onboarding_tool(component: str = None, verbose: bool = False) -> dict:
 
 
 @app.tool()
+@guard.guarded
 def wiki_reconcile_plan_tool(component: str, repo: str = None) -> dict:
     """
     Inspect what is recorded for a registered component and return a ready-to-execute action plan.
@@ -471,6 +712,7 @@ def wiki_reconcile_plan_tool(component: str, repo: str = None) -> dict:
 
 
 @app.tool()
+@guard.guarded
 def wiki_agent_catalog_tool(component: str) -> dict:
     """
     Publish a component's agents to the wiki: create or update
@@ -487,12 +729,19 @@ def wiki_agent_catalog_tool(component: str) -> dict:
         component: Component slug, e.g. "acme-web"
     """
     try:
+        scope = _slug_scope(component)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    guard.require(authorizer.WRITE, scope)
+    guard.require_active(scope)
+    try:
         return wiki_agent_guide(WIKI_ROOT, component)
     except Exception as e:
         return {"error": str(e)}
 
 
 @app.tool()
+@guard.guarded
 def wiki_bundle_info_tool() -> dict:
     """
     List the agent bundles this server carries and how to install one in a component repository.
@@ -509,6 +758,7 @@ def wiki_bundle_info_tool() -> dict:
 
 
 @app.tool()
+@guard.guarded
 def wiki_list_helpers_tool() -> dict:
     """
     List all helper scripts that can be exported into a component repo.
@@ -524,6 +774,7 @@ def wiki_list_helpers_tool() -> dict:
 
 
 @app.tool()
+@guard.guarded
 def wiki_export_helper_tool(name: str, server_url: str = "") -> dict:
     """
     Export a helper script for installation into a component repo.
@@ -551,6 +802,7 @@ def wiki_export_helper_tool(name: str, server_url: str = "") -> dict:
 
 
 @app.tool()
+@guard.guarded
 def wiki_export_component_helpers_tool() -> dict:
     """
     Export all manifold helper files in one call for installation into a
@@ -568,6 +820,15 @@ def wiki_export_component_helpers_tool() -> dict:
         return wiki_export_all_helpers(WIKI_ROOT)
     except Exception as e:
         return {"error": str(e)}
+
+
+def _ingest_as(caller, component, doc_type, content, filename):
+    """Run the ingest attributed to the authenticated caller (the commit names the principal)."""
+    token = acting_var.set(caller)
+    try:
+        return wiki_ingest_doc(WIKI_ROOT, component, doc_type, content, filename)
+    finally:
+        acting_var.reset(token)
 
 
 # Doc ingest endpoint — called by tools/ingest_doc.py running on the host.
@@ -618,7 +879,31 @@ async def ingest_doc(request: Request):
     if not content:
         return JSONResponse({"status": "error", "message": "content is required"}, status_code=400)
 
-    result = wiki_ingest_doc(WIKI_ROOT, component, doc_type, content, filename)
+    # Authorization: the caller needs a grant on the component (raw/shared maps to _shared). Only a
+    # registrar may ingest for a slug that is not registered yet (the first documents of a new
+    # component). An archived component takes no documents.
+    caller = caller_from_scope(request.scope)
+    if caller is None:  # the middleware guarantees a caller; never ingest without one
+        return JSONResponse({"status": "error", "message": "authentication required"}, status_code=401)
+    slug = component.lower()
+    if valid_slug(slug):
+        token = acting_var.set(caller)
+        try:
+            if slug == "shared":
+                guard.require(authorizer.INGEST, principals.SHARED_SCOPE)
+            elif slug in registered_slugs(WIKI_ROOT):
+                guard.require(authorizer.INGEST, slug)
+                guard.require_active(slug)
+            elif not guard.has_role("registrar"):
+                raise Refused("Refused: %s is not a registered component; only a registrar can add documents "
+                              "for a new component." % slug, "not_registered")
+        except Refused as exc:
+            return JSONResponse({"status": "error", "message": exc.message, "reason": exc.reason}, status_code=403)
+        except ConfigError as exc:
+            return JSONResponse({"status": "error", "message": str(exc)}, status_code=500)
+        finally:
+            acting_var.reset(token)
+    result = _ingest_as(caller, component, doc_type, content, filename)
     if result["status"] == "ok":
         status_code = 200
     elif result.get("reason") == "too_large":
@@ -657,27 +942,6 @@ async def health_check(request: Request):
 
 _http_app = app.http_app(transport="http")  # /mcp  – Streamable HTTP
 _sse_app = app.http_app(transport="sse")    # /sse + /messages/ – SSE
-
-
-_store_access = StoreAccess()
-
-
-def current_caller():
-    """
-    The authenticated caller of the tool call being served, or None.
-
-    Reads the scope of the HTTP request that carried the call (``get_http_request``), which is
-    the POST for both /mcp and /messages/ (SSE); falls back to the context variable the
-    middleware sets.
-    """
-    try:
-        from fastmcp.server.dependencies import get_http_request
-        caller = caller_from_scope(get_http_request().scope)
-        if caller is not None:
-            return caller
-    except RuntimeError:
-        pass
-    return current_caller_var.get()
 
 
 def _check_auth_settings() -> None:
@@ -746,7 +1010,8 @@ async def _redirect_root(request: Request) -> RedirectResponse:
 
 asgi_app = Starlette(
     routes=[Route("/", _redirect_root)] + list(_http_app.routes) + _extra_sse_routes + _docs_routes,
-    middleware=[Middleware(RequestContextMiddleware), Middleware(PrincipalAuthMiddleware, store=_store_access)],
+    middleware=[Middleware(RequestContextMiddleware), Middleware(PrincipalAuthMiddleware, store=_store_access),
+                Middleware(RoutePolicyMiddleware, store=_store_access)],
     lifespan=_combined_lifespan,
 )
 

@@ -29,7 +29,8 @@ pytestmark = pytest.mark.skipif(not EXAMPLE.is_dir(), reason="no examples/acme b
 def server(tmp_path_factory):
     """The real server with one principal (a contributor); TOKEN becomes that principal's generated credential."""
     global TOKEN
-    with running_server(tmp_path_factory.mktemp("smoke"), [("smoke-user", "human", ["contributor"])]) as running:
+    spec = [("smoke-user", "human", ["contributor"], ["acme-api", "acme-web", "_shared"])]
+    with running_server(tmp_path_factory.mktemp("smoke"), spec) as running:
         TOKEN = running["tokens"]["smoke-user"]
         yield running
 
@@ -101,7 +102,7 @@ def test_the_server_lists_every_tool_ping_reports(server):
         async with Client(StreamableHttpTransport(server["base"] + "/mcp", headers={"Authorization": "Bearer " + TOKEN})) as c:
             return {t.name for t in await c.list_tools()}
     listed = asyncio.run(names())
-    assert listed == set(_TOOL_NAMES) and len(listed) == 15
+    assert listed == set(_TOOL_NAMES) and len(listed) == 16
 
 
 def test_the_mcp_endpoint_refuses_a_client_without_the_token(server):
@@ -116,7 +117,7 @@ def test_the_mcp_endpoint_refuses_a_client_without_the_token(server):
 
 def test_ping_reports_the_server_name_and_status(server):
     result = mcp(server, "wiki_ping_tool")
-    assert result["status"] == "connected" and result["server"] == "manifold" and result["tool_count"] == 15
+    assert result["status"] == "connected" and result["server"] == "manifold" and result["tool_count"] == 16
 
 
 def test_a_page_can_be_read(server):
@@ -143,7 +144,8 @@ def test_a_handoff_is_created_on_disk_and_committed(server):
         "title": "Smoke test handoff", "summary": "Created by the smoke test.", "what_needs_to_happen": "Nothing."})
     assert created["status"] == "created"
     assert (server["root"] / created["path"]).read_text().startswith("---")
-    assert any(line.startswith("manifold|") and "Smoke test handoff" in line for line in _git_log(server))
+    # The commit is authored by the principal behind the credential (T15), not by the server.
+    assert any(line.startswith("smoke-user|") and "Smoke test handoff" in line for line in _git_log(server))
 
 
 def test_a_page_is_written_with_its_etag_and_a_stale_etag_is_refused(server):

@@ -301,6 +301,7 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 ---
 
 ### Task 12 — Add the tool policy table and guard the read tools
+> **Note (CP3):** `TOOL_POLICY` and `ROUTE_POLICY` in `manifold_security/authorizer.py`; new `wiki_backend/guard.py` (`Guard.guarded` wraps every `@app.tool()`: no policy entry, no signed-in principal, or no `read` for a read tool gives an error result `{"error", "refused": true, "reason"}`; `Guard.require(capability, scope)` for the scoped tools; `RoutePolicyMiddleware` applies `read` to everything under `/docs`, including `/docs/raw`; the middleware list is auth, then route policy). The acting principal comes from the credential of the HTTP request that carried the call (T11). New `tests/test_tool_policy.py` (also runs each tool in-process as a chosen principal through `tool_world` in `conftest.py`). `cd server && ../.venv/bin/python -m pytest -q tests/test_tool_policy.py tests/test_tool_surface.py`: 42 passed (every registered tool has a policy and is guarded; an admin-only principal is refused all 15 read and write tools; a reader reads and cannot write; no tool, route or action name creates credentials, roles or grants).
 **Files:** `server/manifold_security/authorizer.py`, `server/server.py`, `server/tests/test_tool_policy.py`, `server/tests/test_tool_surface.py`
 **Action:** MODIFY / CREATE
 **Change:** Add `TOOL_POLICY`, mapping every tool name (and `wiki_handoff_tool` action) to a capability, and a `@guarded` wrapper applied to every `@app.tool()`; a tool with no entry is refused. Read tools (`wiki_read_tool`, `wiki_inventory_tool`, `wiki_freshness_tool`, `wiki_onboarding_tool`, `wiki_reconcile_plan_tool`, `wiki_bundle_info_tool`, `wiki_list_helpers_tool`, `wiki_export_helper_tool`, `wiki_export_component_helpers_tool`, handoff `list`) require `read`; `wiki_ping_tool` requires only an authenticated principal. Guard `/docs/**` and `/docs/raw/**` as `read`. Table of the whole policy:
@@ -316,67 +317,73 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 
 **Source:** [INT-1 S9][i1-s9]; [INT-1 Constraints: Admin is not data][i1-c]; [INT-1 Constraints: Administrative functions live on the host only][i1-c]; [INT-1 Constraints: Reads][i1-c].
 **Acceptance:** `pytest tests/test_tool_policy.py tests/test_tool_surface.py` passes: every registered tool has a policy; an admin-only principal is refused every read and write tool; no tool or route name creates credentials, roles or grants.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 13 — Guard the writing tools and ingest
+> **Note (CP3):** `wiki_write_page_tool` classifies the path (`scopes`), requires `write` on the component slug or `_shared`, refuses an archived component and refuses an edit that changes `component`, `owner`, `repo` or the `**Repository:**` line of a component page (`write.protected_field_change`); `wiki_log_append_tool` requires `write` on the component, or on `_shared` when none is named; `wiki_agent_catalog_tool` requires `write` on the component; `POST /ingest` requires `ingest` on a registered slug (`shared` maps to `_shared`) and a registrar for an unregistered slug (D5), and 403 on an archived component. Tests are in the new `tests/test_tool_authz.py` instead of `test_write_validation.py`/`test_ingest.py` (those need no change; the fixtures for acting as a principal live in `conftest.py`). `cd server && ../.venv/bin/python -m pytest -q tests/test_write_validation.py tests/test_tool_authz.py tests/test_ingest.py`: 69 passed. The smoke-test principal now holds grants on `acme-api`, `acme-web` and `_shared`.
 **Files:** `server/server.py`, `server/wiki_backend/write.py`, `server/wiki_backend/agent_guide.py`, `server/wiki_backend/ingest.py`, `server/tests/test_write_validation.py`, `server/tests/test_ingest.py`
 **Action:** MODIFY
 **Change:** `wiki_write_page_tool`: authorize `write` on the scope from `scopes.classify` (component slug or `_shared`); refuse a write that changes the `component` or `owner` frontmatter of a component page, or its `**Repository:**` line. `wiki_log_append_tool`: authorize `write` on the given component, or on `_shared` when none. `wiki_agent_catalog_tool`: authorize `write` on the component. `POST /ingest`: authorize `ingest` on the slug (`raw/shared` maps to `_shared`); only a registrar may ingest to a slug that is not yet registered; everyone else needs a grant on a registered component (D5). An archived component refuses all of these (T17).
 **Source:** [INT-1 S10][i1-s10]; [INT-1 S12][i1-s12]; [INT-1 S16][i1-s16]; D5 and the findings under Concerns flagged.
 **Acceptance:** `pytest tests/test_write_validation.py tests/test_ingest.py` passes: a contributor writes its own component page and not another's; only a `_shared` grant writes a decision page; a contributor's attempt to edit `owner` or `repo` in the component page is refused; an unregistered slug is refused for a non-registrar and accepted for a registrar (D5).
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 14 — Enforce the handoff rules
+> **Note (CP3):** `handoff_parties()` reads `source_component`/`target_component` from the handoff page; `server._authorize_handoff` requires `handoff.create` (also refusing an archived source or target), `confirm`, `reject` and `close` on the source, `claim` and `request_review` on the target, and `read` for `list`. The `wiki_handoff_tool` docstring now gives the close to the source only (D7), and the claim message in `handoff.py` points to request-review. New `tests/test_handoff_authz.py`. `cd server && ../.venv/bin/python -m pytest -q tests/test_handoff_authz.py tests/test_handoff_tool.py tests/test_handoff_lifecycle.py`: 47 passed (the target's close, and another principal's confirm/reject/close, are refused and write nothing; the source's close and confirm succeed). The `/handoff-close` helper texts are T35.
 **Files:** `server/wiki_backend/handoff.py`, `server/server.py`, `server/tests/test_handoff_authz.py`, `server/tests/test_handoff_tool.py`
 **Action:** MODIFY / CREATE
 **Change:** Read `source_component` and `target_component` from the handoff page and authorize: `create` (source from the argument), `confirm`, `reject`, `close` on the source; `claim`, `request-review` on the target; `list` as read. Replace the `wiki_handoff_tool` docstring text "target closes after implementing" with the source-only rule; no-review work is request-review, then the source confirms (D7).
 **Source:** [INT-1 S2][i1-s2]; [INT-1 S15][i1-s15]; [INT-1 Outcome 2][i1-p]; D7.
 **Acceptance:** `pytest tests/test_handoff_authz.py tests/test_handoff_tool.py tests/test_handoff_lifecycle.py` passes: the target's close, and any other principal's confirm, reject or close, return a clear reason and write nothing; the source's close succeeds.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 15 — Name the credential's principal in commits and the log
+> **Note (CP3):** `git_commit` takes `principal` (default: the acting principal of the tool call, set once by the guard in `wiki_backend/actor.py`) and adds `--author "<name> <<principal id>@principals.manifold.invalid>"` plus a final `Manifold-Principal: <id> (<kind>)` trailer; the committer stays `MANIFOLD_GIT_NAME`. **Interpretation:** instead of adding an argument to every backend function, the acting principal is carried in a context variable, so every commit made during a tool call (page, sidebar, index, registry, log, ingest) is attributed without touching each call site; outside a tool call nothing changes. `wiki_log_append` writes `- Agent: <principal name>` and keeps the component as the section subject. New `tests/test_principal_attribution.py`: `cd server && ../.venv/bin/python -m pytest -q tests/test_git_root.py tests/test_audit.py tests/test_principal_attribution.py`: 16 passed (a claimed name or forged trailer in the request never becomes the author or the final trailer).
 **Files:** `server/wiki_backend/git.py`, `server/wiki_backend/log.py`, `server/wiki_backend/{write,ingest,register,handoff,agent_guide}.py`, `server/tests/test_git_root.py`, `server/tests/test_audit.py`
 **Action:** MODIFY
 **Change:** Add a `principal` argument to `git_commit` that sets `--author "<name> <<principal_id>@principals.manifold.invalid>"` and adds a trailer `Manifold-Principal: <id> (<kind>)`; the committer stays `MANIFOLD_GIT_NAME`. Pass the current principal from every caller (including sidebar and index commits). Change `wiki_log_append` to write `Agent: <principal name>` and keep the component as the subject. Nothing the caller supplies becomes an author.
 **Source:** [INT-1 S3][i1-s3]; [INT-1 Outcome 3][i1-p].
 **Acceptance:** `pytest tests/test_git_root.py tests/test_audit.py` passes: `git log --format=%an%n%b` shows the credential's principal; a request body that claims another name still shows the real principal; the log line names the principal.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 16 — Gate component registration and protect the mapping
+> **Note (CP3):** `wiki_register_component_tool` requires `component.register`; reconcile, or a repository/owner that differs from the registry entry, requires `component.protected_update` (human registrar). A new registration adds a grant (and an audit row) only if the registrar's self-grant flag is on (`self_granted` in the result). Registration and reconcile write their own log entry (attributed through T15); step 4 of the onboarding checklist, the `log_registration` protocol step, the `log_reconcile` step of the reconcile plan and the reconcile `next_step` hint are removed (steps renumbered; `test_onboarding.py` updated for the removed plan step). Counting is T18. New `tests/test_registrar.py`: `cd server && ../.venv/bin/python -m pytest -q tests/test_registrar.py tests/test_onboarding.py`: 32 passed. **Interpretation:** a call for an existing component with the same repository and owner is not "protected" (the backend answers already_registered); a human registrar's call with a different repository passes authorization but still gets already_registered, because changing the mapping is done with `wiki_component_manage_tool` (T17).
 **Files:** `server/server.py`, `server/wiki_backend/register.py`, `server/wiki_backend/onboarding.py`, `server/tests/test_registrar.py`
 **Action:** MODIFY / CREATE
 **Change:** `wiki_register_component_tool` requires `component.register`. A reconcile call, or a call whose `repo` or `owner` differs from the registry, requires `component.protected_update` (a human registrar). A new registration gives the registrar no grant, unless an administrator set `may_self_grant_on_register` on that principal, in which case it adds a grant for that slug and audits it. Registration and reconcile write their own log entry attributed to the principal; remove step 4 and the reconcile `next_step` hint that tell the agent to log it. Count registrations for T18.
 **Source:** [INT-1 S10][i1-s10]; [INT-1 Constraints: Deleting a component takes deliberate steps][i1-c] (agents cannot change repository or owner); [INT-1 Open questions][i1-oq] (self-grant setting: yes, default off).
 **Acceptance:** `pytest tests/test_registrar.py tests/test_onboarding.py` passes: an agent registrar registers; its page write on the new component is refused until a grant exists; with the flag on, one grant is added and audited; an agent's change of `repo` or `owner` is refused; a human registrar's succeeds.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 17 — Add the component update, archive and restore tool
+> **Note (CP3):** `wiki_component_manage_tool(action, name, reason, description, repo, owner)` with `update` (description: any registrar; repo/owner: human registrar), `archive` (reason required; refused while any handoff that involves the component is not completed, naming them; records `component_state` with `purge_after` from `purge_hold_days`, a log entry and an audit row) and `restore`; no purge action exists. New `config.update_component` (edits the registry entry as text, restores the file on failure), `register.wiki_update_component` (page owner, summary and Repository line plus registry), `handoff.open_handoffs_of`, `principals.archived_components`. Archived components refuse page writes, log appends, agent catalog, handoff creation (as source or target) and ingest. `wiki_inventory` marks each component `status`. Ping lists the tool and reports 16. New `tests/test_component_manage.py`: `cd server && ../.venv/bin/python -m pytest -q tests/test_component_manage.py tests/test_tool_surface.py tests/test_ping.py`: 31 passed. **Interpretation:** only handoff creation is refused for an archived component (as the task says); claim, review and close on existing handoffs are still possible, though archiving requires none to be open.
 **Files:** `server/server.py`, `server/wiki_backend/register.py`, `server/wiki_backend/config.py`, `server/wiki_backend/inventory.py`, `server/wiki_backend/ping.py`, `server/tests/test_component_manage.py`, `server/tests/test_tool_surface.py`
 **Action:** CREATE / MODIFY
 **Change:** Add `wiki_component_manage_tool(action, name, reason="", description="", repo="", owner="")` with `action` of `update`, `archive` or `restore`, following the multi-action pattern of `wiki_handoff_tool`. `archive` refuses an empty reason and any open handoff (source or target, status not completed), naming the handoffs; it records `component_state` with `purge_after = now + purge_hold_days`, writes a log entry, and audits. An archived component refuses writes, handoff creation and ingest (T13, T14). `restore` clears the state. `update` changes the description for any registrar and `repo` or `owner` for a human registrar only. `wiki_inventory` marks each component `status`. Add the tool to `ping` and the tool count (15 becomes 16).
 **Source:** [INT-1 S11][i1-s11]; [INT-1 S10][i1-s10]; [INT-1 Outcome 4][i1-p]; [INT-1 Constraints: Deleting a component takes deliberate steps][i1-c].
 **Acceptance:** `pytest tests/test_component_manage.py tests/test_tool_surface.py tests/test_ping.py` passes: archive without a reason or with an open handoff is refused with the handoffs named; an archived component rejects a page write and a new handoff; restore re-enables them; no MCP action purges.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 18 — Enforce the agent registrar limits
+> **Note (CP3):** `manifold_security/limits.py`: `consume` (limit check and count in one `BEGIN IMMEDIATE` transaction on the `usage` table, per principal, UTC day and counter; agents and services are limited by `agent_registrations_per_day`/`agent_archives_per_day`, humans are counted but not limited; a refusal names the setting and the reset time and is audited) and `refund`. **Interpretation:** the registry operations are file changes and cannot join the database transaction, so the tool consumes first and refunds if the registration or archive did not happen (verified: a repeated registration, an invalid name and a failed call use nothing). `cd server && ../.venv/bin/python -m pytest -q tests/test_registrar.py -k limit`: 5 passed (sixth registration and second archive refused for an agent, allowed after the setting is raised, unlimited for a human, per-principal and per-day counts).
 **Files:** `server/manifold_security/limits.py`, `server/wiki_backend/register.py`, `server/tests/test_registrar.py`
 **Action:** CREATE / MODIFY
 **Change:** Count registrations and archives per principal per UTC day in the `usage` table, in the same transaction as the operation; refuse an `agent` or `service` principal beyond `agent_registrations_per_day` (5) or `agent_archives_per_day` (1), saying which limit and when it resets. Humans are not limited. Audit each refusal.
 **Source:** [INT-1 S11][i1-s11] (agents never exceed daily limits); [INT-1 Constraints: Limits are settings, with defaults][i1-c].
 **Acceptance:** `pytest tests/test_registrar.py -k limit` passes: the sixth registration and the second archive in a day are refused for an agent, allowed after the setting is raised, and unlimited for a human.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 

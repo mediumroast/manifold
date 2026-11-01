@@ -4,12 +4,68 @@
 from pathlib import Path
 from datetime import date
 from typing import Optional
+import json
 import re
 from .models import WikiRegisterRequest, WikiRegisterResponse
 from .read import wiki_read
 from .write import wiki_write_page, WikiWriteRequest
 from .git import git_commit
-from .config import Component, ConfigError, add_component, load_config, sync_schema_slugs, valid_slug
+from .config import (
+    Component, ConfigError, add_component, load_config, sync_schema_slugs, update_component, valid_slug,
+)
+
+
+def wiki_update_component(wiki_root: Path, slug: str, description: Optional[str] = None,
+                          repo: Optional[str] = None, owner: Optional[str] = None) -> dict:
+    """
+    Change a registered component's description, repository or owner, on its page and in the registry.
+
+    Only the fields given (not None) change.  Authorization is the caller's job (the repository and
+    owner are for a human registrar only); this function does not check who is asking.
+    Returns ``{"status": "updated", "changed": [...]}`` or ``{"error": ...}``.
+    """
+    if not valid_slug(slug):
+        return {"error": "%r is not a valid component name." % slug}
+    try:
+        config = load_config(wiki_root)
+    except ConfigError as exc:
+        return {"error": str(exc)}
+    if slug not in config.slugs():
+        return {"error": "%s is not a registered component." % slug}
+    if description is not None and (not description.strip() or len(description) > 200):
+        return {"error": "The description must be non-empty and under 200 characters."}
+    if repo is not None and not repo.strip():
+        return {"error": "The repository URL may not be empty."}
+    if owner is not None and not owner.strip():
+        return {"error": "The owner may not be empty."}
+
+    changed = [name for name, value in (("description", description), ("repository", repo), ("owner", owner))
+               if value is not None]
+    component_path = f"wiki/components/{slug}.md"
+    if (wiki_root / component_path).is_file():
+        page = wiki_read(wiki_root, component_path)
+        text = (wiki_root / component_path).read_text(encoding="utf-8")
+        if description is not None:
+            text = re.sub(r"^summary:.*$", lambda m: "summary: %s" % json.dumps(description, ensure_ascii=False),
+                          text, count=1, flags=re.MULTILINE)
+        if owner is not None:
+            text = re.sub(r"^owner:.*$", lambda m: "owner: %s" % json.dumps(owner, ensure_ascii=False),
+                          text, count=1, flags=re.MULTILINE)
+        if repo is not None:
+            text = re.sub(r"^\*\*Repository:\*\*.*$", lambda m: "**Repository:** %s" % repo, text, count=1,
+                          flags=re.MULTILINE)
+        if text != (wiki_root / component_path).read_text(encoding="utf-8"):
+            response = wiki_write_page(
+                wiki_root, WikiWriteRequest(path=component_path, content=text, etag=page.etag,
+                                            message=f"Update component: {slug} ({', '.join(changed)})"))
+            if response.status != "updated":
+                return {"error": response.error or "Write failed with status: %s" % response.status}
+    try:
+        if update_component(wiki_root, slug, description=description, repo=repo, owner=owner):
+            git_commit(wiki_root, [wiki_root / "manifold.yaml"], f"wiki: update {slug} in manifold.yaml")
+    except ConfigError as exc:
+        return {"error": str(exc)}
+    return {"status": "updated", "name": slug, "changed": changed}
 
 
 def _title(slug: str) -> str:
