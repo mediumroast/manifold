@@ -61,6 +61,14 @@ Installed by the Manifold base bundle. Invoke an agent by asking for it by name 
 
 ## Project commands
 
-<!-- Not recorded yet. An agent will propose the build, verify and test commands it finds in this
-     repository and ask you to confirm them; keep the confirmed ones here. The managed block above
-     is overwritten on update; this section is yours. -->
+Confirmed by the owner on 2026-11-01 (from PHASE_1_PLAN.md, run and verified by the coordinator).
+
+- **Install:** `python3 -m venv .venv`, then `.venv/bin/pip install -r server/requirements-dev.txt -c server/requirements.lock`.
+- **Server tests:** `cd server && ../.venv/bin/python -m pytest -q`.
+- **Bundle tests:** `.venv/bin/python -m pytest bundles/base/tests -q`.
+- **Vendored web files:** `.venv/bin/python tools/vendor_web.py --check`.
+- **Build and run (Docker):** `./svc_ctl.sh <dev|staging|production> init-env|start|status|logs|health|stop`; `./svc_ctl.sh <env> admin ...` runs the host command in the container; `./manifold init` sets up a first instance.
+- **Lint and type-check:** none exist.
+- In a plan, `pytest` means the server tests command above.
+
+<!-- The managed block above is overwritten on update; this section is yours. -->
