@@ -3,10 +3,10 @@ id: INT-19
 title: Manifold as an MCP authorization server
 author: Michael Hay
 created: 2026-11-01
-status: accepted
+status: draft
 affects: [server, docs]
 drafted_with: [claude-sonnet-5-5]
-accepted_by: Michael Hay 2026-11-01
+accepted_by:
 ---
 
 # Intent: Manifold as an MCP authorization server
