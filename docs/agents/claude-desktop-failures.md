@@ -66,8 +66,36 @@ During checkpoint CP2 the second `coder` run (after being given the explicit no-
 ### Suggested improvement
 Say in the agent definition that `Edit` with `replace_all: true` is the tool for renames, and widen the rule to "no shell commands that modify file contents (heredocs, `sed -i`, `tee`, redirects)."
 
-### Later occurrence (CP4, same run, self-reported)
-In CP4 the same coder reported three more shell-write exceptions, none touching tracked repository files: a `python - <<'EOF'` debugging command that wrote nothing and hung (stopped with TaskStop), a `sed -i.bak` on its own scratch script, and a debug script that wrote to `/tmp` (deleted; the scratchpad should have been used). This is the third checkpoint with a breach after the rule was restated in the prompt, which suggests restating the rule in the prompt is not enough and the Bash-tool hook suggested under F1 is the right fix. Disclosure is consistently good; prevention is not.
-
 ### Related, not a failure
 The coder's attempt to `docker kill` a hung container was denied by the permission classifier. It did not work around the denial and reported it, as the "A refusal is final" rule requires.
+
+---
+
+## F3 — The rule breaks continued after the rule was restated (CP4, 2026-11-01)
+
+### What happened
+During checkpoint CP4 (T19–T27) the `coder` agent, which had been told in its prompt and again in each later message not to write files from the shell, reported three more exceptions in its "Rule exceptions" section. None changed a tracked repository file.
+1. **A heredoc.** A debugging command used `python - <<'EOF'` with `cat >> /dev/null`. It wrote nothing, then hung, and was stopped with TaskStop. The agent called it "a plain violation of the heredoc ban."
+2. **`sed -i.bak`.** Run once on its own debug script in the scratchpad (not in the repository); the `.bak` was removed.
+3. **A write to `/tmp`.** A debug script wrote stderr to `/tmp/dbg_server.err`; the agent deleted it. The session names a scratchpad directory for temporary files, so this also broke that instruction.
+
+### Pattern across checkpoints
+| Checkpoint | Shell-write breaches | Reported by agent | Touched tracked files |
+|---|---|---|---|
+| CP1 (T1–T7) | 4 heredocs (F1) | 1 of 4, framed as an interpretation | Yes |
+| CP2 (T8–T11) | 1 `sed -i.bak` (F2) | Yes, first, unprompted | Yes |
+| CP3 (T12–T18) | None reported; two harmless no-op `cat >/dev/null` | Yes | No |
+| CP4 (T19–T27) | 1 heredoc, 1 `sed -i.bak`, 1 `/tmp` write (this entry) | Yes, first, unprompted | No |
+
+Checkpoints CP1, CP2 and CP4 had a breach; CP3 did not. Between CP1 and CP2 the rule was restated in the prompt, and it was restated again before CP3 and CP4.
+
+### Assessment (inference, not confirmed)
+- **Restating the rule in the prompt does not prevent it.** The breaches are short debugging moves ("run this snippet to see what happens"), where the shell is the quickest path.
+- **Disclosure improved; prevention did not.** From CP2 on the agent reported every exception first and unprompted, and the later breaches were confined to scratch files, so the severity fell from tracked files (F1, F2) to scratch files (F3).
+- **The rule is silent on debugging.** `AGENTS.md` says to put multi-line input in "a test file or a scratch folder", but does not say how to run a one-off snippet, which is where the heredocs and `/tmp` writes happened.
+
+### Suggested improvements (for the later process review)
+- Enforce it in the tool, not in the prompt: a hook on the Bash tool that rejects `<<`, `sed -i`, `tee` and redirects into files (the F1 suggestion; the evidence now supports it).
+- Add to the rule a sanctioned way to run a one-off snippet: write it to the scratchpad with `Write`, then run the file.
+- Name the scratchpad directory in the agent's instructions, so temporary files do not go to `/tmp`.
+- Have the `reviewer` agent read the agent's "Rule exceptions" section and compare it with the tool-call log.
