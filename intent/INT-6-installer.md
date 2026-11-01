@@ -3,7 +3,7 @@ id: INT-6
 title: An installer that takes you from nothing to a working instance
 author: Michael Hay
 created: 2026-10-31
-status: draft
+status: accepted
 affects: [server, docker, docs, svc_ctl]
 drafted_with: [claude-sonnet-5-5]
 accepted_by:
