@@ -966,6 +966,17 @@ def _throttle_limits():
 _throttle = Throttle(_throttle_limits)
 
 
+def _exposed_address():
+    """
+    The address the server is reachable on from other machines, for the "no principal yet" rule.
+
+    ``MANIFOLD_PUBLIC_ADDRESS`` when the deployment sets it (the container files set it to the address
+    Caddy publishes on, because inside the container the server always listens on 0.0.0.0 on a network
+    only Caddy shares); otherwise ``MANIFOLD_HOST``; None if neither is set.
+    """
+    return os.getenv("MANIFOLD_PUBLIC_ADDRESS") or os.getenv("MANIFOLD_HOST") or None
+
+
 def _check_auth_settings(record: bool = True) -> None:
     """
     Apply the startup rules (``manifold_security.startup``): open the security store (a store that cannot
@@ -974,7 +985,7 @@ def _check_auth_settings(record: bool = True) -> None:
     """
     import logging
     report = _store_access.use(lambda conn: check_startup(
-        conn, os.getenv("MANIFOLD_HOST") or None, os.environ, record=record))
+        conn, _exposed_address(), os.environ, record=record))
     for notice in report.notices:
         logging.getLogger(__name__).warning(notice)
 
@@ -987,7 +998,7 @@ def _preflight() -> None:
     """
     probe = StoreAccess()
     try:
-        report = probe.use(lambda conn: check_startup(conn, os.getenv("MANIFOLD_HOST") or None, os.environ,
+        report = probe.use(lambda conn: check_startup(conn, _exposed_address(), os.environ,
                                                       record=False))
     finally:
         probe.close()

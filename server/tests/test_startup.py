@@ -125,6 +125,20 @@ def test_loopback_helper():
 
 # ── the server module applies them ───────────────────────────────────────────
 
+def test_in_a_container_the_published_address_decides_not_the_bind_inside(monkeypatch, auth_world):
+    """Inside the container the server listens on 0.0.0.0; what matters is where Caddy publishes it."""
+    pytest.importorskip("fastmcp")
+    import server
+    for principal in principals.list_principals(auth_world.conn):
+        auth_world.conn.execute("DELETE FROM principals WHERE id = ?", (principal.id,))
+    monkeypatch.setenv("MANIFOLD_HOST", "0.0.0.0")
+    monkeypatch.setenv("MANIFOLD_PUBLIC_ADDRESS", "127.0.0.1")
+    server._check_auth_settings()  # starts (and warns): published on loopback only
+    monkeypatch.setenv("MANIFOLD_PUBLIC_ADDRESS", "192.168.1.5")
+    with pytest.raises(StartupError, match=r"\./manifold init"):
+        server._check_auth_settings()
+
+
 def test_the_server_applies_the_rules_when_it_starts(monkeypatch, auth_world, caplog):
     pytest.importorskip("fastmcp")
     import logging

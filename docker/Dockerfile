@@ -7,6 +7,8 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     CONTAINER_WIKI_ROOT=/workspace \
+    MANIFOLD_DATA_DIR=/data \
+    MANIFOLD_STORE_JOURNAL_MODE=delete \
     MANIFOLD_HOST=0.0.0.0 \
     PORT=8686
 
@@ -32,12 +34,16 @@ RUN set -e; \
         (cd "$bundle" && python tools/build.py --out dist); \
     done
 
-# The instance repository is mounted here.  The server writes only inside it.
-VOLUME ["/workspace"]
+# The instance repository is mounted at /workspace, the security store (credential hashes, audit) at
+# /data.  The server writes only inside them (and /tmp).  The store is never inside the instance
+# repository.  The journal mode is "delete", not "wal": WAL fails when two processes in containers
+# share a bind-mounted folder on Docker Desktop (PHASE_1_PLAN T1), and the host command runs in a
+# second container process on the same folder.
+VOLUME ["/workspace", "/data"]
 USER manifold
 
-# Inside the container the server listens on all interfaces; the compose file
-# publishes the port on the host's loopback address only.
+# Inside the container the server listens on all interfaces, on a network only the Caddy service is
+# on; Caddy publishes the port on the host (loopback by default).  Nothing publishes this port directly.
 EXPOSE 8686
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \

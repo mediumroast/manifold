@@ -7,6 +7,7 @@ are refused with a message that names the allowed range.
 """
 
 import ipaddress
+import os
 import sqlite3
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
@@ -96,11 +97,33 @@ def _encode(value: Any) -> str:
     return ",".join(value) if isinstance(value, list) else str(value)
 
 
+# Settings a deployment may give a starting value in the environment (the container files set them):
+# ``MANIFOLD_<KEY>``, for example MANIFOLD_TRUSTED_PROXIES.  A value stored with the host command wins.
+ENV_DEFAULTS = ("allowed_hosts", "allowed_origins", "trusted_proxies", "tls")
+
+
+def env_default(key: str) -> Optional[Any]:
+    """The deployment's starting value for ``key`` from the environment, validated, or None."""
+    if key not in ENV_DEFAULTS:
+        return None
+    name = "MANIFOLD_" + key.upper()
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return None
+    try:
+        return parse(key, raw)
+    except SettingError as exc:
+        raise SettingError("%s (from the environment variable %s)" % (exc, name)) from None
+
+
 def get(conn: sqlite3.Connection, key: str) -> Any:
-    """The current value (the stored one if set, otherwise the default).  Read on every call."""
+    """The current value: the stored one, else the deployment's (environment), else the default.  Read on every call."""
     spec = _spec(key)
     row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
     if row is None:
+        from_env = env_default(key)
+        if from_env is not None:
+            return from_env
         return list(spec.default) if isinstance(spec.default, list) else spec.default
     return parse(key, row["value"])
 
