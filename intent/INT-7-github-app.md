@@ -3,10 +3,10 @@ id: INT-7
 title: A GitHub App named manifold
 author: Michael Hay
 created: 2026-10-31
-status: draft
+status: accepted
 affects: [server, docs]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay 2026-11-01
 ---
 
 # Intent: A GitHub App named manifold
@@ -113,9 +113,9 @@ The same App lets people sign in from the command line (device flow) and, later,
 - The features that use it (INT-6, INT-14, INT-15, INT-16).
 
 ## Open questions
-- Which organization owns the App first, and can ownership be transferred later? (the product owner)
-- Is the manifest flow enough to create it, or must the first one be made by hand? (the product owner)
-- Do any needed permissions require organization-owner approval that blocks the new company? (the product owner)
-- One App or two, after the spike? (the product owner)
+- Which organization owns the App first, and can ownership be transferred later? (the product owner) Answer: We need to resolve this in planning with some pro/con thinking there isn't enough detail in the question to answer.
+- Is the manifest flow enough to create it, or must the first one be made by hand? (the product owner) Answer: We need to resolve this in planning with some pro/con thinking there isn't enough detail in the question to answer. 
+- Do any needed permissions require organization-owner approval that blocks the new company? (the product owner) Answer: I am unsure. I do know that we will need to create 1-2 repositories on behalf of the user.  The manifold repo and the aftertaste repo.  Org admins may need to assign users into either or both repos or at least assign a repo owner and delegate permissions to them.  This may not answer the question and likely requires planning and a spike.
+- One App or two, after the spike? (the product owner) Answer: I presume we are talking one app create by mediumroast and then one app by the company using manifold or both. I'd opt for both because if the user allows the mediumroast app then they will make their lives easier. However for clear control then they can create and install their own following a guide and our example app.
 - Does the repository-permission check work on repositories where the App is not installed, and what does it return? (answered by the spike)
-- Should the installer provision a service credential into component repositories' Actions secrets (Secrets write)? The default is no. (the product owner)
+- Should the installer provision a service credential into component repositories' Actions secrets (Secrets write)? The default is no. (the product owner) Answer: likely, no but put details in the planning doc and then we can decide then.
