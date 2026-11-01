@@ -6,7 +6,7 @@ SPDX-PackageName = "manifold"
 
 # The copyright holder, for every file outside the bundles (which have their own REUSE.toml).
 [[annotations]]
-path = ["server/**", "assets/**", "tools/**", "docker/**", "examples/**", "svc_ctl.sh", ".dockerignore", "NOTICE", "LICENSE", "REUSE.toml"]
+path = ["server/**", "assets/**", "tools/**", "docker/**", "examples/**", "svc_ctl.sh", ".dockerignore", "NOTICE", "LICENSE", "REUSE.toml", "intent/*.md"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Mediumroast, Inc."
 
@@ -23,6 +23,7 @@ path = [
   "assets/web/vendor/SHA256SUMS",
   "docker/**",
   "examples/**",
+  "intent/*.md",
   ".dockerignore",
   "NOTICE",
   "REUSE.toml",
