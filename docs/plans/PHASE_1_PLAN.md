@@ -170,7 +170,8 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 > - **Case (b), container plus host, `wal`: FAIL.** Container: same SIGBUS (exit -7), found 601 for 600; host: acknowledged=800 found=798 lost=2.
 > - **Case (b), container plus host, `delete`: FAIL.** Container: 426 acknowledged, 374 errors ("disk I/O error", "unable to open database file"), found 576; host: acknowledged=754 found=74 lost=680, 46 errors. Per D2 case (b) changes nothing, because the host never opens the database.
 > - Linux case: not run here; pending CI (T30).
-> - **Consequence (decision for the owner, not applied here):** case (a) fails with the plan's default `wal` on a macOS bind mount. D2's first rung (`MANIFOLD_STORE_JOURNAL_MODE=delete`) passed case (a) in one run. Nothing in T2 or T28 was changed.
+> - **Consequence:** case (a) fails with `wal` on a macOS bind mount; D2's first rung (`delete`) passes. Applied as a configuration decision for T28 (container default `delete`); T2's code is unchanged (default `wal`, `MANIFOLD_STORE_JOURNAL_MODE` already supported).
+> - **Repeat of case (a) in `delete` mode (owner request), 5 more runs, same parameters, fresh folder each (`mktemp`), two containers at once:** all 10 probe results `acknowledged=800 found=800 lost=0 lock_errors=0 integrity=ok` (6 of 6 runs pass including the first). Per the owner, D2 rung 1 is applied: the container runs with `MANIFOLD_STORE_JOURNAL_MODE=delete` (set in the container/compose config in T28); the code default stays `wal` (T2). The named-volume rung is not needed.
 > - Side effect: the first run's container (`3faf3b74b5aa`, hung) could not be killed from here (the kill was denied), so it may still be running; `docker stop 3faf3b74b5aa` clears it.
 
 **Files:** `experiments/sqlite-bind-mount/` (scratch; never imported by production code)
@@ -467,6 +468,7 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 ---
 
 ### Task 28 — Add the data volume and remove the shared token from the container files
+> **Note (CP2, from T1):** set `MANIFOLD_STORE_JOURNAL_MODE=delete` in the container environment (compose and image), per D2 rung 1 and the T1 evidence (WAL fails case (a) on a macOS bind mount; `delete` passed 6 of 6). The named-volume fallback is not used.
 **Files:** `docker/Dockerfile`, `docker/docker-compose.yml`, `docker/docker-compose.dev.yml`, `docker/.env.dev.template`, `docker/.env.staging.template`, `docker/.env.production.template`, `server/tests/test_deploy_files.py`
 **Action:** MODIFY
 **Change:** Remove `MANIFOLD_TOKEN` from compose and the templates. Add `DATA_DIR` (absolute host path) mounted at `/data`, set `MANIFOLD_DATA_DIR=/data` in the image, keep `read_only: true`, and keep the container user `HOST_UID:HOST_GID` so the data folder is owned by the person. Put the Manifold service on an internal network and stop publishing its port directly (T29 publishes through Caddy).
