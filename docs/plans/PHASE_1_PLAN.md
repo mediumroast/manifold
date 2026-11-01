@@ -1,6 +1,6 @@
 # PHASE_1_PLAN.md
 
-**Approved by:**
+**Approved by:** Michael Hay 2026-11-01
 **Source intent:** [INT-1 Security baseline for the Manifold server][i1] (status accepted, accepted_by Michael Hay 2026-11-01), all of it; and the local part of [INT-6 An installer that takes you from nothing to a working instance][i6] (status accepted, accepted_by Michael Hay 2026-11-01). [INT-7][i7] (accepted, same date) is not planned here; it builds on this plan.
 
 ## Objective
