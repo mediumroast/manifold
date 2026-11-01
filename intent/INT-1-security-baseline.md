@@ -35,7 +35,7 @@ In addition, the server is hard to misuse by accident: it refuses to listen beyo
 - **Instances already in use** with the shared token: they move to individual credentials in one step (see S8).
 
 ## Constraints
-- **Safe by default.** A new install is protected without extra steps; turning protection off is a deliberate, loud act and is refused on any address other than the local machine.
+- **Safe by default.** A new install is protected without extra steps, and there is no setting that turns protection off. A server with no principals starts, warns, and refuses every request until the first administrator exists.
 - **Secrets stay out of the wiki.** Credentials are never stored in the instance repository, never written to the log or the git history, and never shown in full after creation. At rest the server keeps only hashes. The server holds no third-party secrets (a person's or agent's Anthropic key, a personal access token) and returns no secret through any tool.
 - **Client compatibility.** Claude Code and VS Code (GitHub Copilot) keep working with a header they already support. A browser keeps working with the standard sign-in prompt. Claude Desktop and claude.ai are a known limitation: they connect from Anthropic's cloud and cannot reach a server on a private network. A later intent (INT-18) addresses it.
 - **No new service needed.** The server needs no external identity provider, database server or network service. Its security data lives in one SQLite file in a data directory that is never inside the instance repository, readable only by the server's user.
@@ -95,7 +95,7 @@ In addition, the server is hard to misuse by accident: it refuses to listen beyo
 **Who:** Someone starting the server on a shared host.
 **Wants:** A clear refusal if protection is missing or weak.
 **So that:** A mistake in a settings file does not publish the wiki.
-**We will know when:** Starting with no credentials, or with a short or default credential, on any address other than the local machine fails with a message that says what to fix, and the same start on the local machine works with a visible warning.
+**We will know when:** Starting with no credentials, or with a short or default credential, on any address other than the local machine fails with a message that says what to fix, and the same start on the local machine starts with a visible warning and refuses every request until the first administrator and credentials exist.
 **Must never:** Start listening on a shared address with protection off because a setting was left empty.
 
 ### S7 — TLS is a setting, not a research project

@@ -90,7 +90,7 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 - [INT-7][i7] (a later plan): the authorizer's repo-write interface (T7), the `authority` setting per component (T24), the principal model keyed for a GitHub identity (T5), and the credential mechanism with expiry (T3). INT-7's 12-hour default and 24-hour cap for sign-in credentials are not implemented here.
 
 ## Concerns flagged
-Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is recorded here, with the intent text it touches, and is built into the tasks.
+Open: items 1 and 2 below (both technical). Everything else the owner decided on 2026-11-01 is recorded here, with the intent text it touches, and is built into the tasks.
 
 **Decisions (owner, 2026-11-01):**
 - **D1 Empty start.** The server starts, warns, and refuses every request until a principal exists; the message names `./manifold init`. It is never served openly, including on loopback. Built into T21. See [INT-1 S6][i1-s6].
@@ -107,26 +107,27 @@ Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is rec
 - **D12 INT-7 App topology.** Not a Phase 1 matter. Note for the INT-7 spike plan: it must evaluate both options (a per-company App, as [INT-7 Constraints][i7-c] says now, and a mediumroast-owned convenience App limited to device flow with no server secrets, as the owner's answer in [INT-7 Open questions][i7-oq] suggests) and recommend; the owner then amends INT-7.
 - **D13 Purge handoff to INT-14.** Whoever writes the INT-14 plan raises it ([INT-1 Open questions][i1-oq]; see Provides above).
 - **D14 Caddy** image tag, digest and licence are confirmed in T29.
+- **D15 No off switch.** There is no setting that turns protection off. An empty start (no principals) starts, warns and refuses every request, including on loopback, until `manifold init`. The owner reworded the "Safe by default" constraint and the S6 "We will know when" in INT-1 to say so; see [INT-1 Constraints: Safe by default][i1-c] and [INT-1 S6][i1-s6]. Built into T4, T21, T35. Nothing in this plan depends on an open server (checked: the old `test_auth.py` cases "no token means authentication is off" and "loopback without a token starts with a warning", the shared-token smoke tests and the CI image job are all rewritten in T10, T21, T27 and T30; the quickstart only calls the open `/health`; `tests/live`, `tools` and the helpers never ran against an open server).
+- **D16 The personal principal is not a registrar** (D3). To change a component's repository or owner, an administrator first adds the registrar role with `admin role set`. Built into T32.
 
 **Concerns still open:**
-1. **Project commands are not yet confirmed** by the owner (listed under Prerequisites as proposed and unverified), and `.venv` must exist before approval.
-2. **SQLite on a macOS bind mount is unverified.** T1 settles it; D2 gives the fallback.
-3. **How a tool learns the caller** is unverified: FastMCP 4.1.4 (pinned in `server/requirements.lock`) is not installed here, so passing the principal to tools, including over `/sse`, is untested. T11 tests it before T12 depends on it.
+1. **SQLite on a macOS bind mount is unverified.** T1 settles it; D2 gives the fallback.
+2. **How a tool learns the caller** is unverified: FastMCP 4.1.4 (pinned in `server/requirements.lock`): passing the principal to tools, including over `/sse`, has not been tested; read its source in `.venv` first. T11 tests it before T12 depends on it.
 
 **Findings from reading the code that shaped the tasks** (read, not run): `wiki_agent_catalog_tool` is not read-only (it writes `wiki/guides/agents/<component>.md` and the sidebar; contributor needed, T13); the other read tools write nothing; `wiki_write_page` and `wiki_read` join the caller's path to the wiki root with no check (T8, T9); `wiki_log_append` records `Agent: <component>` from the caller's claim, which breaks S3 (T15).
 
 ## Prerequisites
 - [x] [INT-1][i1], [INT-6][i6] and [INT-7][i7] are accepted (read from the files, `accepted_by: Michael Hay 2026-11-01`).
-- [ ] The owner confirms the project commands below (the one remaining open item).
-- [ ] A virtual environment exists: `.venv` is missing in this worktree and `fastmcp` is not installed in the system `python3` (3.11.3). The owner agrees the coder creates `.venv` per [server/README.md](../../server/README.md) ("Directly, without Docker"); nothing outside the repository is changed.
+- [x] The owner confirmed the project commands below (2026-11-01).
+- [x] The virtual environment exists and the commands below were run by the coordinator: `python3 -m venv .venv`, then the install line; this plan does not create it.
 - [ ] Docker with Compose is available for T28 to T33 (`docker` is at `/usr/local/bin/docker` here); a macOS machine with Docker Desktop is available for T1.
-- **Project commands (PROPOSED, UNVERIFIED: none was run).** `AGENTS.md` "Project commands" is blank; I did not edit it.
-  - Install: `python3 -m venv .venv` then `.venv/bin/pip install -r server/requirements-dev.txt -c server/requirements.lock` (found in `server/README.md`, `.github/workflows/server.yml`).
-  - Server tests: `cd server && ../.venv/bin/python -m pytest -q` (`server/README.md`; CI runs `python -m pytest -q` in `server/` on Python 3.11 and 3.12; `pytest.ini` sets `testpaths = tests`).
-  - Bundle tests: `python -m pytest bundles/base/tests -q` (`CONTRIBUTING.md`; `ci.yml` uses Python 3.8, 3.10, 3.12).
-  - Vendored web files: `python tools/vendor_web.py --check` (`server.yml`).
-  - Build and run: `./svc_ctl.sh <dev|staging|production> init-env|start|status|logs|health|stop` (`svc_ctl.sh`, `docs/operations.md`); direct run `CONTAINER_WIKI_ROOT=<path> .venv/bin/python server/server.py` (`server/README.md`).
-  - Lint and type-check: none found.
+- **Project commands (confirmed by the owner 2026-11-01; run and verified by the coordinator).** `AGENTS.md` "Project commands" is not edited by this plan.
+  - Install: `python3 -m venv .venv`, then `.venv/bin/pip install -r server/requirements-dev.txt -c server/requirements.lock`.
+  - Server tests: `cd server && ../.venv/bin/python -m pytest -q` (399 passed).
+  - Bundle tests: `.venv/bin/python -m pytest bundles/base/tests -q` (148 passed, 1 skipped).
+  - Vendored web files: `.venv/bin/python tools/vendor_web.py --check` (passed).
+  - Build and run: `./svc_ctl.sh <dev|staging|production> init-env|start|status|logs|health|stop`.
+  - Lint and type-check: none exist.
   - In acceptance lines below, `pytest` means `cd server && ../.venv/bin/python -m pytest -q`.
 
 ## File inventory
@@ -193,7 +194,7 @@ Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is rec
 ### Task 4 — Add the settings registry
 **Files:** `server/manifold_security/settings.py`, `server/tests/test_settings.py`
 **Action:** CREATE
-**Change:** One table of known settings with type, bounds and default, read from the `settings` table: `agent_registrations_per_day=5`, `agent_archives_per_day=1`, `purge_hold_days=14`, `throttle_failure_threshold=5`, `throttle_window_seconds=600`, `throttle_base_delay_seconds=1`, `throttle_max_delay_seconds=900`, `allowed_hosts`, `allowed_origins`, `trusted_proxies` (empty), `auth_mode=on`, `tls=off|on`. Unknown keys and out-of-range values are refused with a message naming the allowed range.
+**Change:** One table of known settings with type, bounds and default, read from the `settings` table: `agent_registrations_per_day=5`, `agent_archives_per_day=1`, `purge_hold_days=14`, `throttle_failure_threshold=5`, `throttle_window_seconds=600`, `throttle_base_delay_seconds=1`, `throttle_max_delay_seconds=900`, `allowed_hosts`, `allowed_origins`, `trusted_proxies` (empty), `tls=off|on`. There is no setting that turns authentication off. Unknown keys and out-of-range values are refused with a message naming the allowed range.
 **Source:** [INT-1 Constraints: Limits are settings, with defaults][i1-c]; D4.
 **Acceptance:** `pytest tests/test_settings.py` passes: defaults as listed, override, out-of-range refusal.
 **Todo:** [ ]
@@ -265,7 +266,7 @@ Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is rec
 **Files:** `server/tests/test_principal_propagation.py`, `server/manifold_security/context.py`, `server/server.py`
 **Action:** CREATE / MODIFY
 **Change:** Using the real-server pattern in `test_server_smoke.py`, add a temporary tool that returns `current_principal`; call it over `/mcp` with two credentials in turn and over `/sse` with two sessions. If FastMCP runs SSE tool calls outside the request context, bind each session id to the principal that opened it and refuse a POST whose credential differs from the session's. Remove the temporary tool; add `principal` (name, kind, roles) to the result of `wiki_ping_tool`.
-**Source:** Concern 3; [INT-1 S3][i1-s3]; [INT-1 S2][i1-s2]. Unverified until run: confirm with the FastMCP 4.1.4 source after install.
+**Source:** Concern 2; [INT-1 S3][i1-s3]; [INT-1 S2][i1-s2]. Unverified until run: confirm with the FastMCP 4.1.4 source in `.venv`.
 **Acceptance:** `pytest tests/test_principal_propagation.py tests/test_ping.py` passes: each call is attributed to its own credential on both transports, and a mismatched SSE POST is refused.
 **Todo:** [ ]
 
@@ -374,9 +375,9 @@ Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is rec
 ### Task 21 — Add the startup rules and the legacy-token notice
 **Files:** `server/manifold_security/startup.py`, `server/server.py`, `server/tests/test_startup.py`, `server/tests/test_offline_clean.py`
 **Action:** CREATE / MODIFY
-**Change:** At startup (including under `uvicorn server:asgi_app`): open the store, run migrations, and apply these rules. A non-loopback `MANIFOLD_HOST` with no principals refuses to start with a message naming `./manifold init`. With no principals on any address, including loopback, the server starts with a visible warning and refuses every request with the same message (D1); it is never served openly. The separate deliberate setting `auth_mode=off` (kept from [INT-1 Constraints: Safe by default][i1-c]) is allowed only on loopback, logs a loud warning, and the request-time middleware refuses non-loopback peers in that mode. If `MANIFOLD_TOKEN` or `MANIFOLD_TOKEN_FILE` is set, log that it is no longer accepted and name the host command that creates the first administrator. Add `test_offline_clean.py`, which fails if any server module imports an HTTP client library.
-**Source:** [INT-1 S6][i1-s6]; [INT-1 S8][i1-s8]; [INT-1 S13][i1-s13]; [INT-1 Constraints: Safe by default][i1-c]; [INT-1 Constraints: Offline-clean][i1-c]; [INT-1 Constraints: A complete local mode][i1-c].
-**Acceptance:** `pytest tests/test_startup.py tests/test_offline_clean.py` passes: each rule has a case; the old token is not accepted and the message names the command.
+**Change:** At startup (including under `uvicorn server:asgi_app`): open the store, run migrations, and apply these rules. A non-loopback `MANIFOLD_HOST` with no principals refuses to start with a message naming `./manifold init`. With no principals on any address, including loopback, the server starts with a visible warning and refuses every request with the same message (D1); it is never served openly. There is no setting, flag or environment variable that turns authentication off, on any address (D15); a test fails if one is added. If `MANIFOLD_TOKEN` or `MANIFOLD_TOKEN_FILE` is set, log that it is no longer accepted and name the host command that creates the first administrator. Add `test_offline_clean.py`, which fails if any server module imports an HTTP client library.
+**Source:** [INT-1 S6][i1-s6]; D1, D15; [INT-1 S8][i1-s8]; [INT-1 S13][i1-s13]; [INT-1 Constraints: Safe by default][i1-c]; [INT-1 Constraints: Offline-clean][i1-c]; [INT-1 Constraints: A complete local mode][i1-c].
+**Acceptance:** `pytest tests/test_startup.py tests/test_offline_clean.py` passes: each rule has a case, including that an empty start refuses every request and that no off switch exists; the old token is not accepted and the message names the command.
 **Todo:** [ ]
 
 ---
@@ -516,7 +517,7 @@ Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is rec
 ### Task 35 — Rewrite the quickstart, READMEs, concepts, client examples and helper texts
 **Files:** `docs/quickstart.md`, `README.md`, `server/README.md`, `docs/concepts.md`, `examples/clients/claude-code-mcp.json`, `examples/clients/vscode-mcp.json`, `assets/helpers/commands/handoff-close.md`, `assets/helpers/prompts/handoff-close.prompt.md`, `assets/helpers/tools/ingest_doc.py`
 **Action:** MODIFY
-**Change:** Make `manifold init` the quickstart path and move the manual steps to an "advanced" section. In `server/README.md` remove the shared-token banner, the `MANIFOLD_TOKEN*` rows and the matching "Known limits"; add the new variables (`MANIFOLD_DATA_DIR`, `MANIFOLD_AUTH`, `MANIFOLD_TLS`, allowed hosts, origins, trusted proxies), the tool count (16) and the new tool. In `docs/concepts.md` replace "close lets the target mark a handoff completed" with request-review then source confirms (D7), and describe roles. Keep `MANIFOLD_TOKEN` only as the name of the client-side variable holding a person's own credential, and say so. Add the Claude Desktop and claude.ai known limitation with a pointer to [INT-18][i18]. Replace the target-close wording in the two `handoff-close` helper files.
+**Change:** Make `manifold init` the quickstart path and move the manual steps to an "advanced" section. In `server/README.md` remove the shared-token banner, the `MANIFOLD_TOKEN*` rows and the matching "Known limits"; add the new variables (`MANIFOLD_DATA_DIR`, `MANIFOLD_TLS`, allowed hosts, origins, trusted proxies), the tool count (16) and the new tool. In `docs/concepts.md` replace "close lets the target mark a handoff completed" with request-review then source confirms (D7), and describe roles. Keep `MANIFOLD_TOKEN` only as the name of the client-side variable holding a person's own credential, and say so. Add the Claude Desktop and claude.ai known limitation with a pointer to [INT-18][i18]. Replace the target-close wording in the two `handoff-close` helper files. Remove every statement that the token is optional or that authentication is off on loopback (`server/README.md`, and the "If the server requires a token" wording in `assets/helpers/tools/ingest_doc.py`: the server always requires a credential, D15).
 **Source:** [INT-1 S15][i1-s15]; [INT-1 S8][i1-s8]; [INT-1 Constraints: Client compatibility][i1-c]; [INT-6 S1][i6-s1].
 **Acceptance:** `pytest tests/test_helpers.py tests/test_example_starter.py tests/test_example_acme.py tests/test_deploy_files.py` passes; `grep -rn "target may also: close" docs assets examples` returns nothing; every relative link in the changed files resolves.
 **Todo:** [ ]
@@ -535,9 +536,9 @@ Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is rec
 
 ## Completion checklist
 - [ ] All tasks marked [x] by the coder
-- [ ] Verify command: none found (no lint or type-check); the owner confirms this, and `pytest` below is the gate
-- [ ] `cd server && ../.venv/bin/python -m pytest -q` passes clean (no regressions)
-- [ ] `python -m pytest bundles/base/tests -q` and `python tools/vendor_web.py --check` pass
+- [ ] Verify command: none exists (no lint or type-check); `pytest` below is the gate
+- [ ] `cd server && ../.venv/bin/python -m pytest -q` passes clean (no regressions; baseline 399 passed)
+- [ ] `.venv/bin/python -m pytest bundles/base/tests -q` (baseline 148 passed, 1 skipped) and `.venv/bin/python tools/vendor_web.py --check` pass
 - [ ] The CI workflow `server` passes (tests on 3.11 and 3.12, image job, macOS job)
 - [ ] The traceability table above still matches the finished work; any omission is recorded below
 - [ ] No [~] blocked items outstanding
@@ -552,10 +553,7 @@ Open: items 1 to 3 below. Everything else the owner decided on 2026-11-01 is rec
 -->
 
 ## Open questions
-Resolved by the owner on 2026-11-01: see Decisions D1 to D14 under Concerns flagged. Remaining:
-1. Confirm the proposed project commands under Prerequisites (none was run; `.venv` must exist before approval). (the product owner)
-2. New, raised by D1 and D3: keep the deliberate `auth_mode=off` loopback setting that [INT-1 Constraints: Safe by default][i1-c] implies (T21 keeps it), or remove it since an empty start now refuses every request? (the product owner)
-3. New, raised by D3: the personal principal gets `reader`, `contributor` and grants for the two samples and `_shared`, but not `registrar`, so changing a component's repository or owner (human registrar only) needs the role added by `admin role set`. Is that the intent? (the product owner)
+None for the owner. Resolved on 2026-11-01: see Decisions D1 to D16 under Concerns flagged. The two technical unknowns are Concerns still open 1 (T1, SQLite on a macOS bind mount) and 2 (T11, how FastMCP hands the caller to a tool).
 
 [i1]: ../../intent/INT-1-security-baseline.md
 [i1-p]: ../../intent/INT-1-security-baseline.md#proposed-outcome
