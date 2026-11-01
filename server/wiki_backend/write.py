@@ -8,6 +8,7 @@ import yaml
 from .models import WikiWriteRequest, WikiWriteResponse
 from .read import generate_etag
 from .git import git_commit
+from manifold_security import scopes
 
 
 _HANDOFF_REQUIRED_FIELDS = {
@@ -64,19 +65,39 @@ def _validate_frontmatter(path: str, content: str) -> Optional[str]:
 
 def wiki_write_page(wiki_root: Path, request: WikiWriteRequest) -> WikiWriteResponse:
     """
-    Create or update a wiki page with etag-based optimistic concurrency.
-    
+    Create or update a component page or a shared wiki page with etag-based optimistic concurrency.
+
+    Only component pages (``wiki/components/<slug>.md``, ``wiki/guides/agents/<slug>.md``) and
+    shared pages (other ``wiki/**.md``) are accepted.  Handoff pages have their own writer
+    (:func:`wiki_backend.handoff.wiki_write_handoff_page`); the log, the sidebar, ``CLAUDE.md``
+    and ``manifold.yaml`` are never written here.  The path is confined to the wiki root on
+    every call.
+
     For creates: etag must be None
     For updates: etag must match current page's etag
-    
+
     Args:
         wiki_root: Path to wiki repository root
         request: WikiWriteRequest with path, content, etag, message
-        
+
     Returns:
         WikiWriteResponse with status and new etag on success, or conflict error
     """
-    file_path = wiki_root / request.path
+    return write_page_of_kinds(wiki_root, request, (scopes.COMPONENT, scopes.SHARED))
+
+
+def write_page_of_kinds(wiki_root: Path, request: WikiWriteRequest, kinds) -> WikiWriteResponse:
+    """The shared writer behind :func:`wiki_write_page` and the handoff writer: ``kinds`` says what it accepts."""
+    try:
+        file_path, relative = scopes.confine(wiki_root, request.path)
+        kind, _ = scopes.classify(wiki_root, request.path)
+    except scopes.PathRefused as exc:
+        return WikiWriteResponse(path=request.path, status="error", error="Write refused: %s" % exc)
+    if kind not in kinds:
+        return WikiWriteResponse(
+            path=request.path, status="error",
+            error="Write refused: %s is a %s page and cannot be written this way." % (request.path, kind),
+        )
     file_path.parent.mkdir(parents=True, exist_ok=True)
     
     # Check if file exists

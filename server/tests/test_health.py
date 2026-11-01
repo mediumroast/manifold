@@ -68,8 +68,10 @@ def _client(monkeypatch, root):
     return TestClient(server.asgi_app)
 
 
-def test_route_returns_200_with_checks_when_healthy(wiki_root, monkeypatch):
-    response = _client(monkeypatch, wiki_root).get("/health")
+def test_route_returns_200_with_checks_when_healthy(wiki_root, monkeypatch, auth_world):
+    # Detail is shown to an authenticated caller only (the unauthenticated answer is tested in test_auth.py).
+    response = _client(monkeypatch, wiki_root).get(
+        "/health", headers={"Authorization": "Bearer " + auth_world.human_token})
     assert response.status_code == 200
     assert response.json()["status"] == "healthy" and "checks" in response.json()
 

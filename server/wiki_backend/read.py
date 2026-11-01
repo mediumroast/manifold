@@ -7,6 +7,7 @@ import frontmatter
 import hashlib
 import re
 from .models import WikiPageResponse
+from manifold_security import scopes
 
 
 def extract_links(content: str) -> List[str]:
@@ -33,8 +34,9 @@ def wiki_read(wiki_root: Path, path: str) -> WikiPageResponse:
     Returns:
         WikiPageResponse with page content and metadata
     """
-    file_path = wiki_root / path
-    
+    # Only wiki/ and raw/, confined to the root (no absolute paths, '..' or escaping symlinks).
+    file_path = scopes.check_readable(wiki_root, path)
+
     if not file_path.exists():
         raise FileNotFoundError(f"Page not found: {path}")
     

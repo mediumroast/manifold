@@ -84,7 +84,8 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
             raise StoreError("Migration %s failed: %s" % (path.name, exc)) from exc
 
 
-def open_store(data_dir, wiki_root=None, journal_mode: Optional[str] = None) -> sqlite3.Connection:
+def open_store(data_dir, wiki_root=None, journal_mode: Optional[str] = None,
+               check_same_thread: bool = True) -> sqlite3.Connection:
     """Open (creating if needed) the store in ``data_dir`` and return a connection.
 
     ``wiki_root`` defaults to ``CONTAINER_WIKI_ROOT`` (or ``/workspace``); a
@@ -110,7 +111,7 @@ def open_store(data_dir, wiki_root=None, journal_mode: Optional[str] = None) -> 
     except OSError as exc:
         raise StoreError("Cannot prepare the data folder %s: %s" % (folder, exc)) from exc
     try:
-        conn = sqlite3.connect(str(db_path), timeout=10, isolation_level=None)
+        conn = sqlite3.connect(str(db_path), timeout=10, isolation_level=None, check_same_thread=check_same_thread)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA busy_timeout = 10000")
         conn.execute("PRAGMA foreign_keys = ON")

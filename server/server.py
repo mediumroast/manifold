@@ -32,9 +32,9 @@ from wiki_backend.ping import wiki_ping
 from wiki_backend.config import ConfigError, DEFAULT_SERVER_NAME, load_config
 from wiki_backend.health import wiki_health
 from wiki_backend.web import VENDOR_URL, instance_shell, render_shell, vendor_dir
-from wiki_backend.auth import (
-    AuthConfigError, TokenAuthMiddleware, check_startup, configured_token, is_authorized,
-)
+from wiki_backend.auth import PrincipalAuthMiddleware, StoreAccess
+from manifold_security.context import caller_from_scope, current_caller_var
+from manifold_security.store import StoreError
 from wiki_backend.bundles import wiki_bundle_info
 from wiki_backend.ingest import (
     wiki_ingest_doc, classify_doc_type, read_body_capped, max_ingest_bytes, BodyTooLarge,
@@ -84,7 +84,8 @@ def wiki_ping_tool() -> dict:
     Calling this tool successfully proves that native MCP wrappers are working.
     No curl or protocol-level diagnostics are needed.
     """
-    return wiki_ping(WIKI_ROOT)
+    caller = current_caller()
+    return wiki_ping(WIKI_ROOT, principal=caller.as_dict() if caller else None)
 
 
 @app.tool()
@@ -631,13 +632,9 @@ async def ingest_doc(request: Request):
 @app.custom_route("/health", methods=["GET"])
 async def health_check(request: Request):
     """Health check endpoint: the mounted instance is present, configured and writable."""
-    # /health is open so a container health check can call it without the token. When a
-    # token is set, an unauthenticated caller learns only whether the service is healthy.
-    try:
-        token = configured_token()
-    except AuthConfigError:
-        token = ""
-    detailed = token is None or bool(token and is_authorized(request.headers.get("authorization"), token))
+    # /health is open so a container health check can call it without a credential. An
+    # unauthenticated caller learns only whether the service is healthy.
+    detailed = caller_from_scope(request.scope) is not None
     try:
         healthy, payload = wiki_health(WIKI_ROOT)
     except Exception as e:
@@ -662,12 +659,34 @@ _http_app = app.http_app(transport="http")  # /mcp  – Streamable HTTP
 _sse_app = app.http_app(transport="sse")    # /sse + /messages/ – SSE
 
 
+_store_access = StoreAccess()
+
+
+def current_caller():
+    """
+    The authenticated caller of the tool call being served, or None.
+
+    Reads the scope of the HTTP request that carried the call (``get_http_request``), which is
+    the POST for both /mcp and /messages/ (SSE); falls back to the context variable the
+    middleware sets.
+    """
+    try:
+        from fastmcp.server.dependencies import get_http_request
+        caller = caller_from_scope(get_http_request().scope)
+        if caller is not None:
+            return caller
+    except RuntimeError:
+        pass
+    return current_caller_var.get()
+
+
 def _check_auth_settings() -> None:
-    """Refuse unsafe authentication settings; warn when authentication is off."""
+    """Open the security store (raises StoreError with the fix if it cannot be); warn when no principal exists."""
     import logging
-    warning = check_startup(os.getenv("MANIFOLD_HOST", "127.0.0.1"))
-    if warning:
-        logging.getLogger(__name__).warning(warning)
+    if _store_access.principal_count() == 0:
+        logging.getLogger(__name__).warning(
+            "No principals exist: every request is refused until the first administrator is created "
+            "(run ./manifold init).")
 
 
 @asynccontextmanager
@@ -727,7 +746,7 @@ async def _redirect_root(request: Request) -> RedirectResponse:
 
 asgi_app = Starlette(
     routes=[Route("/", _redirect_root)] + list(_http_app.routes) + _extra_sse_routes + _docs_routes,
-    middleware=[Middleware(RequestContextMiddleware), Middleware(TokenAuthMiddleware)],
+    middleware=[Middleware(RequestContextMiddleware), Middleware(PrincipalAuthMiddleware, store=_store_access)],
     lifespan=_combined_lifespan,
 )
 
@@ -738,7 +757,7 @@ if __name__ == "__main__":
     host = os.getenv("MANIFOLD_HOST", "127.0.0.1")
     try:
         _check_auth_settings()
-    except AuthConfigError as exc:
+    except StoreError as exc:
         raise SystemExit("error: %s" % exc)
     reload = os.getenv("MANIFOLD_RELOAD", "").lower() in ("1", "true", "yes")
     uvicorn.run("server:asgi_app", host=host, port=port, reload=reload)

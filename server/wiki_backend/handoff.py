@@ -11,10 +11,21 @@ from typing import Optional
 
 from .models import WikiWriteRequest, WikiLogRequest
 from .read import wiki_read
-from .write import wiki_write_page
+from .write import write_page_of_kinds
 from .log import wiki_log_append
 from .register import update_sidebar_handoff, update_sidebar_handoff_status
 from .config import ConfigError, registered_slugs
+from manifold_security import scopes
+
+
+def wiki_write_handoff_page(wiki_root: Path, request: WikiWriteRequest):
+    """
+    Create or update a handoff page (``wiki/handoffs/<pair>/<file>.md``): the only writer of handoff pages.
+
+    Same etag rules, frontmatter validation and git commit as :func:`wiki_write_page`, with
+    the same path confinement; it accepts handoff pages and nothing else.
+    """
+    return write_page_of_kinds(wiki_root, request, (scopes.HANDOFF_ONLY,))
 
 
 _VALID_TYPES = {"feature", "bug", "breaking-change", "integration-spec"}
@@ -161,7 +172,7 @@ def handoff_create(
         etag=None,
         message=f"handoff: create {type} from {source} to {target} — {title}",
     )
-    response = wiki_write_page(wiki_root, request)
+    response = wiki_write_handoff_page(wiki_root, request)
     if response.status not in ("created",):
         return {"error": response.error or f"Write failed with status: {response.status}"}
 
@@ -226,7 +237,7 @@ def handoff_claim(wiki_root: Path, path: str) -> dict:
         etag=page.etag,
         message=f"handoff: claim — {fm.get('title', path)}",
     )
-    response = wiki_write_page(wiki_root, request)
+    response = wiki_write_handoff_page(wiki_root, request)
     if response.status not in ("updated",):
         return {"error": response.error or f"Write failed with status: {response.status}"}
 
@@ -284,7 +295,7 @@ def handoff_close(wiki_root: Path, path: str, resolution: str) -> dict:
         etag=page.etag,
         message=f"handoff: close — {fm.get('title', path)}",
     )
-    response = wiki_write_page(wiki_root, request)
+    response = wiki_write_handoff_page(wiki_root, request)
     if response.status not in ("updated",):
         return {"error": response.error or f"Write failed with status: {response.status}"}
 
@@ -348,7 +359,7 @@ def handoff_request_review(wiki_root: Path, path: str, notes: str) -> dict:
         etag=page.etag,
         message=f"handoff: request-review — {fm.get('title', path)}",
     )
-    response = wiki_write_page(wiki_root, request)
+    response = wiki_write_handoff_page(wiki_root, request)
     if response.status not in ("updated",):
         return {"error": response.error or f"Write failed with status: {response.status}"}
 
@@ -415,7 +426,7 @@ def handoff_confirm(wiki_root: Path, path: str, notes: str = "") -> dict:
         etag=page.etag,
         message=f"handoff: confirm — {fm.get('title', path)}",
     )
-    response = wiki_write_page(wiki_root, request)
+    response = wiki_write_handoff_page(wiki_root, request)
     if response.status not in ("updated",):
         return {"error": response.error or f"Write failed with status: {response.status}"}
 
@@ -481,7 +492,7 @@ def handoff_reject(wiki_root: Path, path: str, feedback: str) -> dict:
         etag=page.etag,
         message=f"handoff: reject — {fm.get('title', path)}",
     )
-    response = wiki_write_page(wiki_root, request)
+    response = wiki_write_handoff_page(wiki_root, request)
     if response.status not in ("updated",):
         return {"error": response.error or f"Write failed with status: {response.status}"}
 

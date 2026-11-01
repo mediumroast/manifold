@@ -8,6 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from wiki_backend.write import wiki_write_page
+from wiki_backend.handoff import wiki_write_handoff_page
 from wiki_backend.models import WikiWriteRequest
 
 # wiki_root fixture provided by conftest.py
@@ -37,7 +38,7 @@ _HANDOFF_PATH = "wiki/handoffs/acme-qa-to-acme.io/bug-test.md"
 def test_malformed_yaml_rejected(wiki_root):
     content = "---\n: bad: [yaml\n---\nbody\n"
     req = WikiWriteRequest(path=_HANDOFF_PATH, content=content, message="test")
-    result = wiki_write_page(wiki_root, req)
+    result = wiki_write_handoff_page(wiki_root, req)
     assert result.status == "error"
     assert "malformed" in result.error.lower()
     assert not (wiki_root / _HANDOFF_PATH).exists()
@@ -59,7 +60,7 @@ blocked_by: []
 body
 """
     req = WikiWriteRequest(path=_HANDOFF_PATH, content=content, message="test")
-    result = wiki_write_page(wiki_root, req)
+    result = wiki_write_handoff_page(wiki_root, req)
     assert result.status == "error"
     assert "source_component" in result.error
     assert not (wiki_root / _HANDOFF_PATH).exists()
@@ -82,7 +83,7 @@ blocked_by: []
 body
 """
     req = WikiWriteRequest(path=_HANDOFF_PATH, content=content, message="test")
-    result = wiki_write_page(wiki_root, req)
+    result = wiki_write_handoff_page(wiki_root, req)
     assert result.status == "error"
     assert "source" in result.error
     assert not (wiki_root / _HANDOFF_PATH).exists()
@@ -90,7 +91,7 @@ body
 
 def test_valid_handoff_accepted(wiki_root):
     req = WikiWriteRequest(path=_HANDOFF_PATH, content=_VALID_HANDOFF, message="test")
-    result = wiki_write_page(wiki_root, req)
+    result = wiki_write_handoff_page(wiki_root, req)
     assert result.status == "created"
     assert (wiki_root / _HANDOFF_PATH).exists()
 

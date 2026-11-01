@@ -66,6 +66,42 @@ def wiki_root(tmp_path: Path) -> Path:
     return tmp_path
 
 
+class AuthWorld:
+    """A security store holding two principals with a credential each (generated, never real)."""
+
+    def __init__(self, conn, data_dir):
+        from manifold_security import principals, tokens
+        self.conn = conn
+        self.data_dir = data_dir
+        self.human = principals.create_principal(conn, "alice", "human")
+        principals.set_role(conn, "alice", "contributor")
+        self.agent = principals.create_principal(conn, "build-bot", "agent")
+        principals.set_role(conn, "build-bot", "reader")
+        self.human_credential = tokens.issue_credential(conn, self.human.id, "test")
+        self.agent_credential = tokens.issue_credential(conn, self.agent.id, "test")
+        self.human_token = self.human_credential.token
+        self.agent_token = self.agent_credential.token
+
+
+@pytest.fixture()
+def auth_world(tmp_path: Path, monkeypatch):
+    """
+    Isolated store with a human and an agent principal, each with a credential.
+
+    ``MANIFOLD_DATA_DIR`` points at it for the test, so code that opens the store from
+    the environment (the server's middleware) uses this one and no real data folder.
+    """
+    from manifold_security.store import open_store
+
+    data_dir = tmp_path / "auth-data"
+    conn = open_store(data_dir, wiki_root=tmp_path / "wiki-root")
+    monkeypatch.setenv("MANIFOLD_DATA_DIR", str(data_dir))
+    monkeypatch.setenv("CONTAINER_WIKI_ROOT", str(tmp_path / "wiki-root"))
+    world = AuthWorld(conn, data_dir)
+    yield world
+    conn.close()
+
+
 @pytest.fixture()
 def security_conn(tmp_path: Path):
     """

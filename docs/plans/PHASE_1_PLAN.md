@@ -256,43 +256,47 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 ---
 
 ### Task 8 — Add failing tests that show the page-tool gaps
+> **Note (CP2):** Added `server/tests/test_path_policy.py` (xfail strict until T9). Before the xfail mark: `cd server && ../.venv/bin/python -m pytest -q tests/test_path_policy.py --runxfail`: 17 failed (every case: protected-path writes of `manifold.yaml`, `wiki/_sidebar.md`, `wiki/CLAUDE.md`, `wiki/log.md`, a handoff page; writes by `../`, absolute path, NUL, escaping symlink; reads of `../`, absolute, `manifold.yaml`, `.git/config`, escaping symlink all succeeded or wrote). With the mark: 17 xfailed. The NUL-byte read case is not included because the OS already refuses it today (it would be a strict XPASS).
 **Files:** `server/tests/test_path_policy.py`
 **Action:** CREATE
 **Change:** Against the temporary `wiki_root` fixture only, add tests that call `wiki_write_page` with paths `manifold.yaml`, `wiki/_sidebar.md`, `wiki/CLAUDE.md`, `wiki/log.md`, `wiki/handoffs/acme-api-to-acme-web/x.md`, `../outside.md`, an absolute path and a symlink that leaves the root, and `wiki_read` with `../outside.md`, an absolute path, `manifold.yaml`, `.git/config` and a symlink that leaves the root, each expecting a refusal and no file change (the read cases go beyond S16's text, at the owner's decision D6). Run them, paste the failing output in the task note, and mark them `xfail(strict=True)` until T9.
 **Source:** [INT-1 S16][i1-s16]; [INT-1 Constraints: The server writes only where it should][i1-c]; D6.
 **Acceptance:** `pytest tests/test_path_policy.py` reports the cases as expected failures with the reasons recorded; no real data is touched.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 9 — Add the path policy and enforce it in the backends
+> **Note (CP2):** Added `server/manifold_security/scopes.py` (`confine`, `classify`, `check_readable`, `PathRefused`); `wiki_read` now accepts only `wiki/**` and `raw/**`, confined. **Deliberate departure (owner decision, "strict everywhere"):** `wiki_write_page` itself accepts only component and shared pages with confinement on every call; handoff pages have their own writer `wiki_write_handoff_page` in `wiki_backend/handoff.py` (same etag, frontmatter and commit logic through `write.write_page_of_kinds`), and all six handoff.py call sites use it. The existing tests that wrote handoff pages through `wiki_write_page` were changed to the handoff writer: `tests/test_handoff_lifecycle.py` (import and every call) and four handoff cases in `tests/test_write_validation.py`; assertions unchanged. The `xfail` marks from T8 are removed. `cd server && ../.venv/bin/python -m pytest -q`: 536 passed (full suite, includes the smoke tests).
 **Files:** `server/manifold_security/scopes.py`, `server/wiki_backend/write.py`, `server/wiki_backend/read.py`, `server/tests/test_path_policy.py`
 **Action:** CREATE / MODIFY
 **Change:** `classify(path)` resolves a relative path against the wiki root (refusing absolute paths, `..`, NUL and symlinks that leave it) and returns `(kind, scope)`: `wiki/components/<slug>.md` and `wiki/guides/agents/<slug>.md` give component scope `<slug>`; `wiki/handoffs/**` is `handoff-only`; `wiki/log.md` is `log-only`; `wiki/_sidebar.md`, `wiki/CLAUDE.md` and `manifold.yaml` are `system`; other `wiki/**.md` pages (decisions, architecture, index, guides) give scope `_shared`; anything else is refused. `wiki_write_page` accepts only component or `_shared` kinds; `wiki_read` accepts only `wiki/**` and `raw/**` (traversal and symlink checks as for writes, D6). Remove the `xfail` marks from T8.
 **Source:** [INT-1 S16][i1-s16]; [INT-1 S12][i1-s12]; [INT-1 Constraints: The server writes only where it should][i1-c].
 **Acceptance:** `pytest tests/test_path_policy.py tests/test_write_validation.py tests/test_handoff_tool.py -k "not smoke"` passes with T8 cases now plain passes and existing tests unchanged.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 10 — Replace the shared-token middleware with principal authentication
+> **Note (CP2):** `wiki_backend/auth.py` now holds `PrincipalAuthMiddleware` and `StoreAccess` (lazy store from `MANIFOLD_DATA_DIR`, default `/data`; checked on every request, no cache); `TokenAuthMiddleware`, `configured_token`, `check_startup`, `is_authorized` and `AuthConfigError` are removed (a test asserts they are gone and that `MANIFOLD_TOKEN`/`MANIFOLD_TOKEN_FILE` are not read). New `manifold_security/context.py` (`Caller`, scope key, context variable). `server.py`: middleware swapped, `/health` shows detail only to an authenticated caller, startup opens the store (a store that cannot be opened stops the server) and warns when no principal exists (the rest of the startup rules is T21). Interpretations: an unusable store answers 503 (fail closed) except `/health`; a disabled principal gets the "removed or expired" message; failed sign-ins are not yet audited or throttled (T20). `open_store` gained `check_same_thread`. Tests: `tests/test_auth.py` rewritten, `tests/test_auth_middleware.py` new, smoke fixtures adapted (new `tests/realserver.py` starts the server with a generated store; `tests/conftest.py` `auth_world`), and `tests/test_health.py::test_route_returns_200_with_checks_when_healthy` now sends a credential (detail needs one). `cd server && ../.venv/bin/python -m pytest -q tests/test_auth.py tests/test_auth_middleware.py`: 68 passed (before the later additions); full suite below.
 **Files:** `server/wiki_backend/auth.py`, `server/manifold_security/context.py`, `server/server.py`, `server/tests/test_auth.py`, `server/tests/test_auth_middleware.py`
 **Action:** MODIFY / CREATE
 **Change:** Replace `TokenAuthMiddleware`, `configured_token`, `check_startup` and `is_authorized` with `PrincipalAuthMiddleware`: read `Authorization: Bearer` or `Basic` (password), call `tokens.verify` against the store on every request, set a `current_principal` context variable, and answer failures with 401 and `WWW-Authenticate` challenges. Errors are generic ("authentication required") except that a revoked or expired credential gets "your access was removed or has expired" (only a holder of the full secret sees this). `/health` stays open and shows detail only to an authenticated reader. The old `MANIFOLD_TOKEN` and `MANIFOLD_TOKEN_FILE` are no longer read (T21 prints the notice). Rewrite `test_auth.py` for the new behavior.
 **Source:** [INT-1 S1][i1-s1]; [INT-1 S4][i1-s4] (no revealing errors); [INT-1 S14][i1-s14]; [INT-1 Constraints: Client compatibility][i1-c]; [INT-1 Constraints: Standards, not inventions][i1-c].
 **Acceptance:** `pytest tests/test_auth.py tests/test_auth_middleware.py` passes: Bearer and Basic both work; a wrong credential and a missing one return the same body; a revoked credential is refused on the very next request without a restart.
 **Rollback:** This removes the shared token (a breaking change for running instances). `git revert` the commit restores the old middleware; instances keep their `MANIFOLD_TOKEN` line in `docker/.env.<env>` because nothing deletes it.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
 ### Task 11 — Verify that tools see the caller over /mcp and /sse
+> **Note (CP2), resolved by evidence (FastMCP 4.1.4, mcp 2.3.0, starlette 1.10.0 in `.venv`):** `fastmcp.server.dependencies.get_http_request()` returns the HTTP request that carried the call, on `/mcp` and on `/sse` (the POST to `/messages/`); `server.current_caller()` reads the scope the middleware filled from that request (the context variable is only a fallback). `tests/test_principal_propagation.py` against the real server process, two credentials: each call over `/mcp` and over `/sse` is attributed to its own credential, including two sessions open at once on each transport (no mixing). Not needed: a temporary tool (the real `wiki_ping_tool`, which now returns `principal` name, kind and roles, serves). Run before adding any binding, a POST by a second valid principal to the first one's SSE session was accepted (202); the call would be attributed to the poster, but a session id should not be usable by another principal, so the middleware now binds each session id (seen in the `endpoint` event of `GET /sse`) to its principal and answers 403 to a POST from another principal (tested, plus 401 without a credential and 202 for the owner). `cd server && ../.venv/bin/python -m pytest -q tests/test_principal_propagation.py tests/test_ping.py`: passed (5 + ping cases; full suite 535 passed).
 **Files:** `server/tests/test_principal_propagation.py`, `server/manifold_security/context.py`, `server/server.py`
 **Action:** CREATE / MODIFY
 **Change:** Using the real-server pattern in `test_server_smoke.py`, add a temporary tool that returns `current_principal`; call it over `/mcp` with two credentials in turn and over `/sse` with two sessions. If FastMCP runs SSE tool calls outside the request context, bind each session id to the principal that opened it and refuse a POST whose credential differs from the session's. Remove the temporary tool; add `principal` (name, kind, roles) to the result of `wiki_ping_tool`.
 **Source:** Concern 2; [INT-1 S3][i1-s3]; [INT-1 S2][i1-s2]. Unverified until run: confirm with the FastMCP 4.1.4 source in `.venv`.
 **Acceptance:** `pytest tests/test_principal_propagation.py tests/test_ping.py` passes: each call is attributed to its own credential on both transports, and a mismatched SSE POST is refused.
-**Todo:** [ ]
+**Todo:** [x]
 
 ---
 
