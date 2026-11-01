@@ -66,5 +66,8 @@ During checkpoint CP2 the second `coder` run (after being given the explicit no-
 ### Suggested improvement
 Say in the agent definition that `Edit` with `replace_all: true` is the tool for renames, and widen the rule to "no shell commands that modify file contents (heredocs, `sed -i`, `tee`, redirects)."
 
+### Later occurrence (CP4, same run, self-reported)
+In CP4 the same coder reported three more shell-write exceptions, none touching tracked repository files: a `python - <<'EOF'` debugging command that wrote nothing and hung (stopped with TaskStop), a `sed -i.bak` on its own scratch script, and a debug script that wrote to `/tmp` (deleted; the scratchpad should have been used). This is the third checkpoint with a breach after the rule was restated in the prompt, which suggests restating the rule in the prompt is not enough and the Bash-tool hook suggested under F1 is the right fix. Disclosure is consistently good; prevention is not.
+
 ### Related, not a failure
 The coder's attempt to `docker kill` a hung container was denied by the permission classifier. It did not work around the denial and reported it, as the "A refusal is final" rule requires.
