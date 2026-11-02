@@ -59,6 +59,12 @@ def record(conn: sqlite3.Connection, event: str, actor: str, subject: str = "", 
     return cur.lastrowid
 
 
+def record_throttled_signin(conn: sqlite3.Connection, address: str, suppressed: int = 0) -> int:
+    """A refused request from a throttled address; ``suppressed`` repeats since the last row were only counted."""
+    detail = GENERIC_FAILURE if not suppressed else "%s (%d repeated refusals not recorded)" % (GENERIC_FAILURE, suppressed)
+    return record(conn, SIGNIN_THROTTLED, "anonymous", address, detail)
+
+
 def record_failed_signin(conn: sqlite3.Connection, address: str) -> int:
     """A failed sign-in: the address and a generic reason, never the presented credential."""
     return record(conn, SIGNIN_FAILED, "anonymous", address, GENERIC_FAILURE)

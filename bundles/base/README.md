@@ -122,6 +122,7 @@ The installer is a **dry run by default** and never overwrites a file you have e
 | `.claude/skills/<skill>/SKILL.md` | by role | The same roles as Agent Skills (`--format skills`, experimental; see below) |
 | `docs/templates/INTENT_TEMPLATE.md`, `WT_TEMPLATE.md`, `PHASE_TEST_PLAN_TEMPLATE.md` | all | Intent (with scenario seeds), walkthrough notes, test plan |
 | `docs/templates/PHASE_PLAN_TEMPLATE.md`, `REVIEW_TEMPLATE.md` | build, single | Phase plan; the review policy to copy to `REVIEW.md` |
+| `REVIEW.md` | build, single | A generic starter review policy for the reviewer agent. Created only if you have no `REVIEW.md`; a different `REVIEW.md` of yours is reported as a conflict and left untouched unless you use `--force` (which archives it first) |
 | `docs/templates/SCENARIO_TEMPLATE.md`, `SATISFACTION_REPORT_TEMPLATE.md` | quality, single | Behavior scenario; run report |
 | `.manifold/quality-settings.json` | quality, single | Thresholds, visibility and gate mode (yours to edit) |
 | `AGENTS.md` (managed block) | all | Which agents exist, where documents live, and the working rules. Created if you have neither `AGENTS.md` nor `CLAUDE.md` |

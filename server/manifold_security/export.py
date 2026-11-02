@@ -139,8 +139,8 @@ def import_store(conn: sqlite3.Connection, data: Any, mode: str = "", dry_run: b
     validate(data)
     if mode not in ("", MERGE, REPLACE):
         raise ExportError("mode must be merge or replace.")
-    counts = {"principals_added": 0, "principals_existing": 0, "roles": 0, "grants": 0, "denies": 0,
-              "authority": 0, "settings": 0, "credentials": 0}
+    counts = {"principals_added": 0, "principals_existing": 0, "principals_deactivated": 0, "roles": 0,
+              "grants": 0, "denies": 0, "authority": 0, "settings": 0, "credentials": 0, "credentials_revoked": 0}
     conn.execute("BEGIN IMMEDIATE")
     try:
         existing = pr.count_principals(conn)
@@ -153,13 +153,19 @@ def import_store(conn: sqlite3.Connection, data: Any, mode: str = "", dry_run: b
             conn.execute("UPDATE component_state SET authority = ?", (pr.DEFAULT_AUTHORITY,))
         ids: Dict[str, str] = {}  # id in the file -> id in the store
         for entry in data["principals"]:
-            row = conn.execute("SELECT id, kind FROM principals WHERE name = ?", (entry["name"],)).fetchone()
+            row = conn.execute("SELECT id, kind, active FROM principals WHERE name = ?", (entry["name"],)).fetchone()
             if row is not None:
                 if row["kind"] != entry["kind"]:
                     raise ExportError("Principal %r exists as %s but the file says %s."
                                       % (entry["name"], row["kind"], entry["kind"]))
                 ids[entry["id"]] = row["id"]
                 counts["principals_existing"] += 1
+                # A merge may only tighten (D20): the file can deactivate a principal, never re-activate one.
+                # The SQL is the same as principals.disable_principal, which opens a transaction of its own.
+                if entry.get("active", True) is False and row["active"]:
+                    conn.execute("UPDATE principals SET active = 0, disabled_at = ? WHERE id = ?",
+                                 (now_iso(), row["id"]))
+                    counts["principals_deactivated"] += 1
             else:
                 if conn.execute("SELECT 1 FROM principals WHERE id = ?", (entry["id"],)).fetchone():
                     raise ExportError("Id %r is used by a different principal in the store." % entry["id"])
@@ -196,6 +202,13 @@ def import_store(conn: sqlite3.Connection, data: Any, mode: str = "", dry_run: b
                 (credential["credential_id"], ids[credential["principal_id"]], credential["secret_hash"],
                  credential.get("label") or "", credential.get("created_at") or now_iso(),
                  credential.get("expires_at"), credential.get("revoked_at"))).rowcount
+            if credential.get("revoked_at"):
+                # Same as tokens.revoke_credential (which opens its own transaction), with the file's time;
+                # a credential the file does not mark revoked is never un-revoked.
+                counts["credentials_revoked"] += conn.execute(
+                    "UPDATE credentials SET revoked_at = ? WHERE credential_id = ? AND principal_id = ?"
+                    " AND revoked_at IS NULL",
+                    (credential["revoked_at"], credential["credential_id"], ids[credential["principal_id"]])).rowcount
     except BaseException:
         conn.execute("ROLLBACK")
         raise

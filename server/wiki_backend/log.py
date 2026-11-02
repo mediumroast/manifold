@@ -1,11 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
 """Wiki append-only logging operations."""
 
+import re
 from pathlib import Path
 from datetime import date, datetime
 from .models import WikiLogRequest
 from .git import git_commit
 from .actor import current_actor
+from .config import valid_slug
+
+_ACTION_RE = re.compile(r"[a-z0-9_-]{1,32}")
+
+
+def _one_line(text: str) -> str:
+    """Whitespace runs, newlines included, become one space: a message is one line of one entry."""
+    return " ".join((text or "").split())
+
+
+def _escape_marker(line: str) -> str:
+    """Escape a leading ``#``, ``-`` or ``*`` so the text cannot read as a heading or a list item."""
+    return "\\" + line if line[:1] in ("#", "-", "*") else line
+
 
 
 def _derive_pages(action: str, component: str | None) -> str:
@@ -43,15 +58,25 @@ def wiki_log_append(wiki_root: Path, request: WikiLogRequest) -> dict:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log_path.write_text("# Wiki operation log\n\nAppend-only. Never edit previous entries.\n\n---\n\n", encoding="utf-8")
 
+    # Nothing the caller supplies may become a second entry, a second field or a forged heading.
+    if not _ACTION_RE.fullmatch(request.action or ""):
+        raise ValueError("Invalid log action %r: use 1 to 32 characters from a-z, 0-9, '_' and '-'." % (request.action,))
+    component = None
+    if request.component:
+        component = request.component.strip().lower()
+        if not valid_slug(component):
+            raise ValueError("Invalid log component %r: it must be a component slug." % (request.component,))
+    message = _one_line(request.message)
+
     today = date.today().isoformat()
     timestamp = datetime.utcnow().isoformat()
 
     # Section title: component slug if available, else first ~6 words of message
-    if request.component:
-        title = request.component.strip().lower()
+    if component:
+        title = component
         agent = title
     else:
-        words = request.message.split()
+        words = message.split()
         title = " ".join(words[:6]) + ("…" if len(words) > 6 else "")
         agent = "agent"
 
@@ -60,19 +85,19 @@ def wiki_log_append(wiki_root: Path, request: WikiLogRequest) -> dict:
     if actor is not None:
         agent = actor.name
 
-    pages = _derive_pages(request.action, request.component)
+    pages = _derive_pages(request.action, component)
 
     section = (
         f"\n## {today} | {request.action} | {title}\n\n"
         f"- Agent: {agent}\n"
-        f"- Summary: {request.message}\n"
+        f"- Summary: {_escape_marker(message)}\n"
         f"- Pages affected: {pages}\n"
     )
 
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(section)
 
-    component_tag = f" ({request.component})" if request.component else ""
+    component_tag = f" ({component})" if component else ""
     git_commit(
         wiki_root,
         [log_path],
@@ -84,7 +109,7 @@ def wiki_log_append(wiki_root: Path, request: WikiLogRequest) -> dict:
         "timestamp": timestamp,
         "today": today,
         "action": request.action,
-        "component": request.component,
-        "message": request.message,
+        "component": component,
+        "message": message,
         "log_path": str(log_path),
     }

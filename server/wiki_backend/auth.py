@@ -31,6 +31,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
+import anyio.to_thread
+
 from manifold_security import audit, principals, tokens
 from manifold_security.context import SCOPE_KEY, Caller, current_caller_var
 from manifold_security.startup import is_loopback  # noqa: F401  (re-exported: the one definition lives with the startup rules)
@@ -198,6 +200,15 @@ class PrincipalAuthMiddleware:
         except Exception:
             pass  # the refusal stands even if the audit cannot be written
 
+    async def _audit_throttled(self, address: str, suppressed: int) -> None:
+        """Record a throttled refusal off the event loop, so a flood never waits on the store."""
+        def write():
+            try:
+                self.store.use(lambda conn: audit.record_throttled_signin(conn, address, suppressed))
+            except Exception:
+                pass  # the refusal stands even if the audit cannot be written
+        await anyio.to_thread.run_sync(write)
+
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
@@ -210,7 +221,9 @@ class PrincipalAuthMiddleware:
             wait = self.throttle.retry_after(address)
             if wait:
                 # A delay is running: the credential is not looked at, so the delay cannot be used to test guesses.
-                self._audit(audit.SIGNIN_THROTTLED, address)
+                suppressed = self.throttle.should_audit_refusal(address)
+                if suppressed is not None:  # one row per address per window; repeats are counted in memory
+                    await self._audit_throttled(address, suppressed)
                 if is_open:
                     await self.app(scope, receive, send)  # /health stays reachable, anonymous
                 else:

@@ -4,6 +4,8 @@
 from pathlib import Path
 from typing import Optional
 
+from .config import valid_slug
+
 try:
     import frontmatter as _frontmatter_lib
     _HAS_FRONTMATTER = True
@@ -37,6 +39,8 @@ def wiki_onboarding_preflight(wiki_root: Path, component: str) -> dict:
     and returns options the agent should present to the human.
     """
     slug = component.strip().lower()
+    if not valid_slug(slug):
+        raise ValueError("Invalid component %r: it must be a component slug." % (component,))
     raw_dir = wiki_root / "raw" / slug
     component_page = wiki_root / "wiki" / "components" / f"{slug}.md"
 
@@ -253,6 +257,8 @@ def wiki_reconcile_plan(wiki_root: Path, component: str, repo: Optional[str] = N
     - Concrete tool calls with all discovered values pre-filled
     """
     slug = component.strip().lower()
+    if not valid_slug(slug):
+        raise ValueError("Invalid component %r: it must be a component slug." % (component,))
     component_page = wiki_root / "wiki" / "components" / f"{slug}.md"
 
     # 1. Run preflight to get docs and agent status

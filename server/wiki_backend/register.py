@@ -10,6 +10,7 @@ from .models import WikiRegisterRequest, WikiRegisterResponse
 from .read import wiki_read
 from .write import wiki_write_page, WikiWriteRequest
 from .git import git_commit
+from manifold_security import scopes
 from .config import (
     Component, ConfigError, add_component, load_config, sync_schema_slugs, update_component, valid_slug,
 )
@@ -339,8 +340,12 @@ def _register_in_config(wiki_root: Path, component: Component) -> None:
 
 
 def _read_source_doc(wiki_root: Path, doc_path: str) -> Optional[str]:
-    """Read a raw doc by path relative to wiki_root. Returns content or None."""
-    full = wiki_root / doc_path
+    """Read a doc by path relative to wiki_root. Returns content, or None if it is missing or not readable
+    (outside the root, or outside ``wiki/`` and ``raw/``)."""
+    try:
+        full = scopes.check_readable(wiki_root, doc_path)
+    except scopes.PathRefused:
+        return None
     if full.exists() and full.is_file():
         return full.read_text(encoding="utf-8")
     return None

@@ -111,6 +111,92 @@ def test_merge_adds_and_keeps_what_was_there(cli, other, populated, tmp_path):
     conn.close()
 
 
+# ── T47 / D20: a merge applies deactivation and revocation, never the reverse ─────────────────────
+
+def _with_hashes(cli, tmp_path):
+    path = tmp_path / "with-hashes.json"
+    assert cli("export", "--with-hashes", str(path))[0] == 0
+    return path, json.loads(path.read_text())
+
+
+def _alice(conn):
+    return dict(conn.execute("SELECT active, disabled_at FROM principals WHERE name = 'alice'").fetchone())
+
+
+def _tightened_file(cli, tmp_path):
+    path, data = _with_hashes(cli, tmp_path)
+    for entry in data["principals"]:
+        if entry["name"] == "alice":
+            entry["active"] = False
+    for credential in data["credentials"]:
+        credential["revoked_at"] = "2026-01-01T00:00:00Z"
+    path.write_text(json.dumps(data))
+    return path
+
+
+def test_merge_applies_a_deactivation_and_a_revocation_from_the_file(cli, populated, tmp_path):
+    from wiki_backend.auth import StoreAccess
+
+    store = StoreAccess(cli.data_dir)
+    assert store.authenticate(populated).caller is not None  # works before
+    path = _tightened_file(cli, tmp_path)
+    code, out, err = cli("import", "--merge", str(path))
+    assert code == 0, err
+    assert "principals deactivated 1" in out and "credentials revoked 1" in out
+    conn = cli.store()
+    alice = _alice(conn)
+    assert alice["active"] == 0 and alice["disabled_at"]
+    assert conn.execute("SELECT COUNT(*) FROM credentials WHERE revoked_at IS NULL").fetchone()[0] == 0
+    conn.close()
+    assert store.authenticate(populated).caller is None  # a request with that credential is refused
+
+
+def test_merge_never_reactivates_or_unrevokes(cli, populated, tmp_path):
+    path, _ = _with_hashes(cli, tmp_path)  # the file says alice is active and her credential is not revoked
+    cli("principal", "disable", "alice")
+    conn = cli.store()
+    credential_id = conn.execute("SELECT credential_id FROM credentials").fetchone()[0]
+    conn.close()
+    assert cli("credential", "revoke", credential_id)[0] == 0
+    conn = cli.store()
+    before = (_alice(conn), conn.execute("SELECT revoked_at FROM credentials").fetchone()[0])
+    conn.close()
+    assert before[0]["active"] == 0 and before[1]
+    code, out, err = cli("import", "--merge", str(path))
+    assert code == 0, err
+    assert "deactivated" not in out and "revoked" not in out
+    conn = cli.store()
+    assert (_alice(conn), conn.execute("SELECT revoked_at FROM credentials").fetchone()[0]) == before
+    conn.close()
+
+
+def test_a_dry_run_of_a_tightening_names_it_and_changes_nothing(cli, populated, tmp_path):
+    path = _tightened_file(cli, tmp_path)
+    before = snapshot(cli)
+    conn = cli.store()
+    stored = [tuple(r) for r in conn.execute("SELECT credential_id, revoked_at FROM credentials")]
+    conn.close()
+    code, out, _ = cli("import", "--merge", "--dry-run", str(path))
+    assert code == 0 and "Dry run, nothing changed" in out
+    assert "principals deactivated 1" in out and "credentials revoked 1" in out
+    conn = cli.store()
+    assert [tuple(r) for r in conn.execute("SELECT credential_id, revoked_at FROM credentials")] == stored
+    assert _alice(conn)["active"] == 1
+    conn.close()
+    assert snapshot(cli) == before
+
+
+def test_a_merge_still_removes_no_role_grant_or_deny(cli, populated, tmp_path):
+    path, data = _with_hashes(cli, tmp_path)
+    for entry in data["principals"]:
+        if entry["name"] == "alice":
+            entry.update(roles=[], grants=[], denies=[])
+    path.write_text(json.dumps(data))
+    before = snapshot(cli)
+    assert cli("import", "--merge", str(path))[0] == 0
+    assert snapshot(cli) == before
+
+
 def test_replace_makes_the_store_match_the_file(cli, other, populated, tmp_path):
     path = tmp_path / "out.json"
     cli("export", str(path))

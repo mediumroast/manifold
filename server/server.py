@@ -658,6 +658,9 @@ def wiki_onboarding_tool(component: str = None, verbose: bool = False) -> dict:
             "hint": "Call wiki_onboarding_tool(component='your-slug') first to see what already exists.",
         }
 
+        if component is not None:
+            if not valid_slug(component.strip().lower()):
+                return {"error": "Invalid component %r: it must be a component slug." % (component,)}
         if component:
             preflight = wiki_onboarding_preflight(WIKI_ROOT, component)
             result["preflight"] = preflight
@@ -709,6 +712,8 @@ def wiki_reconcile_plan_tool(component: str, repo: str = None) -> dict:
               Required for the reconcile call; if omitted it is listed in required_inputs.
     """
     try:
+        if not valid_slug(str(component).strip().lower()):
+            return {"error": "Invalid component %r: it must be a component slug." % (component,)}
         return wiki_reconcile_plan(WIKI_ROOT, component=component, repo=repo)
     except Exception as e:
         return {"error": str(e)}
@@ -889,23 +894,25 @@ async def ingest_doc(request: Request):
     if caller is None:  # the middleware guarantees a caller; never ingest without one
         return JSONResponse({"status": "error", "message": "authentication required"}, status_code=401)
     slug = component.lower()
-    if valid_slug(slug):
-        token = acting_var.set(caller)
-        try:
-            if slug == "shared":
-                guard.require(authorizer.INGEST, principals.SHARED_SCOPE)
-            elif slug in registered_slugs(WIKI_ROOT):
-                guard.require(authorizer.INGEST, slug)
-                guard.require_active(slug)
-            elif not guard.has_role("registrar"):
-                raise Refused("Refused: %s is not a registered component; only a registrar can add documents "
-                              "for a new component." % slug, "not_registered")
-        except Refused as exc:
-            return JSONResponse({"status": "error", "message": exc.message, "reason": exc.reason}, status_code=403)
-        except ConfigError as exc:
-            return JSONResponse({"status": "error", "message": str(exc)}, status_code=500)
-        finally:
-            acting_var.reset(token)
+    if not valid_slug(slug):  # refuse here: an invalid name is never authorized by omission
+        return JSONResponse({"status": "error", "message": "component must be a valid component name (lower-case letters, "
+                             "digits, '.', '-' or '_'), not %r" % component, "reason": "invalid_slug"}, status_code=400)
+    token = acting_var.set(caller)
+    try:
+        if slug == "shared":
+            guard.require(authorizer.INGEST, principals.SHARED_SCOPE)
+        elif slug in registered_slugs(WIKI_ROOT):
+            guard.require(authorizer.INGEST, slug)
+            guard.require_active(slug)
+        elif not guard.has_role("registrar"):
+            raise Refused("Refused: %s is not a registered component; only a registrar can add documents "
+                          "for a new component." % slug, "not_registered")
+    except Refused as exc:
+        return JSONResponse({"status": "error", "message": exc.message, "reason": exc.reason}, status_code=403)
+    except ConfigError as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=500)
+    finally:
+        acting_var.reset(token)
     result = _ingest_as(caller, component, doc_type, content, filename)
     if result["status"] == "ok":
         status_code = 200

@@ -28,6 +28,7 @@ SYSTEM = "system"
 SHARED = "shared"
 
 _SYSTEM_PATHS = {"manifold.yaml", "wiki/_sidebar.md", "wiki/CLAUDE.md"}
+_SYSTEM_FOLDED = {name.casefold() for name in _SYSTEM_PATHS}
 READ_PREFIXES = ("wiki/", "raw/")
 
 
@@ -64,20 +65,26 @@ def confine(wiki_root, path: str) -> Tuple[Path, str]:
 def classify(wiki_root, path: str) -> Tuple[str, Optional[str]]:
     """The ``(kind, scope)`` of a page path; raises :class:`PathRefused` for anything else."""
     _, relative = confine(wiki_root, path)
-    if relative in _SYSTEM_PATHS:
+    # Compare case-insensitively: on a case-insensitive filesystem wiki/Handoffs and wiki/handoffs are one folder.
+    folded = relative.casefold()
+    if folded in _SYSTEM_FOLDED:
         return SYSTEM, None
-    if relative == "wiki/log.md":
+    if folded == "wiki/log.md":
         return LOG_ONLY, None
     parts = relative.split("/")
-    if parts[0] != "wiki" or not relative.endswith(".md"):
+    fparts = folded.split("/")
+    if fparts[0] != "wiki" or not relative.endswith(".md"):
         raise PathRefused("Pages are written only under wiki/ and end in .md: %s" % path)
-    if parts[1] == "handoffs" and len(parts) > 2:
+    if len(fparts) > 1 and fparts[1] == "handoffs" and len(parts) > 2:
         return HANDOFF_ONLY, None
     for prefix in (("wiki", "components"), ("wiki", "guides", "agents")):
-        if tuple(parts[:len(prefix)]) == prefix and len(parts) == len(prefix) + 1:
+        if tuple(fparts[:len(prefix)]) == prefix:
+            if len(parts) != len(prefix) + 1:
+                raise PathRefused("A component page is %s/<name>.md, with nothing nested below it: %s" % ("/".join(prefix), path))
             slug = parts[-1][:-3]
-            if not is_slug(slug):
-                raise PathRefused("%r is not a valid component name." % slug)
+            if not is_slug(slug) or tuple(parts[:len(prefix)]) != prefix:
+                raise PathRefused("%r is not a valid component name." % slug if not is_slug(slug)
+                                  else "Use the folder name in lower case: %s" % "/".join(prefix))
             return COMPONENT, slug
     return SHARED, SHARED_SCOPE
 

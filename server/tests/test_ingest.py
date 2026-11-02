@@ -15,6 +15,20 @@ from wiki_backend.ingest import (
 )
 
 
+@pytest.mark.parametrize("component", ["../etc", "a b", "x/y", "-bad", "a..b"])
+def test_post_ingest_refuses_an_invalid_slug_before_ingesting(tool_world, monkeypatch, component):
+    from starlette.testclient import TestClient
+
+    tool_world.who("reg", roles=["registrar", "contributor"])
+    reached = []
+    monkeypatch.setattr(tool_world.server, "wiki_ingest_doc", lambda *a, **k: reached.append(a) or {"status": "ok"})
+    client = TestClient(tool_world.server.asgi_app, base_url="http://127.0.0.1:8686")
+    response = client.post("/ingest", json={"component": component, "content": "# doc\n"},
+                           headers={"Authorization": "Bearer " + tool_world.tokens["reg"]})
+    assert response.status_code in (400, 403), response.text
+    assert reached == []
+
+
 def _chunks(*parts):
     async def gen():
         for part in parts:

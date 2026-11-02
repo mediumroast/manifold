@@ -2,6 +2,7 @@
 """Git auto-commit helper for wiki write operations."""
 
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Sequence, Union
@@ -13,6 +14,9 @@ from .actor import current_actor
 # Override with MANIFOLD_GIT_NAME and MANIFOLD_GIT_EMAIL.
 _DEFAULT_NAME = "manifold"
 _DEFAULT_EMAIL = "manifold@localhost"
+
+# A line a caller could use to pose as the credential's principal (see git_commit).
+_TRAILER_FORGERY = re.compile(r"^\s*Manifold-Principal:", re.IGNORECASE)
 
 
 def _identity() -> tuple:
@@ -60,6 +64,10 @@ def git_commit(
     if principal is None:
         principal = current_actor()
     author_args = []
+    # Only the real credential may name a principal: drop any such line the caller wrote.
+    message = "\n".join(line for line in message.splitlines() if not _TRAILER_FORGERY.match(line)).rstrip()
+    if not message:
+        message = "wiki: update"
     if principal is not None:
         message = "%s\n\nManifold-Principal: %s (%s)" % (message, principal.principal_id, principal.kind)
         author_args = ["--author", "%s <%s@principals.manifold.invalid>" % (principal.name, principal.principal_id)]

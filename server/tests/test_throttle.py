@@ -183,6 +183,149 @@ def test_a_missing_header_is_not_a_failed_sign_in(guarded):
     assert call(world, middleware, token=world.human_token)[0] == 200
 
 
+# ── T43: a flood of refused requests ─────────────────────────────────────────
+
+# No randomness is used: the flood is FLOOD_REQUESTS identical requests from one address, with the
+# limits below, so a run can be repeated exactly.
+FLOOD_REQUESTS = 1000
+FLOOD_LAG_BOUND_SECONDS = 0.05  # measured on macOS (Python 3.11), 5 runs: the loop's worst stall was 4.4 to 4.5 ms
+
+
+def flood_world(auth_world):
+    clock = Clock()
+    throttle = make_throttle(clock, (3, 100, 1000, 1000))  # the delay (1000s) outlasts the window (100s)
+
+    async def app(scope, receive, send):
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    middleware = PrincipalAuthMiddleware(app, store=StoreAccess(auth_world.data_dir), throttle=throttle,
+                                         trusted_proxies=lambda: [])
+    return middleware, clock
+
+
+async def request_from(middleware, client, token):
+    status = []
+
+    async def send(message):
+        await asyncio.sleep(0)  # let other tasks run, as a real connection would
+        if message["type"] == "http.response.start":
+            status.append(message["status"])
+
+    scope = {"type": "http", "path": "/mcp", "method": "GET", "client": (client, 5555),
+             "headers": [(b"authorization", ("Bearer " + token).encode())]}
+    await middleware(scope, None, send)
+    return status[0]
+
+
+def test_flood_a_throttled_address_adds_one_audit_row_and_counts_the_rest(auth_world):
+    middleware, clock = flood_world(auth_world)
+    guess = "mf_000000000000_" + "a" * 43
+
+    async def run():
+        for _ in range(3):
+            await request_from(middleware, "203.0.113.7", guess)
+        return await asyncio.gather(*[request_from(middleware, "203.0.113.7", guess) for _ in range(FLOOD_REQUESTS)])
+
+    assert set(asyncio.run(run())) == {429}
+    rows = [dict(r) for r in auth_world.conn.execute("SELECT * FROM audit WHERE event = 'signin.throttled'")]
+    assert len(rows) == 1
+
+    clock.now += 150  # a whole window later the address is still throttled: the next row carries the count
+    assert asyncio.run(request_from(middleware, "203.0.113.7", guess)) == 429
+    rows = [dict(r) for r in auth_world.conn.execute("SELECT * FROM audit WHERE event = 'signin.throttled' ORDER BY id")]
+    assert len(rows) == 2 and str(FLOOD_REQUESTS - 1) in rows[1]["detail"]
+    assert guess not in json.dumps(rows)
+
+
+def test_flood_does_not_stall_the_loop_for_other_addresses(auth_world):
+    middleware, _ = flood_world(auth_world)
+    guess = "mf_000000000000_" + "a" * 43
+
+    async def run():
+        for _ in range(3):
+            await request_from(middleware, "203.0.113.7", guess)
+        worst = 0.0
+        running = True
+
+        async def ticker():
+            nonlocal worst
+            last = asyncio.get_running_loop().time()
+            while running:
+                await asyncio.sleep(0.001)
+                now = asyncio.get_running_loop().time()
+                worst, last = max(worst, now - last), now
+
+        watcher = asyncio.create_task(ticker())
+        flood = [request_from(middleware, "203.0.113.7", guess) for _ in range(FLOOD_REQUESTS)]
+        other = request_from(middleware, "198.51.100.2", auth_world.human_token)
+        results = await asyncio.gather(*flood, other)
+        running = False
+        await watcher
+        return results, worst
+
+    results, worst = asyncio.run(run())
+    assert results[-1] == 200 and set(results[:-1]) == {429}
+    assert worst < FLOOD_LAG_BOUND_SECONDS, "the event loop stalled for %.3fs during the flood" % worst
+
+
+def test_the_state_is_capped_and_drops_the_quietest_address():
+    clock = Clock()
+    throttle = Throttle(lambda: (5, 600, 1, 900), clock, max_addresses=100)
+    for i in range(500):
+        clock.now += 1
+        throttle.record_failure("10.0.%d.%d" % (i // 250, i % 250))
+    assert len(throttle._state) <= 100
+    assert "10.0.1.249" in throttle._state and "10.0.0.0" not in throttle._state
+
+
+def test_a_blocked_address_is_kept_when_the_table_overflows():
+    clock = Clock()
+    throttle = Throttle(lambda: (5, 600, 100, 900), clock, max_addresses=5)
+    for _ in range(5):
+        clock.now += 1
+        throttle.record_failure("blocked")
+    assert throttle.retry_after("blocked") > 0
+    for i in range(10):
+        clock.now += 1
+        throttle.record_failure("other-%d" % i)  # each fails once, later than "blocked"
+    assert throttle.retry_after("blocked") > 0
+    assert len(throttle._state) <= 5
+
+
+def test_an_expired_block_is_dropped_before_one_still_running():
+    clock = Clock()
+    limits = [2, 600, 1000, 2000]  # threshold, window, base delay, max delay (read on every call)
+    throttle = Throttle(lambda: tuple(limits), clock, max_addresses=5)
+    for _ in range(2):
+        throttle.record_failure("live")  # blocked for 1000 s, the quietest entry
+    clock.now += 10
+    limits[2] = 1
+    for _ in range(2):
+        throttle.record_failure("expired")  # blocked for 1 s
+    clock.now += 10  # "expired" is past its delay but still inside the window
+    assert throttle.retry_after("live") > 0
+    for i in range(3):
+        clock.now += 1
+        throttle.record_failure("other-%d" % i)
+    assert "expired" in throttle._state  # the table is full (5), not yet over
+    clock.now += 1
+    throttle.record_failure("other-3")  # overflow
+    assert throttle.retry_after("live") > 0
+    assert "expired" not in throttle._state
+    assert len(throttle._state) <= 5
+
+
+def test_the_bound_holds_when_every_entry_is_blocked():
+    clock = Clock()
+    throttle = Throttle(lambda: (1, 600, 1000, 2000), clock, max_addresses=5)
+    for i in range(20):
+        clock.now += 1
+        throttle.record_failure("blocked-%d" % i)
+        assert len(throttle._state) <= 5
+    assert "blocked-19" in throttle._state
+
+
 def test_a_credential_is_never_locked(guarded):
     world, middleware, clock, _ = guarded
     for _ in range(5):

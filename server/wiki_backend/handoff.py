@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 import yaml
+from frontmatter.default_handlers import YAMLHandler
 from datetime import date
 from pathlib import Path
 from typing import Optional
@@ -14,7 +15,7 @@ from .read import wiki_read
 from .write import write_page_of_kinds
 from .log import wiki_log_append
 from .register import update_sidebar_handoff, update_sidebar_handoff_status
-from .config import ConfigError, registered_slugs
+from .config import ConfigError, registered_slugs, valid_slug
 from manifold_security import scopes
 
 
@@ -28,9 +29,14 @@ def wiki_write_handoff_page(wiki_root: Path, request: WikiWriteRequest):
     return write_page_of_kinds(wiki_root, request, (scopes.HANDOFF_ONLY,))
 
 
-_VALID_TYPES = {"feature", "bug", "breaking-change", "integration-spec"}
+_FM_HANDLER = YAMLHandler()
 
-_PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+HANDOFF_TYPES = ("feature", "bug", "breaking-change", "integration-spec")
+PRIORITIES = ("critical", "high", "medium", "low")
+
+_VALID_TYPES = set(HANDOFF_TYPES)
+
+_PRIORITY_ORDER = {name: rank for rank, name in enumerate(PRIORITIES)}
 
 
 def handoff_parties(wiki_root: Path, path: str) -> tuple:
@@ -47,11 +53,15 @@ def handoff_parties(wiki_root: Path, path: str) -> tuple:
     if kind != scopes.HANDOFF_ONLY:
         raise ValueError("%s is not a handoff page." % path)
     try:
-        page = wiki_read(wiki_root, path)
+        wiki_read(wiki_root, path)  # confinement and existence
     except FileNotFoundError:
         raise ValueError("Handoff not found: %s" % path)
-    source = page.frontmatter.get("source_component")
-    target = page.frontmatter.get("target_component")
+    try:
+        fm = strict_frontmatter((wiki_root / path).read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ValueError("%s has a frontmatter that cannot be trusted to name its owners (duplicate or invalid key): %s" % (path, exc))
+    source = fm.get("source_component")
+    target = fm.get("target_component")
     if not isinstance(source, str) or not isinstance(target, str) or not source or not target:
         raise ValueError("%s does not name its source_component and target_component." % path)
     return source, target
@@ -122,18 +132,69 @@ def _append_to_section(content: str, header: str, text: str) -> str:
     return re.sub(pattern, replacer, content, count=1, flags=re.MULTILINE | re.DOTALL)
 
 
+class _StrictLoader(yaml.SafeLoader):
+    """A safe YAML loader that refuses a mapping which repeats a key (the later one would win silently)."""
+
+
+def _construct_unique_mapping(loader: _StrictLoader, node: yaml.MappingNode, deep: bool = False):
+    loader.flatten_mapping(node)
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        try:
+            if key in seen:
+                raise yaml.constructor.ConstructorError(
+                    None, None, "duplicate key %r in the frontmatter" % (key,), key_node.start_mark
+                )
+            seen.add(key)
+        except TypeError:
+            pass  # an unhashable key: the standard constructor refuses it below
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+_StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_unique_mapping)
+
+
+def strict_frontmatter(content: str) -> dict:
+    """
+    The frontmatter of a page as a dict, split the way :func:`wiki_read` splits it.
+
+    Returns {} when the page has no frontmatter. Raises ``yaml.YAMLError`` when the YAML is invalid
+    or repeats a key, so a caller deciding who owns a handoff never reads a value an attacker placed
+    after the real one.
+    """
+    handler = _FM_HANDLER
+    if not handler.detect(content):
+        return {}
+    block, _ = handler.split(content)
+    data = yaml.load(block, Loader=_StrictLoader)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise yaml.YAMLError("the frontmatter is not a mapping")
+    return data
+
+
 def _parse_frontmatter(content: str) -> dict:
-    """Parse YAML frontmatter from a markdown string. Returns {} on failure."""
-    if not content.startswith("---"):
-        return {}
-    rest = content[3:]
-    close = rest.find("\n---")
-    if close < 0:
-        return {}
+    """Parse YAML frontmatter from a markdown string. Returns {} on failure (including a repeated key)."""
     try:
-        return yaml.safe_load(rest[:close]) or {}
-    except yaml.YAMLError:
+        return strict_frontmatter(content)
+    except (yaml.YAMLError, ValueError):
         return {}
+
+
+def _checked_parties(fm: dict) -> Optional[str]:
+    """
+    An error message when the page names a source or target that is not a valid slug, else None.
+
+    Called before a page is written, so that a page and its log entry are both written or both absent
+    (the log call refuses an invalid component).  An absent value is allowed.
+    """
+    for key in ("source_component", "target_component"):
+        value = fm.get(key)
+        if value is not None and not valid_slug(value):
+            return f"Handoff page has an invalid {key} {value!r}; nothing was changed."
+    return None
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -176,6 +237,13 @@ def handoff_create(
                 f"Valid types: {sorted(_VALID_TYPES)}"
             )
         }
+    if priority not in PRIORITIES:
+        return {
+            "error": (
+                f"Unknown handoff priority {priority!r}. "
+                f"Valid priorities: {list(PRIORITIES)}"
+            )
+        }
 
     handoff_id = _make_id(title)
     path = f"wiki/handoffs/{source}-to-{target}/{type}-{handoff_id}.md"
@@ -188,19 +256,29 @@ def handoff_create(
             )
         }
 
-    today = date.today().isoformat()
+    today = date.today()
+    # A mapping dumped by YAML: no caller-supplied value can end a line, add a key or close the block.
+    frontmatter_block = yaml.safe_dump(
+        {
+            "title": title,
+            "type": type,
+            "source_component": source,
+            "target_component": target,
+            "status": "open",
+            "priority": priority,
+            "created": today,
+            "updated": today,
+            "blocking": [],
+            "blocked_by": [],
+        },
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
+        width=float("inf"),
+    )
     content = (
         f"---\n"
-        f'title: "{title}"\n'
-        f"type: {type}\n"
-        f"source_component: {source}\n"
-        f"target_component: {target}\n"
-        f"status: open\n"
-        f"priority: {priority}\n"
-        f"created: {today}\n"
-        f"updated: {today}\n"
-        f"blocking: []\n"
-        f"blocked_by: []\n"
+        f"{frontmatter_block}"
         f"---\n\n"
         f"## Summary\n\n{summary}\n\n"
         f"## What needs to happen\n\n{what_needs_to_happen}\n\n"
@@ -269,6 +347,9 @@ def handoff_claim(wiki_root: Path, path: str) -> dict:
                 f"When the work is ready, use action='request-review'; the source confirms or closes it."
             )
         }
+    bad_party = _checked_parties(fm)
+    if bad_party:
+        return {"error": bad_party}
 
     today = date.today().isoformat()
     content = (wiki_root / path).read_text(encoding="utf-8")
@@ -326,6 +407,9 @@ def handoff_close(wiki_root: Path, path: str, resolution: str) -> dict:
     current_status = fm.get("status", "open")
     if current_status == "completed":
         return {"error": "Handoff is already completed."}
+    bad_party = _checked_parties(fm)
+    if bad_party:
+        return {"error": bad_party}
 
     today = date.today().isoformat()
     content = (wiki_root / path).read_text(encoding="utf-8")
@@ -390,6 +474,9 @@ def handoff_request_review(wiki_root: Path, path: str, notes: str) -> dict:
                 "can be submitted for review. Use action='claim' first."
             )
         }
+    bad_party = _checked_parties(fm)
+    if bad_party:
+        return {"error": bad_party}
 
     today = date.today().isoformat()
     content = (wiki_root / path).read_text(encoding="utf-8")
@@ -454,6 +541,9 @@ def handoff_confirm(wiki_root: Path, path: str, notes: str = "") -> dict:
                 "can be confirmed. Use action='request-review' first."
             )
         }
+    bad_party = _checked_parties(fm)
+    if bad_party:
+        return {"error": bad_party}
 
     today = date.today().isoformat()
     content = (wiki_root / path).read_text(encoding="utf-8")
@@ -521,6 +611,9 @@ def handoff_reject(wiki_root: Path, path: str, feedback: str) -> dict:
                 "can be rejected."
             )
         }
+    bad_party = _checked_parties(fm)
+    if bad_party:
+        return {"error": bad_party}
 
     today = date.today().isoformat()
     content = (wiki_root / path).read_text(encoding="utf-8")

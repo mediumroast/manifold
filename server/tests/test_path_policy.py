@@ -132,6 +132,31 @@ def test_classify_refuses_everything_else(wiki_root, path):
         scopes.classify(wiki_root, path)
 
 
+# ── T44: case and nesting ────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("path,kind,scope", [
+    ("wiki/Handoffs/x.md", "handoff-only", None),
+    ("wiki/HANDOFFS/acme-api-to-acme-web/x.md", "handoff-only", None),
+    ("wiki/Log.md", "log-only", None),
+    ("wiki/_Sidebar.md", "system", None),
+    ("wiki/claude.md", "system", None),
+    ("Manifold.yaml", "system", None),
+])
+def test_case_variants_classify_as_the_protected_kind_never_shared(wiki_root, path, kind, scope):
+    assert scopes.classify(wiki_root, path) == (kind, scope)
+
+
+@pytest.mark.parametrize("path", [
+    "wiki/components/sub/x.md",
+    "wiki/Components/Acme-Api.md",
+    "wiki/guides/agents/sub/x.md",
+    "wiki/components/a/b/c.md",
+])
+def test_a_nested_or_miscased_component_path_is_refused(wiki_root, path):
+    with pytest.raises(scopes.PathRefused):
+        scopes.classify(wiki_root, path)
+
+
 def test_component_and_shared_pages_are_still_writable(wiki_root):
     assert _write(wiki_root, "wiki/components/acme-api.md").status == "created"
     assert _write(wiki_root, "wiki/decisions/2026-01-01-x.md").status == "created"

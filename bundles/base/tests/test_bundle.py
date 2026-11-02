@@ -984,6 +984,38 @@ def test_review_template_has_passes_and_a_nit_cap():
         assert needle in t, needle
 
 
+STARTER = ROOT / "templates" / "REVIEW_STARTER.md"
+
+
+def test_build_profile_installs_review_md_from_the_starter(bundle_dir, repo):
+    rc, out = run(bundle_dir, repo, "--apply")
+    assert rc == 0, out
+    assert (repo / "REVIEW.md").read_bytes() == STARTER.read_bytes()
+    assert "REVIEW.md" in json.loads((repo / ".manifold/manifest.json").read_text())["files"]
+
+
+def test_quality_profile_does_not_install_review_md(bundle_dir, repo):
+    assert run(bundle_dir, repo, "--profile", "quality", "--apply")[0] == 0
+    assert not (repo / "REVIEW.md").exists()
+
+
+def test_an_existing_different_review_md_is_a_conflict_and_is_left_alone(bundle_dir, repo):
+    mine = repo / "REVIEW.md"
+    mine.write_text("# My own review policy\n")
+    rc, out = run(bundle_dir, repo, "--apply")
+    assert rc == 2 and "CONFLICT" in out and "REVIEW.md" in out
+    assert mine.read_text() == "# My own review policy\n"
+
+
+def test_the_review_starter_has_the_template_headings_and_no_comments():
+    text = STARTER.read_text()
+    for heading in ("## Passes", "## What Important means here", "## Cap the nits", "## Do not report",
+                    "## Human threshold"):
+        assert heading in text, heading
+    assert "<!--" not in text
+    assert "mediumroast" not in text.lower()
+
+
 # ------------------------------------------------------------------ roadmap
 
 ROADMAP = ROOT.parent.parent / "ROADMAP.md"
