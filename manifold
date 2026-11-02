@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""The Manifold host command: ./manifold init, ./manifold admin <group> <verb> ...
+
+A thin launcher: it checks the Python version, then runs ``python -m manifold_cli`` with the
+server folder on the import path.  Standard library only.  The working folder is left as it is,
+so a relative file name given to a command means what the person typed.
+"""
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+MINIMUM = (3, 11)
+
+
+def main() -> int:
+    if sys.version_info < MINIMUM:
+        sys.stderr.write(
+            "error: Manifold's host command needs Python %d.%d or newer; this is Python %d.%d.\n"
+            "Install a newer Python (for example python3.11) and run it with that: python3.11 ./manifold ...\n"
+            % (MINIMUM + sys.version_info[:2]))
+        return 1
+    server = Path(__file__).resolve().parent / "server"
+    if not (server / "manifold_cli").is_dir():
+        sys.stderr.write("error: cannot find %s. Run ./manifold from a Manifold checkout.\n" % (server / "manifold_cli"))
+        return 1
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(server) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    return subprocess.call([sys.executable, "-m", "manifold_cli", *sys.argv[1:]], env=env)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

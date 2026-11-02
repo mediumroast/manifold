@@ -160,7 +160,7 @@ def test_reconcile_plan_without_agents_ends_with_the_bundle_steps(wiki_root: Pat
     assert result.get("required_inputs", []) == []
     calls = [s["tool_call"] for s in result["action_plan"]]
     assert any("wiki_register_component_tool" in c for c in calls)
-    assert any("wiki_log_append_tool" in c for c in calls)
+    assert not any("wiki_log_append_tool" in c for c in calls)  # the server logs the reconcile itself
     assert calls[-3:] == [
         "wiki_bundle_info_tool()",
         "wiki_export_component_helpers_tool()",
@@ -178,7 +178,7 @@ def test_reconcile_plan_with_published_agents_has_no_bundle_steps(wiki_root: Pat
     result = wiki_reconcile_plan(wiki_root, "acme-api", repo="https://github.com/acme/acme-api")
 
     assert result["status"] == "plan_ready"
-    assert [s["action"] for s in result["action_plan"]] == ["reconcile_wiki_page", "log_reconcile", "freshness_check"]
+    assert [s["action"] for s in result["action_plan"]] == ["reconcile_wiki_page", "freshness_check"]
     assert result["status_audit"]["agents_published"] == ["raw/acme-api/agents/acme-api-planner.agent.md"]
 
 
@@ -328,3 +328,91 @@ def test_agent_guide_update_status_on_existing_guide(wiki_root: Path):
     result = wiki_agent_guide(wiki_root, "myapp")
 
     assert result["status"] == "updated"
+
+
+# ── T46: a component name that is a path must not list files outside the root ────────────────────────
+# Evidence for the reviewer's "suspected" item (onboarding.py raw/<component>); the result is in the plan's T46 note.
+
+def _outside_docs(wiki_root: Path) -> Path:
+    (wiki_root / "raw").mkdir(exist_ok=True)  # a real wiki has raw/, which is what makes raw/../.. resolve
+    outside = wiki_root.parent / "x"
+    outside.mkdir(exist_ok=True)
+    (outside / "2026-01-01-x-readme.md").write_text("# Outside the wiki root\n")
+    (outside / "x.agent.md").write_text("# agent\n")
+    return outside
+
+
+def _mentions_outside(result) -> bool:
+    text = repr(result)
+    return "2026-01-01-x-readme.md" in text or "x.agent.md" in text
+
+
+def test_preflight_with_a_dotdot_component_lists_nothing_outside_the_root(wiki_root: Path):
+    _outside_docs(wiki_root)
+    try:
+        result = wiki_onboarding_preflight(wiki_root, "../../x")
+    except ValueError:
+        return  # refusing is fine
+    assert not _mentions_outside(result), "LEAK " + repr(result.get("docs_found")) + repr(result.get("agents_found"))
+
+
+def test_reconcile_plan_with_a_dotdot_component_lists_nothing_outside_the_root(wiki_root: Path):
+    _outside_docs(wiki_root)
+    (wiki_root / "x.md").write_text("---\ntitle: x\nsummary: s\nowner: o\n---\n")  # wiki/components/../../x.md
+    try:
+        result = wiki_reconcile_plan(wiki_root, "../../x", "https://example.test/org/x")
+    except ValueError:
+        return
+    assert not _mentions_outside(result), "LEAK " + repr(result.get("docs_found")) + repr(result.get("agents_found"))
+
+
+def test_preflight_with_an_absolute_component_lists_nothing_outside_the_root(wiki_root: Path):
+    outside = _outside_docs(wiki_root)
+    try:
+        result = wiki_onboarding_preflight(wiki_root, str(outside))
+    except ValueError:
+        return
+    assert not _mentions_outside(result), "LEAK " + repr(result.get("docs_found")) + repr(result.get("agents_found"))
+
+
+def test_freshness_with_a_path_component_reports_nothing_outside_the_root(wiki_root: Path):
+    from wiki_backend.freshness import wiki_freshness
+
+    outside = _outside_docs(wiki_root)
+    for name in ("../../x", str(outside)):
+        try:
+            result = wiki_freshness(wiki_root, name)
+        except ValueError:
+            continue
+        assert not _mentions_outside(result), (name, result)
+
+
+# ── T52: the two tools and the two backend functions refuse a component that is not a slug ───────────
+
+_BAD_COMPONENTS = ["../../x", "/abs/x", "X/../y", "", "a b", "a/b"]
+
+
+@pytest.mark.parametrize("tool", ["wiki_onboarding_tool", "wiki_reconcile_plan_tool"])
+@pytest.mark.parametrize("component", _BAD_COMPONENTS)
+def test_tools_refuse_a_component_that_is_not_a_slug(tool_world, tool, component):
+    _outside_docs(tool_world.root)
+    tool_world.who("rita", "human", roles=["reader"])
+    result = tool_world.call("rita", tool, component=component)
+    assert "error" in result, result
+    assert not _mentions_outside(result), result
+    assert "docs_found" not in repr(result)
+
+
+@pytest.mark.parametrize("component", _BAD_COMPONENTS)
+def test_backend_functions_refuse_a_component_that_is_not_a_slug(wiki_root: Path, component):
+    with pytest.raises(ValueError):
+        wiki_onboarding_preflight(wiki_root, component)
+    with pytest.raises(ValueError):
+        wiki_reconcile_plan(wiki_root, component, "https://example.test/org/x")
+
+
+def test_freshness_tool_with_a_dotdot_component_lists_nothing_outside_the_root(tool_world):
+    _outside_docs(tool_world.root)
+    tool_world.who("rita", "human", roles=["reader"])
+    result = tool_world.call("rita", "wiki_freshness_tool", component="../../x")
+    assert not _mentions_outside(result), result

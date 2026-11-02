@@ -22,7 +22,7 @@ See [`bundles/base`](bundles/base/README.md) for details and [ROADMAP.md](ROADMA
 
 The repository also holds a **Manifold server**: an MCP server that gives agents and people one shared place for component pages, decisions and **handoffs**, the units of work one repository's agent passes to another's. It serves a git repository of Markdown pages over HTTP, with a wiki browser, and records every change as a commit.
 
-It is under development and has not been released. It is protected by a single shared token and nothing else yet (no per-person sign-in, no TLS), listens on your machine's loopback address by default, and should not be exposed to a network you do not control. To try it, follow the [quickstart](docs/quickstart.md); the [server README](server/README.md) lists its tools and settings, and [docs/concepts.md](docs/concepts.md) explains instances, components and handoffs.
+It is under development and has not been released. Every person, agent and service has a credential of its own and four additive roles, with per-component grants; administration happens only on the host; every change names who made it; TLS is a setting served by a Caddy container; and it listens on your machine's loopback address by default. Claude Desktop and claude.ai cannot connect yet. To try it, run `./manifold init` and follow the [quickstart](docs/quickstart.md); the [server README](server/README.md) lists its tools and settings, [docs/concepts.md](docs/concepts.md) explains instances, components, handoffs and roles, and [docs/operations.md](docs/operations.md) and [docs/tls.md](docs/tls.md) cover running it.
 
 ## Quick start (the base bundle)
 
@@ -39,7 +39,7 @@ It needs Python 3.8 or newer and uses only the standard library.
 
 ## What is coming
 
-Per-person sign-in and TLS for the server, a web interface to browse, search and review, and an editor where a person and an AI write an intent together. They are not part of v0.1.0, and there are no dates. See [ROADMAP.md](ROADMAP.md).
+Sign-in with GitHub and access from Claude Desktop for the server, a web interface to browse, search and review, and an editor where a person and an AI write an intent together. They are not part of v0.1.0, and there are no dates. See [ROADMAP.md](ROADMAP.md).
 
 ## How this relates to the AI-native SDLC
 
@@ -61,7 +61,7 @@ v0.1.0 is a pre-release. The agents and skills pass the project's automated chec
 
 The main finding: the guardrails hold on Claude Sonnet and are weaker on smaller models. Use Sonnet, and read [`bundles/base/MODELS.md`](bundles/base/MODELS.md) before choosing another model.
 
-The server has its own automated suite (unit tests, plus a smoke test that starts the real server and uses it as a client does) and has been run end to end with a client library and in a browser. It has not been used in production. The container image has not yet been built by the project's own checks: the compose files were validated and the build steps were run outside Docker, so treat a first `docker compose up` as a test.
+The server has its own automated suite (unit tests, smoke tests that start the real server and use it as a client does, and a test that revokes credentials from another process while it runs) and has been run end to end with a client library, in a browser and in containers on macOS. The Linux run and the continuous-integration run of the new security work are observed in CI, not yet by the maintainers. It has not been used in production.
 
 ## Plans, tests and how we work
 
@@ -74,9 +74,9 @@ Manifold is developed in the open, with its own agents once they are ready for i
 | `bundles/base/` | The base bundle: agents, rules, templates, installer, build tool and tests |
 | `server/` | The Manifold server (Python), its tests, and its pinned requirements |
 | `assets/` | What the server ships: handoff helper files and the wiki browser (with vendored, offline Docsify) |
-| `docker/`, `svc_ctl.sh` | Container files and the script that runs them |
+| `docker/`, `svc_ctl.sh`, `manifold` | Container files (the server and the Caddy TLS service), the script that runs them, and the host command (`./manifold init`, `./manifold admin ...`) |
 | `examples/` | `acme`, a made-up filled-in wiki; `starter`, an empty one; and client configuration examples |
-| `docs/` | [Quickstart](docs/quickstart.md), [concepts](docs/concepts.md), [`manifold.yaml` reference](docs/manifold-yaml.md), [operations](docs/operations.md) |
+| `docs/` | [Quickstart](docs/quickstart.md), [concepts](docs/concepts.md), [`manifold.yaml` reference](docs/manifold-yaml.md), [operations](docs/operations.md), [TLS](docs/tls.md) |
 | `docs/plans/` | The development plan and design documents |
 | `tools/` | `vendor_web.py`, which rebuilds the vendored browser files from pinned, checked packages |
 | `tests/live/` | The live-client protocol: step-by-step runs for Claude Code and GitHub Copilot, with the scripts that save and judge evidence |

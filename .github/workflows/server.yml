@@ -27,6 +27,21 @@ jobs:
         working-directory: server
         run: python -m pytest -q
 
+  # The same tests on macOS, without Docker: Manifold's local part runs for a Linux or macOS user.
+  tests-macos:
+    name: server tests (macOS, no Docker)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install the locked versions
+        run: python -m pip install -r server/requirements-dev.txt -c server/requirements.lock
+      - name: Test
+        working-directory: server
+        run: python -m pytest -q
+
   image:
     name: image
     runs-on: ubuntu-latest
@@ -38,12 +53,19 @@ jobs:
           git -C "$RUNNER_TEMP/acme-wiki" init -q
           git -C "$RUNNER_TEMP/acme-wiki" add -A
           git -C "$RUNNER_TEMP/acme-wiki" -c user.name=ci -c user.email=ci@example.test commit -q -m "Start from the example"
-      - name: Create the settings file
+      - name: Create the settings file and the data folder
         run: |
           ./svc_ctl.sh production init-env
-          sed -i "s#^WIKI_ROOT=.*#WIKI_ROOT=$RUNNER_TEMP/acme-wiki#" docker/.env.production
-      - name: Build the image and start the container
-        run: ./svc_ctl.sh production start
+          sed "s#^WIKI_ROOT=.*#WIKI_ROOT=$RUNNER_TEMP/acme-wiki#" docker/.env.production > docker/.env.production.new
+          mv docker/.env.production.new docker/.env.production
+          chmod 600 docker/.env.production
+          # An old shared-token line must be ignored (and warned about), not accepted.
+          echo "MANIFOLD_TOKEN=ci-old-shared-token-0123456789abcdef" >> docker/.env.production
+          test -d .manifold-data/production
+      - name: Build the images and start
+        run: ./svc_ctl.sh production start 2>&1 | tee start.log
+      - name: The old token line is warned about
+        run: grep -q 'no longer accepted' start.log
       - name: Wait until it is healthy
         run: |
           for attempt in $(seq 1 30); do
@@ -52,34 +74,97 @@ jobs:
           done
           echo "the server did not become healthy"
           docker logs manifold-production
+          docker logs manifold-caddy-production
           exit 1
-      - name: Check what it serves
+      - name: With no principal every request is refused
         run: |
-          TOKEN=$(sed -n 's/^MANIFOLD_TOKEN=//p' docker/.env.production)
+          url=http://127.0.0.1:8686
+          test "$(curl -s "$url/health")" = '{"status":"healthy"}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$url/docs/")" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer ci-old-shared-token-0123456789abcdef' "$url/docs/")" = 401
+      - name: Create a person and a credential with the host command
+        run: |
+          ./svc_ctl.sh production admin principal create ci --kind human
+          ./svc_ctl.sh production admin role set ci contributor
+          ./svc_ctl.sh production admin credential issue ci --label ci --secret-file /data/ci.secret
+          test "$(stat -c '%a' .manifold-data/production/ci.secret)" = 600
+      - name: Check what it serves over plain HTTP
+        run: |
+          TOKEN=$(cat .manifold-data/production/ci.secret)
           url=http://127.0.0.1:8686
           code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
           test "$(curl -s "$url/health")" = '{"status":"healthy"}'
           curl -fsS -H "Authorization: Bearer $TOKEN" "$url/health" | grep -q '"manifold.yaml":"ok (3 components)"'
           test "$(code "$url/docs/")" = 401
           test "$(code -X POST "$url/mcp" -d '{}')" = 401
+          test "$(code -H 'Authorization: Bearer ci-old-shared-token-0123456789abcdef' "$url/docs/")" = 401
           test "$(code -u "ci:$TOKEN" "$url/docs/")" = 200
-          test "$(code -u "ci:$TOKEN" "$url/docs/_manifold/vendor/docsify.min.js")" = 200
+          test "$(code -H "Authorization: Bearer $TOKEN" "$url/docs/_manifold/vendor/docsify.min.js")" = 200
+          test "$(code -H 'Host: evil.example' "$url/health")" = 421
           curl -fsS -X POST "$url/mcp" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json, text/event-stream" \
             -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' \
             | grep -q '"name":"manifold"'
+      - name: Revoking a credential refuses it on the next request
+        run: |
+          TOKEN=$(cat .manifold-data/production/ci.secret)
+          url=http://127.0.0.1:8686
+          code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          ID=$(./svc_ctl.sh production admin principal show ci | awk '/^    [0-9a-f]+ /{print $1; exit}')
+          test -n "$ID"
+          ./svc_ctl.sh production admin credential revoke "$ID"
+          test "$(code -H "Authorization: Bearer $TOKEN" "$url/docs/")" = 401
+          ./svc_ctl.sh production admin credential issue ci --label ci2 --secret-file /data/ci2.secret
+          mv .manifold-data/production/ci2.secret .manifold-data/production/ci.secret
+          test "$(code -H "Authorization: Bearer $(cat .manifold-data/production/ci.secret)" "$url/docs/")" = 200
       - name: Check how it runs
         run: |
           docker exec manifold-production sh -c 'test "$(id -u)" != 0'
           test "$(docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' manifold-production)" = true
-          docker port manifold-production 8686 | grep -q '^127.0.0.1:8686$'
+          test "$(docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' manifold-caddy-production)" = true
+          # Only Caddy publishes a port, and only on loopback; the server publishes none.
+          docker port manifold-caddy-production 8686 | grep -q '^127.0.0.1:8686$'
+          test -z "$(docker port manifold-production)"
           docker exec manifold-production ls /app/bundles/base/dist
           ./svc_ctl.sh production health
+      - name: Switch TLS on and check HTTPS against Caddy's own root certificate
+        run: |
+          sed "s#^MANIFOLD_TLS=.*#MANIFOLD_TLS=on#" docker/.env.production > docker/.env.production.new
+          mv docker/.env.production.new docker/.env.production
+          chmod 600 docker/.env.production
+          ./svc_ctl.sh production restart
+          ROOT=.manifold-data/production/caddy/data/caddy/pki/authorities/local/root.crt
+          for attempt in $(seq 1 30); do
+            if curl -fsS --cacert "$ROOT" https://localhost:8686/health > /dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          TOKEN=$(cat .manifold-data/production/ci.secret)
+          code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          test "$(curl -s --cacert "$ROOT" https://localhost:8686/health)" = '{"status":"healthy"}'
+          test "$(code --cacert "$ROOT" https://localhost:8686/docs/)" = 401
+          test "$(code --cacert "$ROOT" -H "Authorization: Bearer $TOKEN" https://localhost:8686/docs/)" = 200
+          test "$(code --cacert "$ROOT" https://127.0.0.1:8686/health)" = 200
+          # Without the root certificate the connection is refused (no -k anywhere in this job).
+          if curl -fsS https://localhost:8686/health > /dev/null 2>&1; then echo "HTTPS worked without the root certificate"; exit 1; fi
+      - name: Switch TLS off again
+        run: |
+          sed "s#^MANIFOLD_TLS=.*#MANIFOLD_TLS=off#" docker/.env.production > docker/.env.production.new
+          mv docker/.env.production.new docker/.env.production
+          chmod 600 docker/.env.production
+          ./svc_ctl.sh production restart
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8686/health > /dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          TOKEN=$(cat .manifold-data/production/ci.secret)
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8686/docs/)" = 200
       - name: Show the logs if something failed
         if: failure()
-        run: docker logs manifold-production || true
+        run: |
+          docker logs manifold-production || true
+          docker logs manifold-caddy-production || true
       - name: Stop
         if: always()
         run: ./svc_ctl.sh production stop

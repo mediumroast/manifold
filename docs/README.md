@@ -6,7 +6,8 @@
 | [Quickstart](quickstart.md) | You want a server running and an AI tool connected to it, in about ten steps |
 | [Concepts](concepts.md) | You want to understand instances, components, handoffs, etags and how the server relates to the bundles |
 | [`manifold.yaml` reference](manifold-yaml.md) | You are setting up or editing an instance's settings and component registry |
-| [Operations](operations.md) | You are running the server for other people: tokens, networks, backups, updates, troubleshooting |
+| [Operations](operations.md) | You are running the server for other people: credentials and roles, settings, backups, updates, troubleshooting |
+| [TLS](tls.md) | You want the server reachable over HTTPS, and your clients to trust it |
 | [Server README](../server/README.md) | You want the tools, endpoints and environment variables |
 | [Plans](plans/README.md) | You want to know how Manifold is planned and developed |
 

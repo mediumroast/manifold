@@ -21,7 +21,9 @@ Output on success:
     ✅  Ingested → raw/acme-api/2026-05-25-acme-api-architecture.md  (4821 bytes)
 
 The MCP server must be running at the URL configured below (default: http://127.0.0.1:8686).
-If the server requires a token, put it in the MANIFOLD_TOKEN environment variable.
+The server always requires a credential of your own (issued to you by whoever runs the server). Put it in
+the MANIFOLD_TOKEN environment variable (that is only the name of the variable; the value is YOUR
+credential, not a shared token). You also need a write grant on the component.
 """
 
 import argparse
@@ -75,7 +77,7 @@ def main() -> None:
     url = args.server.rstrip("/") + "/ingest"
 
     headers = {"Content-Type": "application/json"}
-    token = os.environ.get("MANIFOLD_TOKEN", "").strip()
+    token = os.environ.get("MANIFOLD_TOKEN", "").strip()  # the name of the variable that holds YOUR credential
     if token:
         headers["Authorization"] = "Bearer " + token
 
@@ -92,7 +94,11 @@ def main() -> None:
             msg = raw
         print(f"❌  Server error {e.code}: {msg}", file=sys.stderr)
         if e.code == 401:
-            print("    The server requires a token: set MANIFOLD_TOKEN in your environment.", file=sys.stderr)
+            print("    The server needs your credential: set MANIFOLD_TOKEN to it in your environment "
+                  "(it may also have been revoked or expired: ask whoever runs the server).", file=sys.stderr)
+        elif e.code == 403:
+            print("    Your credential is not allowed to add documents for this component (a write grant is needed).",
+                  file=sys.stderr)
         sys.exit(1)
     except urllib.error.URLError as e:
         print(f"❌  Could not reach MCP server at {url}: {e.reason}", file=sys.stderr)

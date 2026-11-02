@@ -38,7 +38,7 @@ _HELPERS: dict[str, dict] = {
     "handoff-close-prompt": {
         "source": "helpers/prompts/handoff-close.prompt.md",
         "output_path": ".github/prompts/handoff-close.prompt.md",
-        "description": "Copilot slash command: /handoff-close — close a completed handoff",
+        "description": "Copilot slash command: /handoff-close — close a handoff this component raised (source only)",
         "usage": "Install in component repo. Use as /handoff-close in Copilot Chat.",
     },
     "handoff-create-command": {
@@ -56,7 +56,7 @@ _HELPERS: dict[str, dict] = {
     "handoff-close-command": {
         "source": "helpers/commands/handoff-close.md",
         "output_path": ".claude/commands/handoff-close.md",
-        "description": "Claude Code slash command: /handoff-close — close a completed handoff",
+        "description": "Claude Code slash command: /handoff-close — close a handoff this component raised (source only)",
         "usage": "Install in component repo. Use as /handoff-close in Claude Code.",
     },
     "manifold-update-prompt": {

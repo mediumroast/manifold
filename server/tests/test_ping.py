@@ -16,6 +16,12 @@ def test_ping_returns_connected_status():
     assert result["status"] == "connected"
 
 
+def test_ping_reports_the_calling_principal_when_given_one():
+    who = {"id": "p1", "name": "alice", "kind": "human", "roles": ["reader"]}
+    assert wiki_ping(principal=who)["principal"] == who
+    assert wiki_ping()["principal"] is None
+
+
 def test_ping_returns_the_default_server_name_without_an_instance():
     assert wiki_ping()["server"] == "manifold"
 

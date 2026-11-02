@@ -1,6 +1,10 @@
-# Production-shaped service: no source mount, no reload, read-only root file system,
-# published on the host's loopback address unless BIND_ADDRESS says otherwise.
+# Production-shaped service: no source mount, no reload, read-only root file system.
+# The Manifold service is on a network only the Caddy service shares; Caddy publishes
+# ${BIND_ADDRESS}:${PORT} on the host (loopback unless BIND_ADDRESS says otherwise), serving plain
+# HTTP or HTTPS depending on MANIFOLD_TLS (docker/caddy/Caddyfile.off | Caddyfile.on).
 # For development with live code, add docker-compose.dev.yml (svc_ctl.sh does this for "dev").
+#
+# svc_ctl.sh sets CADDY_SITES (the https:// addresses the certificate is made for) before it calls compose.
 services:
   manifold:
     build:
@@ -19,17 +23,74 @@ services:
       - no-new-privileges:true
     environment:
       PORT: ${PORT:-8686}
-      MANIFOLD_TOKEN: ${MANIFOLD_TOKEN:?set MANIFOLD_TOKEN in the environment file (svc_ctl.sh <env> init-env creates one)}
+      MANIFOLD_DATA_DIR: /data
+      # WAL fails when two container processes share a bind mount on Docker Desktop (PHASE_1_PLAN T1).
+      MANIFOLD_STORE_JOURNAL_MODE: delete
+      MANIFOLD_TLS: ${MANIFOLD_TLS:-off}
+      # The address the host exposes it on (through Caddy). The server listens on 0.0.0.0 inside the
+      # container; "no principal yet" refuses to start only when this is not loopback.
+      MANIFOLD_PUBLIC_ADDRESS: ${BIND_ADDRESS:-127.0.0.1}
+      # Only the Caddy service is on the internal network; its forwarded client address is trusted.
+      MANIFOLD_TRUSTED_PROXIES: ${MANIFOLD_INTERNAL_SUBNET:-172.30.173.0/24}
+      MANIFOLD_ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
       MANIFOLD_GIT_NAME: ${MANIFOLD_GIT_NAME:-}
       MANIFOLD_GIT_EMAIL: ${MANIFOLD_GIT_EMAIL:-}
       MANIFOLD_INGEST_MAX_BYTES: ${MANIFOLD_INGEST_MAX_BYTES:-}
     volumes:
       - ${WIKI_ROOT}:/workspace
-    ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8686}:${PORT:-8686}"
+      - ${DATA_DIR:?set DATA_DIR in the environment file (svc_ctl.sh <env> init-env sets it)}:/data
+    networks:
+      - internal
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:$${PORT}/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  caddy:
+    # Pinned by tag and digest (PHASE_1_PLAN T29): Caddy 2.11.7 on Alpine, Apache-2.0.
+    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    container_name: manifold-caddy-${ENVIRONMENT:-dev}
+    user: "${HOST_UID}:${HOST_GID}"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # The Caddy binary carries the file capability to bind low ports; with every capability dropped it
+    # cannot even start ("operation not permitted"), so this one stays in the bounding set. It is
+    # not used: the served port is above 1024 and the process runs as your user.
+    cap_add:
+      - NET_BIND_SERVICE
+    depends_on:
+      manifold:
+        condition: service_healthy
+    environment:
+      PORT: ${PORT:-8686}
+      CADDY_SITES: ${CADDY_SITES:-https://localhost:8686}
+      CADDY_DEFAULT_SNI: ${CADDY_DEFAULT_SNI:-localhost}
+      # Caddy's own files (the local certificate authority) live in the data folder, owned by you.
+      XDG_DATA_HOME: /caddy/data
+      XDG_CONFIG_HOME: /caddy/config
+    volumes:
+      - ./caddy/Caddyfile.${MANIFOLD_TLS:-off}:/etc/caddy/Caddyfile:ro
+      - ${DATA_DIR:?set DATA_DIR in the environment file}/caddy:/caddy
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8686}:${PORT:-8686}"
+    networks:
+      - internal
+      - edge
+
+networks:
+  # Only Manifold and Caddy are on it, and it has no route out: the server stays offline.
+  internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${MANIFOLD_INTERNAL_SUBNET:-172.30.173.0/24}
+  # Caddy's way to the host's published port.
+  edge: {}

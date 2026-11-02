@@ -1,0 +1,22 @@
+# HTTPS (MANIFOLD_TLS=on): the default on any address other than loopback.
+# The certificate comes from Caddy's own local certificate authority (tls internal); there is no
+# public ACME issuer, so nothing leaves the host. Clients trust the authority by importing its root
+# certificate (docs/tls.md): <DATA_DIR>/caddy/data/caddy/pki/authorities/local/root.crt.
+# CADDY_SITES is set by svc_ctl.sh from TLS_NAMES in the environment file:
+# for example "https://localhost:8686, https://127.0.0.1:8686, https://192.168.1.5:8686".
+{
+	admin off
+	# The sites are explicit https:// addresses on one port, so there is no plain-HTTP listener to redirect from.
+	auto_https disable_redirects
+	# Clients do not send a server name when they connect to an IP address; they get this name's certificate.
+	# svc_ctl.sh picks the first non-loopback IP address in TLS_NAMES, else the first IP, else the first name.
+	default_sni {$CADDY_DEFAULT_SNI}
+	# Do not try to install the authority in the container's trust store (clients import root.crt instead).
+	skip_install_trust
+}
+
+{$CADDY_SITES} {
+	tls internal
+	# Host is passed through unchanged; text/event-stream responses (/sse) are flushed at once by default.
+	reverse_proxy manifold:{$PORT}
+}

@@ -60,6 +60,9 @@ Commands:
   logs [svc]   Tail logs for the service
   shell [svc]  Open a shell in the service container
   health       Validate the mounted wiki and container wiring
+  admin <args> Run the host command inside the container: principals, credentials, roles, grants,
+               settings, audit, export, purge (for example: $(basename "$0") production admin principal list).
+               A file for a secret must be under /data, for example --secret-file /data/agent.secret.
 EOF
   exit 1
 }
@@ -80,7 +83,7 @@ case "$1" in
     ENV_NAME="$1"
     COMMAND="$2"
     ;;
-  init-env|config|build|pull|start|start-fg|stop|down|restart|rebuild|status|logs|shell|health|help|-h|--help)
+  init-env|config|build|pull|start|start-fg|stop|down|restart|rebuild|status|logs|shell|health|admin|help|-h|--help)
     if [[ "$2" =~ ^(help|-h|--help)$ ]]; then
       usage
     fi
@@ -104,7 +107,48 @@ esac
 ENV_FILE="$DOCKER_DIR/.env.$ENV_NAME"
 ENV_TEMPLATE="$ENV_FILE.template"
 
+env_value() {
+  # The last KEY=value line of the environment file ("" if there is none).
+  { grep -E "^$1=" "$ENV_FILE" 2>/dev/null || true; } | tail -1 | cut -d= -f2-
+}
+
+is_loopback() {
+  case "$1" in
+    127.*|::1|"[::1]"|localhost|LOCALHOST) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# The https:// addresses the certificate is made for: one per name in TLS_NAMES, on the served port.
+caddy_sites() {
+  local port names sites="" name
+  port="$(env_value PORT)"; port="${port:-8686}"
+  names="$(env_value TLS_NAMES)"; names="${names:-localhost 127.0.0.1}"
+  for name in $names; do
+    sites="${sites:+$sites, }https://$name:$port"
+  done
+  printf '%s' "$sites"
+}
+
+# The name whose certificate a client gets when it connects to an IP address (it sends no name then):
+# the first non-loopback IP address in TLS_NAMES, else the first IP address, else the first name.
+caddy_default_sni() {
+  local names first_ip="" lan_ip="" name
+  names="$(env_value TLS_NAMES)"; names="${names:-localhost 127.0.0.1}"
+  for name in $names; do
+    if [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ || "$name" == \[*\] ]]; then
+      first_ip="${first_ip:-$name}"
+      if ! is_loopback "$name"; then lan_ip="${lan_ip:-$name}"; fi
+    fi
+  done
+  name="${lan_ip:-${first_ip:-${names%% *}}}"
+  printf '%s' "${name#\[}" | tr -d ']'
+}
+
 compose() {
+  export CADDY_SITES CADDY_DEFAULT_SNI
+  CADDY_SITES="$(caddy_sites)"
+  CADDY_DEFAULT_SNI="$(caddy_default_sni)"
   local files=(--file "$COMPOSE_FILE")
   # Only the dev environment mounts the source and reloads.
   if [[ "$ENV_NAME" == "dev" ]]; then
@@ -137,6 +181,56 @@ ensure_instance() {
   [[ -f "$root/manifold.yaml" ]] || die "No manifold.yaml in $root (the WIKI_ROOT in $ENV_FILE). That folder is not an instance repository; see docs/quickstart.md."
 }
 
+# Make the data folder (security store and Caddy's files): private to you, outside the instance repository.
+ensure_data_dir() {
+  local data root
+  data="$(env_value DATA_DIR)"
+  [[ -n "$data" ]] || die "DATA_DIR is not set in $ENV_FILE. Set it to an absolute path outside your instance repository (init-env on a new file does this)."
+  [[ "$data" = /* ]] || die "DATA_DIR in $ENV_FILE must be an absolute path (got '$data')."
+  root="$(env_value WIKI_ROOT)"
+  [[ "$root" = /* ]] || root="$DOCKER_DIR/$root"
+  case "$data/" in
+    "$root"/*) die "DATA_DIR ($data) is inside the instance repository ($root): the credential store would end up in git. Choose a folder outside it." ;;
+  esac
+  case "$root/" in
+    "$data"/*) die "The instance repository ($root) is inside DATA_DIR ($data). Choose separate folders." ;;
+  esac
+  (umask 077; mkdir -p "$data" "$data/caddy/data" "$data/caddy/config")
+  chmod 700 "$data" 2>/dev/null || true
+}
+
+# TLS is a setting: off (plain HTTP) or on (HTTPS). Plain HTTP on an address other than loopback
+# is allowed only as a deliberate act, with a warning that cannot be missed.
+check_tls() {
+  local tls bind plain
+  tls="$(env_value MANIFOLD_TLS)"; tls="${tls:-off}"
+  [[ "$tls" == off || "$tls" == on ]] || die "MANIFOLD_TLS in $ENV_FILE must be 'off' or 'on' (got '$tls')."
+  bind="$(env_value BIND_ADDRESS)"; bind="${bind:-127.0.0.1}"
+  if [[ "$tls" == off ]] && ! is_loopback "$bind"; then
+    plain="${MANIFOLD_ALLOW_PLAIN_ON_NETWORK:-$(env_value MANIFOLD_ALLOW_PLAIN_ON_NETWORK)}"
+    if [[ "$plain" != yes ]]; then
+      die "BIND_ADDRESS is $bind (reachable from the network) with MANIFOLD_TLS=off: credentials would cross the network in clear text. Set MANIFOLD_TLS=on in $ENV_FILE (see docs/tls.md), bind to 127.0.0.1, or, if the network is protected some other way, set MANIFOLD_ALLOW_PLAIN_ON_NETWORK=yes."
+    fi
+    warn "*** WARNING: serving plain HTTP on $bind. Credentials and wiki content cross the network unencrypted. ***"
+  fi
+}
+
+warn_legacy_token() {
+  if grep -q '^MANIFOLD_TOKEN=' "$ENV_FILE" 2>/dev/null; then
+    warn "$ENV_FILE still has a MANIFOLD_TOKEN line. The shared token is no longer accepted; delete the line and use ./manifold admin to issue credentials."
+  fi
+}
+
+# Everything 'start', 'restart' and friends need before compose runs.
+prepare_start() {
+  ensure_compose_file
+  ensure_env_file
+  ensure_instance
+  ensure_data_dir
+  check_tls
+  warn_legacy_token
+}
+
 cmd_init_env() {
   ensure_compose_file
   if [[ -f "$ENV_FILE" ]]; then
@@ -145,14 +239,27 @@ cmd_init_env() {
   fi
 
   [[ -f "$ENV_TEMPLATE" ]] || die "Template file not found: $ENV_TEMPLATE"
-  cp "$ENV_TEMPLATE" "$ENV_FILE"
-  # Generate the shared token so the service can start; keep the file private.
-  local token
-  token="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-  sed "s|^MANIFOLD_TOKEN=.*|MANIFOLD_TOKEN=$token|" "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
-  chmod 600 "$ENV_FILE"
-  ok "Created $ENV_FILE from $(basename "$ENV_TEMPLATE") with a new MANIFOLD_TOKEN"
-  info "Clients send it as 'Authorization: Bearer <token>'; a browser asks for it as the password (any user name)."
+  # BIND_ADDRESS in the calling environment overrides the template; TLS follows it (off on loopback, on otherwise).
+  local bind="${BIND_ADDRESS:-127.0.0.1}" tls="off" data="$SCRIPT_DIR/.manifold-data/$ENV_NAME" line
+  is_loopback "$bind" || tls="on"
+  : > "$ENV_FILE.tmp"
+  chmod 600 "$ENV_FILE.tmp"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      DATA_DIR=) line="DATA_DIR=$data" ;;
+      BIND_ADDRESS=*) line="BIND_ADDRESS=$bind" ;;
+      MANIFOLD_TLS=*) line="MANIFOLD_TLS=$tls" ;;
+    esac
+    printf '%s\n' "$line" >> "$ENV_FILE.tmp"
+  done < "$ENV_TEMPLATE"
+  mv "$ENV_FILE.tmp" "$ENV_FILE"
+  (umask 077; mkdir -p "$data/caddy/data" "$data/caddy/config")
+  chmod 700 "$data"
+  ok "Created $ENV_FILE from $(basename "$ENV_TEMPLATE") (DATA_DIR $data, MANIFOLD_TLS=$tls)"
+  if [[ "$tls" == on ]]; then
+    info "BIND_ADDRESS is $bind, so HTTPS is on. Add the names people use to TLS_NAMES and ALLOWED_HOSTS in $ENV_FILE; see docs/tls.md."
+  fi
+  info "No shared token is created. Credentials are issued to each person and agent: ./manifold init, or $0 $ENV_NAME admin credential issue ..."
 }
 
 cmd_config() {
@@ -177,18 +284,14 @@ cmd_pull() {
 }
 
 cmd_start() {
-  ensure_compose_file
-  ensure_env_file
-  ensure_instance
+  prepare_start
   info "Starting the wiki MCP service ($ENV_NAME)…"
   compose up -d --build
   ok "Service started."
 }
 
 cmd_start_fg() {
-  ensure_compose_file
-  ensure_env_file
-  ensure_instance
+  prepare_start
   info "Starting the wiki MCP service in the foreground ($ENV_NAME)…"
   compose up --build
 }
@@ -202,9 +305,7 @@ cmd_stop() {
 }
 
 cmd_restart() {
-  ensure_compose_file
-  ensure_env_file
-  ensure_instance
+  prepare_start
   info "Stopping the wiki MCP service ($ENV_NAME)…"
   compose down
   ok "Service stopped."
@@ -217,9 +318,7 @@ cmd_restart() {
 }
 
 cmd_rebuild() {
-  ensure_compose_file
-  ensure_env_file
-  ensure_instance
+  prepare_start
   info "Pulling base image and rebuilding the wiki MCP service ($ENV_NAME)…"
   compose build --pull --no-cache
   compose up -d --force-recreate
@@ -246,6 +345,31 @@ cmd_shell() {
   local svc="${EXTRA_ARGS[0]:-$SERVICE_NAME}"
   info "Opening a shell in $svc ($ENV_NAME)…"
   compose run --rm --entrypoint /bin/sh "$svc"
+}
+
+cmd_admin() {
+  ensure_compose_file
+  ensure_env_file
+  ensure_instance
+  ensure_data_dir
+  [[ ${#EXTRA_ARGS[@]} -gt 0 ]] || die "admin needs a command, for example: $0 $ENV_NAME admin principal list"
+  # Use a terminal inside the container only when this one is a terminal (a secret is shown only on a terminal).
+  local tty_flag=()
+  if ! [[ -t 0 && -t 1 ]]; then
+    tty_flag=(-T)
+  fi
+  local running
+  running="$(compose ps --status running --quiet "$SERVICE_NAME" 2>/dev/null || true)"
+  if [[ -n "$running" ]]; then
+    compose exec ${tty_flag[@]+"${tty_flag[@]}"} "$SERVICE_NAME" python -m manifold_cli admin "${EXTRA_ARGS[@]}"
+  else
+    # No server yet (or it is stopped): run the command in a one-off container on the same data volume.
+    if ! docker image inspect manifold-server:local >/dev/null 2>&1; then
+      info "Building the image first ($ENV_NAME)…"
+      compose build >&2
+    fi
+    compose run --rm --no-deps ${tty_flag[@]+"${tty_flag[@]}"} "$SERVICE_NAME" python -m manifold_cli admin "${EXTRA_ARGS[@]}"
+  fi
 }
 
 cmd_health() {
@@ -280,6 +404,7 @@ case "$COMMAND" in
   logs) cmd_logs ;;
   shell) cmd_shell ;;
   health) cmd_health ;;
+  admin) cmd_admin ;;
   help|-h|--help) usage ;;
   *) die "Unknown command '$COMMAND'. Use '$0 $ENV_NAME help' for usage." ;;
 esac

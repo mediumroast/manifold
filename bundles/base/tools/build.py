@@ -56,6 +56,7 @@ TEMPLATE_PATHS = {
     "PHASE_TEST_PLAN_TEMPLATE.md": ("docs/templates/PHASE_TEST_PLAN_TEMPLATE.md", ALL_PROFILES),
     "WT_TEMPLATE.md": ("docs/templates/WT_TEMPLATE.md", ALL_PROFILES),
     "REVIEW_TEMPLATE.md": ("docs/templates/REVIEW_TEMPLATE.md", ("build", "single")),
+    "REVIEW_STARTER.md": ("REVIEW.md", ("build", "single")),
     "SCENARIO_TEMPLATE.md": ("docs/templates/SCENARIO_TEMPLATE.md", ("quality", "single")),
     "SATISFACTION_REPORT_TEMPLATE.md": ("docs/templates/SATISFACTION_REPORT_TEMPLATE.md", ("quality", "single")),
 }
