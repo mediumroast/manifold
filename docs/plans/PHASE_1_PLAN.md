@@ -525,7 +525,8 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 **Source:** [INT-1 Affected users and systems][i1-aff] (the CI image check changes); [INT-6 Constraints: Linux and macOS][i6-c]; [INT-1 S8][i1-s8].
 **Acceptance:** The workflow passes on a pull request in GitHub Actions (observed; I cannot run it locally), including the macOS job.
 > **Note (CI, 2026-11-01, run 41347729114 on PR #27, commit da37414):** Observed, and the acceptance is NOT met. `image` job: **passed**, every step, on the Linux runner (leftover-token warning; every request refused with no principal; credential created with the host command; 401 without a credential, 200 with it; revoke refused on the next request; non-root, read-only root file system; HTTPS against Caddy's own root certificate with TLS on; TLS off again). Server test jobs: **failed**. `server tests (3.11)` and `(3.12)` (Linux): 12 failed, 883 passed, in two groups: (1) `tests/test_deploy_files.py::test_compose_config_renders_for_tls_on_and_off` (both parameters): the test looks for `MANIFOLD_TLS: 'on'` / `'off'` in the output of `docker compose config`, and the runner prints the value with double quotes (the log shows both quote styles); a brittle assertion about the output format of the runner's compose version, not a product fault (cause read from the log, not yet re-run); (2) ten tests in `tests/test_init.py`: `Init failed: The server did not become healthy within 40 seconds`, from the fake runner that starts `python server.py` on the runner. `server tests (macOS, no Docker)`: 1 failed, 892 passed, 2 skipped, the same health timeout in `test_a_full_run_ends_with_a_healthy_server_two_components_and_a_handoff_read_back`. These tests passed 895/895 on the owner's Mac, so the health timeout is specific to the CI runners; the cause is not yet known (the server's own log is not in the job output). Not yet done: reproduce the timeout (give the test the server log on failure), fix, and push. Other jobs on the same PR: `vendored web files` and `test (3.8/3.10/3.12)` passed.
-**Todo:** [~] the `image` job passed on Linux; the server test jobs fail (12 on Linux, 1 on macOS); fix and re-run before this can be checked off
+> **Note (CI, 2026-11-01, run 41368573359 on PR #27, commit 5dfb0af):** Observed, and the acceptance is met. All jobs of the `server` workflow passed: `server tests (3.11)`, `server tests (3.12)` (Linux), `server tests (macOS, no Docker)`, `image` (Linux) and `vendored web files`; the `ci` workflow's `test (3.8/3.10/3.12)` also passed (run 41368573345). Read from the job status only; the per-job test counts were not read.
+**Todo:** [x] the `server` workflow passes on PR #27 at 5dfb0af, including the macOS job
 
 ---
 
@@ -596,13 +597,13 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 ---
 
 ## Completion checklist
-- [ ] All tasks marked [x] by the coder: **no, four are `[~]`**: T1 (native Linux pending CI), T30 (the GitHub Actions run), T34 (HTTPS client connections not observed), T36 (Linux walk-through and CI pending)
+- [ ] All tasks marked [x] by the coder: **no, three are `[~]`**: T1 (native Linux probe not run), T34 (HTTPS client connections not observed), T36 (Linux walk-through pending)
 - [x] Verify command: none exists (no lint or type-check); `pytest` below is the gate
 - [x] `cd server && ../.venv/bin/python -m pytest -q` passes clean (895 passed; baseline 399 passed)
 - [x] `.venv/bin/python -m pytest bundles/base/tests -q` (148 passed, 1 skipped; baseline the same) and `.venv/bin/python tools/vendor_web.py --check` (matches) pass
-- [ ] The CI workflow `server` passes (tests on 3.11 and 3.12, image job, macOS job): **not observed**; the image job was rehearsed locally step by step on macOS (T30)
+- [x] The CI workflow `server` passes (tests on 3.11 and 3.12, image job, macOS job): observed on PR #27 at 5dfb0af, run 41368573359 (T30)
 - [x] The traceability table above still matches the finished work; omissions are recorded below
-- [ ] No [~] blocked items outstanding: **four remain** (T1, T30, T34, T36), all waiting for CI or a human
+- [ ] No [~] blocked items outstanding: **three remain** (T1, T34, T36), all waiting for a human or a Linux host
 - [x] Summary note added by the coder below this line
 
 ### Completion summary (coder)
