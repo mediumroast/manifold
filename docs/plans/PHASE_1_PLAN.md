@@ -1,6 +1,7 @@
 # PHASE_1_PLAN.md
 
-**Approved by:** Michael Hay 2026-11-01
+**Approved by:** Michael Hay 2026-11-01 (Tasks 1-36); Michael Hay 2026-11-01 (review amendment, Tasks 37-51 and 58, entered at the owner's instruction in chat); Michael Hay 2026-11-02 (Task 52, the `raw/` path-escape fix, "Yes add the fix for the raw/ path escape", entered at the owner's instruction in chat); Michael Hay 2026-11-02, re-review nits 2-5, entered at the owner's instruction in chat ("Fix 2-5 now"; Tasks 53-57)
+**Amendment status:** Tasks 37 to 58 were added after the reviewer's report on PR #27 and are approved as above (T52 added on 2026-11-02 after the T46 evidence; T53 to T57 added on 2026-11-02 for the re-review nits 2 to 5; the final re-run, formerly T52 and then T53, is now T58). T37 to T57 are executed and ticked, and the local gates of T58 pass; T58 stays `[~]` until a human sees the `server` workflow green on the pushed commit. Task 51 ships a tracked starter (D19, owner answer to the former Open question 3); whether to bump `bundles/base/VERSION` is still open (Open question 3); Task 37 stops and asks if its enum values disagree with the existing `handoff_create` contract.
 **Source intent:** [INT-1 Security baseline for the Manifold server][i1] (status accepted, accepted_by Michael Hay 2026-11-01), all of it; and the local part of [INT-6 An installer that takes you from nothing to a working instance][i6] (status accepted, accepted_by Michael Hay 2026-11-01). [INT-7][i7] (accepted, same date) is not planned here; it builds on this plan.
 
 ## Objective
@@ -67,6 +68,15 @@ When this phase is complete, one small team can run Manifold on a shared host wi
 | [INT-6 S4][i6-s4] | T32, T33 | |
 | [INT-6 Open question: quality repository][i6-oq] | DEFERRED | belongs to the GitHub part |
 | [INT-1 Affected users and systems][i1-aff] | T28-T30, T34, T35 | container, CI, docs, and instances still on the shared token (S8) |
+| [INT-1 S2][i1-s2], [S3][i1-s3], [S16][i1-s16] (review repairs) | T37-T42, T44, T45 | reviewer findings 1-3 and nits; failing-first tests |
+| [INT-1 S4][i1-s4] (review repairs) | T43, T48 | audit flood; shared-address caveat |
+| [INT-1 S14][i1-s14] (review repair) | T47 | import --merge applies deactivation and revocation, never the reverse (D20) |
+| [INT-1 S16][i1-s16] (review repair, `raw/<component>` listing escape) | T52 | proven by T46; refuse a component that fails `valid_slug`; owner approved 2026-11-02 |
+| [INT-1 S4][i1-s4] (re-review nit 2) | T53, T54, T55 | a blocked address is not evicted while others can go; IPv6 rotation documented; `anyio` declared |
+| [INT-1 S3][i1-s3], [S16][i1-s16] (re-review nit 3) | T56 | handoff paths validate the parties before any write |
+| Re-review nits 4 and 5 (inventory, `REVIEW.md` drift) | inventory row (edited with this amendment), T57 | owner approval 2026-11-02 |
+| Reviewer: suspected item, scope record | T46, T49 | evidence first; inventory only; PR #27 stays one PR (D18) |
+| Reviewer: `REVIEW.md` absent | T50, T51 | owner decision D19: root file for this repository, and a starter shipped in the base bundle (shipped as a tracked starter) |
 | [INT-1 Open questions][i1-oq] (lockout, read limits, purge with INT-14, agent self-grant) | T20, T12, T26 (handoff to INT-14), T16 | answered by the owner in the intent |
 | [INT-1 Out of scope][i1-oos] and [INT-6 Out of scope][i6-oos] | not planned | none of them is planned here |
 
@@ -110,6 +120,9 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 - **D15 No off switch.** There is no setting that turns protection off. An empty start (no principals) starts, warns and refuses every request, including on loopback, until `manifold init`. The owner reworded the "Safe by default" constraint and the S6 "We will know when" in INT-1 to say so; see [INT-1 Constraints: Safe by default][i1-c] and [INT-1 S6][i1-s6]. Built into T4, T21, T35. Nothing in this plan depends on an open server (checked: the old `test_auth.py` cases "no token means authentication is off" and "loopback without a token starts with a warning", the shared-token smoke tests and the CI image job are all rewritten in T10, T21, T27 and T30; the quickstart only calls the open `/health`; `tests/live`, `tools` and the helpers never ran against an open server).
 - **D17 `MANIFOLD_PUBLIC_ADDRESS` (owner accepted, 2026-11-01; found in T29).** Inside the container the server listens on `0.0.0.0` behind Caddy, so the T21 rule "no principal yet: refuse to start on a non-loopback address" would stop every first start. The rule reads `MANIFOLD_PUBLIC_ADDRESS` (set by compose to `BIND_ADDRESS`, the address Caddy publishes on) before `MANIFOLD_HOST`. Built into T21/T29.
 - **D16 The personal principal is not a registrar** (D3). To change a component's repository or owner, an administrator first adds the registrar role with `admin role set`. Built into T32.
+- **D18 PR #27 stays one PR (owner, 2026-11-01).** The files outside the inventory and the base-bundle and intent commits (merge-base `3bfecf1`) are accepted in this PR; nothing is split or dropped. T49 only records them.
+- **D19 `REVIEW.md` (owner, 2026-11-01).** Write `REVIEW.md` at the repository root from `docs/templates/REVIEW_TEMPLATE.md` (T50) and also ship a review policy in the base bundle (T51). What the bundle ships is not this repository's file (it names this repository's paths and rules) but a generic starter, tracked at `REVIEW.md` like other bundle files (owner, 2026-11-01: option (a), no `install.py` change).
+- **D20 `import --merge` applies tightening only (owner, 2026-11-01).** In merge mode an existing principal whose file entry says `active=false` is deactivated (`active=0`, `disabled_at` set), and an existing credential whose file entry has `revoked_at` is revoked. A merge never re-activates a principal or un-revokes a credential, and never removes a role, grant or deny (that needs `--replace`). Built into T47. See [INT-1 S14][i1-s14].
 
 **Concerns still open:**
 1. **SQLite on a macOS bind mount is unverified.** T1 settles it; D2 gives the fallback.
@@ -143,11 +156,20 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 | `docs/tls.md` | CREATE | TLS guide with client steps |
 | `server/server.py` | MODIFY | middleware, guards, new tool, ingest and docs authorization |
 | `server/wiki_backend/{auth,write,read,log,git,ingest,register,handoff,agent_guide,config,ping,inventory,health}.py` | MODIFY | see tasks |
+| `server/wiki_backend/{actor,guard,helpers,models,onboarding}.py` | CREATE / MODIFY | acting principal and guard (T11, T15), helper texts (T35), request models, onboarding wording; found by the T49 check, not listed before |
+| `docs/README.md`, `intent/INT-1-security-baseline.md`, `intent/INT-6-installer.md` | MODIFY | on the branch but not named by a task (found by the T49 check); accepted with the rest under D18 |
 | `server/tests/` (new files named in tasks; `test_auth.py`, `test_server_smoke.py`, `test_tool_surface.py`, `test_ping.py`, `test_ingest.py`, `test_handoff_tool.py`, `test_write_validation.py`, `test_deploy_files.py`, `test_health.py` edited) | CREATE / MODIFY | tests beside code |
 | `docker/Dockerfile`, `docker/docker-compose.yml`, `docker/docker-compose.dev.yml`, `docker/.env.{dev,staging,production}.template` | MODIFY | data volume, no shared token, Caddy |
 | `svc_ctl.sh`, `.gitignore` | MODIFY | init-env, admin passthrough, warnings; ignore the data folder |
 | `.github/workflows/server.yml` | MODIFY | image job and macOS job |
 | `assets/helpers/commands/handoff-close.md`, `assets/helpers/prompts/handoff-close.prompt.md`, `assets/helpers/tools/ingest_doc.py` | MODIFY | S15 wording; credential wording |
+| `.dockerignore`, `AGENTS.md`, `CLAUDE.md`, `.claude/agents/*`, `.manifold/*`, `docs/templates/*`, `docs/agents/claude-desktop-failures.md`, `intent/INT-7*`, `intent/INT-18*`, `intent/INT-19*` | outside this phase | on the branch but not planned; accepted in this PR by owner decision D18 (T49 records them); `.dockerignore` is a legitimate fix |
+| `docker/docker-compose.dev.yml` | listed, unchanged | listed MODIFY above but not changed on the branch (T49) |
+| `REVIEW.md` | CREATE | review policy for this repository (T50, D19) |
+| `bundles/base/templates/REVIEW_STARTER.md`, `bundles/base/tools/build.py`, `bundles/base/tests/test_bundle.py`, `bundles/base/README.md` | CREATE / MODIFY | ship a generic starter `REVIEW.md` in the base bundle (T51, D19; tracked starter, owner choice (a)) |
+| `server/manifold_security/{scopes,throttle,audit,export}.py`, `server/wiki_backend/{handoff,log,git,register,auth}.py`, changed tests `server/tests/{test_throttle,test_path_policy,test_cli_export,test_ingest,test_principal_attribution}.py`, new tests `test_handoff_forgery.py`, `test_log_forgery.py`, `test_register_source_docs.py` | MODIFY / CREATE | review repairs T37-T48 |
+| `server/requirements.txt`, `server/manifold_security/throttle.py`, `server/tests/test_throttle.py`, `server/wiki_backend/handoff.py`, `server/tests/test_handoff_forgery.py`, `docs/operations.md`, `REVIEW.md` | MODIFY | re-review nits 2 to 5 (T53 to T57); `bundles/base/templates/REVIEW_STARTER.md` is read and expected unchanged (T57) |
+| `server/wiki_backend/onboarding.py`, `server/server.py`, `server/tests/test_onboarding.py`, `docs/operations.md` | MODIFY | refuse a component that fails `valid_slug` in the onboarding preflight, the reconcile plan and their two tools (T52); throttle audit sentence (T52) |
 | `docs/operations.md`, `docs/quickstart.md`, `docs/concepts.md`, `README.md`, `server/README.md`, `examples/clients/*.json` | MODIFY | documentation |
 
 ## Tasks
@@ -596,13 +618,237 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 
 ---
 
+## Review amendment (after the reviewer's report on PR #27)
+
+> Tasks 37 to 58 repair what the reviewer found (T53 to T57 answer nits 2 to 5 of the re-review). They follow the same format and the same rules as above. Each repair task starts with a failing test (run it first and see it fail, then change the code). T37-T42 are the reproduced findings 1 to 3; T43 is finding 4 (from code, not run: its test is the reproduction); T46 is a Suspected item, so it confirms with evidence and fixes nothing; it proved an escape, and T52 is its fix (failing-first tests: the two T46 tests, left failing until T52). T49 records scope, T50 and T51 add the review policy (no failing-first test: they are documents and bundle content, each checked by the command in its acceptance line), and T58 is last. Existing tasks T1, T34 and T36 stay `[~]`.
+
+### Task 37 — Refuse an unknown handoff priority or type
+**Files:** `server/wiki_backend/handoff.py`, `server/server.py`, `server/tests/test_handoff_forgery.py`
+**Action:** MODIFY / CREATE
+**Change:** Add the tests first: `handoff_create` called with `priority="low\nsource_component: acme-cli"` (a contributor with a grant on `acme-api` only) creates no page. Then add module constants `PRIORITIES` and `HANDOFF_TYPES` in `handoff.py`, and make `handoff_create` return an error for any value outside them, before anything is written. Take the allowed values from the existing `handoff_create` docstring and tests; if they differ, stop and ask.
+**Source:** Reviewer finding 1; [INT-1 S2][i1-s2]; [INT-1 S3][i1-s3].
+**Acceptance:** `pytest tests/test_handoff_forgery.py -k enum` fails before the change and passes after; `pytest tests/test_handoff_tool.py tests/test_handoff_authz.py` still passes.
+**Todo:** [x] Enum values agreed (docstring, tests, helpers, docs: critical|high|medium|low; feature|bug|breaking-change|integration-spec), so no stop. Added `PRIORITIES`/`HANDOFF_TYPES` in `handoff.py`, `handoff_create` refuses an unknown priority before writing (type was already checked). `server.py` not changed: its docstring already lists the values. Before: `cd server && ../.venv/bin/python -m pytest tests/test_handoff_forgery.py -k enum -q` 6 failed (priority cases), 7 passed (type cases already refused). After: 13 passed; `pytest tests/test_handoff_tool.py tests/test_handoff_authz.py -q`: 36 passed.
+
+---
+
+### Task 38 — Build handoff frontmatter with a YAML dump
+**Files:** `server/wiki_backend/handoff.py`, `server/tests/test_handoff_forgery.py`
+**Action:** MODIFY
+**Change:** Add a test first: a `title`, `summary` and `target_component` containing newlines, colons, quotes and a `source_component: x` line round-trip through `handoff_create` and `handoff_parties` unchanged, with `source_component` equal to the caller's slug. Then replace the string interpolation in `handoff_create` (lines ~194-199) with a mapping serialised by `yaml.safe_dump` (PyYAML is already installed; confirm it is in `server/requirements.txt` first and stop if not).
+**Source:** Reviewer finding 1; [INT-1 S3][i1-s3].
+**Acceptance:** `pytest tests/test_handoff_forgery.py -k frontmatter` fails before and passes after; `pytest tests/test_handoff_lifecycle.py` passes (existing pages still parse).
+**Todo:** [x] `handoff_create` now builds the frontmatter with `yaml.safe_dump` (order kept, dates passed as `date` objects so they stay unquoted as before; PyYAML confirmed in `server/requirements.txt` line 15). A `target` with a newline is already refused by the registered-slug check (test guards it). Before: `cd server && ../.venv/bin/python -m pytest tests/test_handoff_forgery.py -k frontmatter -q` 2 failed, 1 passed (the guard). After: `pytest tests/test_handoff_forgery.py tests/test_handoff_lifecycle.py tests/test_handoff_tool.py tests/test_handoff_authz.py -q`: 63 passed.
+
+---
+
+### Task 39 — Make the handoff parser reject duplicate keys
+**Files:** `server/wiki_backend/handoff.py`, `server/server.py`, `server/tests/test_handoff_forgery.py`
+**Action:** MODIFY
+**Change:** Add a test first: a handoff page on disk whose frontmatter repeats `source_component` makes `handoff_parties` raise, and `server._authorize_handoff` refuses every action on it (including the second key's holder's `close`), writing nothing. Then make the loader used by `handoff_parties` and `_parse_frontmatter` fail on a duplicate top-level key (a `yaml.SafeLoader` subclass whose mapping constructor raises), and make `_authorize_handoff` refuse when it raises.
+**Source:** Reviewer finding 1 ("authorize from a record the caller cannot influence"); [INT-1 S2][i1-s2].
+**Acceptance:** `pytest tests/test_handoff_forgery.py -k duplicate` fails before and passes after: the exact reproduction (create with the injected priority, then `acme-cli` close) is refused and the real creator `acme-api` is not.
+**Todo:** [x] Added `_StrictLoader` and `strict_frontmatter` in `handoff.py` (split with the same `YAMLHandler` that `wiki_read` uses, so the two parsers cannot disagree on where the block ends); `handoff_parties` raises `ValueError` on a repeated key, `_parse_frontmatter` returns {} (so the listings skip such a page). `server.py` not changed: `_authorize_handoff` already turns that `ValueError` into a refusal. Before: `cd server && ../.venv/bin/python -m pytest tests/test_handoff_forgery.py -k duplicate -q` 4 failed, 14 passed. After: `pytest tests/test_handoff_forgery.py tests/test_handoff_lifecycle.py tests/test_handoff_tool.py tests/test_handoff_authz.py tests/test_component_manage.py -q`: 97 passed. Noted, not done: `open_handoffs_of` skips an unparseable page, so a page with a repeated key does not block archiving a component.
+
+---
+
+### Task 40 — Keep log entries to one entry
+**Files:** `server/wiki_backend/log.py`, `server/tests/test_log_forgery.py`
+**Action:** MODIFY / CREATE
+**Change:** Add tests first: the reviewer's message `"hello\n\n## 2026-01-01 | register | acme-web\n\n- Agent: tgt\n- Summary: forged\n"` yields exactly one `## ` heading in `wiki/log.md` and no line beginning `- Agent: tgt`; an `action` outside `[a-z0-9_-]{1,32}` and a component that is not a valid slug are refused. Then, in `log.py` (lines ~61-68), collapse `request.message` to one line (whitespace runs, including newlines, become one space) and escape a leading `#`, `-` or `*`; validate `action` and use the validated slug in the title.
+**Source:** Reviewer finding 2; [INT-1 S3][i1-s3].
+**Acceptance:** `pytest tests/test_log_forgery.py tests/test_principal_attribution.py` fails before (new tests) and passes after.
+**Todo:** [x] `log.py`: `action` must fullmatch `[a-z0-9_-]{1,32}`, `component` must be a valid slug (both raise `ValueError`, which the tool returns as an error), the message is collapsed to one line and a leading `#`/`-`/`*` is escaped; the validated slug is used for the title, the pages line and the commit subject. The file holds the T41 `trailer` tests too, so the whole file goes green only after T41. Before: `cd server && ../.venv/bin/python -m pytest tests/test_log_forgery.py -q` 17 failed, 4 passed (the entry cases all failed). After: `pytest tests/test_log_forgery.py -k entry -q`: 18 passed; `pytest tests/test_principal_attribution.py -q`: 7 passed. The full suite is run at T58.
+
+---
+
+### Task 41 — Strip trailer-like lines from commit messages
+**Files:** `server/wiki_backend/git.py`, `server/tests/test_log_forgery.py`
+**Action:** MODIFY
+**Change:** Add a test first: a caller commit message containing `\n\nManifold-Principal: other (human)` leaves `git log -1 --format=%(trailers:key=Manifold-Principal,valueonly)` showing only the real credential's id. Then, in `git_commit` (line ~64), remove from the caller's message every line matching `^\s*Manifold-Principal:` (case-insensitive) before appending the real trailer.
+**Source:** Reviewer finding 2; [INT-1 S3][i1-s3].
+**Acceptance:** `pytest tests/test_log_forgery.py -k trailer` fails before and passes after; `pytest tests/test_git_root.py` passes.
+**Todo:** [x] UNBLOCKED: the owner (Michael Hay) approved in chat changing the one assertion in `test_principal_attribution.py::test_a_claimed_name_in_the_request_never_becomes_the_author` from `== 2` to `== 1` (comment: the forged line is removed; only the real trailer remains); the patch was re-applied to `git.py` and that assertion changed. Evidence: `cd server && ../.venv/bin/python -m pytest tests/test_log_forgery.py tests/test_git_root.py tests/test_principal_attribution.py -q` : 31 passed. Earlier note follows. Blocked on an existing test. The new `trailer` tests were written and fail before (`cd server && ../.venv/bin/python -m pytest tests/test_log_forgery.py -k trailer -q`: 3 failed). The change in `git_commit` (drop caller lines matching `^\s*Manifold-Principal:`, case-insensitive, before appending the real trailer) makes them pass, but breaks `tests/test_principal_attribution.py::test_a_claimed_name_in_the_request_never_becomes_the_author`, which asserts the opposite on purpose: `newest.count("Manifold-Principal:") == 2  # the forged line stays in the message; the real trailer is last`. That test is not to be edited without the owner's agreement, so the code change was reverted (patch kept outside the repository) and the work stopped here. Proposed amendment: change that one assertion to `== 1` and the comment to "the forged line is removed; only the real trailer remains". Note also that git's own trailer parser (`%(trailers)`) is not fooled today because the real trailer is a separate last paragraph; the forgery is visible only to tools that read the whole body, so the new test also checks the body lines.
+
+---
+
+### Task 42 — Confine `source_docs` to the readable folders
+**Files:** `server/wiki_backend/register.py`, `server/tests/test_register_source_docs.py`
+**Action:** MODIFY / CREATE
+**Change:** Add a test first: a registrar passes `source_docs=[<absolute path of a readme.md outside the wiki root>]` and a `../` path; neither content appears in `wiki/components/<name>.md`, and the result names the refused path. Then make `_read_source_doc` (lines ~341-346) call `scopes.check_readable(wiki_root, doc_path)` and treat its refusal as an unreadable document (the call at line ~569 reports it).
+**Source:** Reviewer finding 3; D6; [INT-1 S16][i1-s16].
+**Acceptance:** `pytest tests/test_register_source_docs.py tests/test_registrar.py tests/test_path_policy.py` passes; the new file fails before the change.
+**Todo:** [x] `_read_source_doc` now calls `scopes.check_readable` and treats a `PathRefused` as unreadable, so the existing warning names the path. Before: `cd server && ../.venv/bin/python -m pytest tests/test_register_source_docs.py -q` 3 failed, 1 passed (the readable-doc guard). After: that file plus `tests/test_registrar.py tests/test_path_policy.py -q`: 53 passed.
+
+---
+
+### Task 43 — Stop unauthenticated floods from filling the audit and blocking the loop
+**Files:** `server/wiki_backend/auth.py`, `server/manifold_security/throttle.py`, `server/manifold_security/audit.py`, `server/tests/test_throttle.py`
+**Action:** MODIFY
+**Change:** Add tests first: 1,000 requests from one address while throttled add at most one `signin.throttled` audit row (plus a counter of suppressed repeats recorded on the next row after the window), and an in-flight request from another address is not delayed beyond a set bound while the flood runs (use a measured bound written into the test, with the seed and request count recorded beside it). Then, at `auth.py` line ~213, audit the first throttled refusal per address per `throttle_window_seconds` and count the rest in memory; run the remaining store access of a refusal through `anyio.to_thread.run_sync` (or skip the store for a throttled address). Cap `Throttle._state` at a fixed number of addresses, dropping the quietest.
+**Source:** Reviewer finding 4 (from code, not run); [INT-1 S4][i1-s4]; [INT-1 Constraints: Limits are settings, with defaults][i1-c]. T20 audits "each refusal"; this task narrows that to the first per window.
+**Acceptance:** `pytest tests/test_throttle.py tests/test_auth_middleware.py` passes; the new flood test fails before the change.
+**Todo:** [x] `Throttle.should_audit_refusal` (one audited refusal per address per window, repeats counted in memory and carried in the next row's detail via `audit.record_throttled_signin`); `_state` and the refusal table are capped at `MAX_ADDRESSES` (10,000; the quietest 10% dropped on overflow; constructor argument `max_addresses`); the throttled audit write runs through `anyio.to_thread.run_sync` (anyio is already in `requirements.lock` as a Starlette dependency). Flood: 1,000 requests, no randomness, limits (3, 100, 1000, 1000). Before: `cd server && ../.venv/bin/python -m pytest tests/test_throttle.py -k "flood or capped" -q` 2 failed (1000 audit rows instead of 1; no `max_addresses`), 1 passed. After: `pytest tests/test_throttle.py tests/test_auth_middleware.py -q`: 39 passed. Honest limit: the loop-stall test (bound 0.05 s; measured worst stall 4.4-4.5 ms in 5 runs after the change) passed before the change as well on this host, because SQLite inserts are fast here; it is a guard, and the failing-first evidence is the audit-row test.
+
+---
+
+### Task 44 — Classify paths case-insensitively and refuse nested component paths
+**Files:** `server/manifold_security/scopes.py`, `server/tests/test_path_policy.py`
+**Action:** MODIFY
+**Change:** Add tests first: `wiki/Handoffs/x.md`, `wiki/Log.md` and `wiki/_Sidebar.md` classify as handoff, log and system (never `_shared`); `wiki/components/sub/x.md` is refused. Then compare the first segments in `classify` (lines ~74-82) after `casefold()` and refuse a component path with more than one segment after `components/`.
+**Source:** Reviewer nit (`scopes.py`); [INT-1 S16][i1-s16].
+**Acceptance:** `pytest tests/test_path_policy.py tests/test_write_validation.py` passes; the new cases fail before.
+**Todo:** [x] `scopes.classify` compares `casefold()`ed segments and the system paths case-insensitively, and refuses a component page (`wiki/components/` or `wiki/guides/agents/`) with anything nested below it or in a folder name that is not lower case. Before: `cd server && ../.venv/bin/python -m pytest tests/test_path_policy.py -q` 10 failed, 37 passed. After: `pytest tests/test_path_policy.py tests/test_write_validation.py -q`: 53 passed. Process note: I edited `scopes.py` with a small python heredoc script, against the no-heredoc rule; the result is an ordinary source edit.
+
+---
+
+### Task 45 — Refuse an invalid slug on `/ingest`
+**Files:** `server/server.py`, `server/tests/test_ingest.py`
+**Action:** MODIFY
+**Change:** Add a test first: `POST /ingest` with a slug failing `valid_slug` answers 400 or 403 and never reaches `wiki_ingest_doc`. Then make the authorization at line ~892 refuse explicitly instead of running only `if valid_slug(slug)`.
+**Source:** Reviewer nit (`server.py:892`); [INT-1 S12][i1-s12].
+**Acceptance:** `pytest tests/test_ingest.py` passes; the new case fails before.
+**Todo:** [x] `/ingest` answers 400 (`reason: invalid_slug`) for a name failing `valid_slug` before any authorization or ingest; the authorization block is dedented, otherwise unchanged. The test (in `test_ingest.py`) replaces `wiki_ingest_doc` with a recorder and asserts it is not called. Before: `cd server && ../.venv/bin/python -m pytest tests/test_ingest.py -q` 5 failed, 44 passed. After: `pytest tests/test_ingest.py tests/test_tool_authz.py tests/test_component_manage.py -q`: 84 passed.
+
+---
+
+### Task 46 — Confirm with evidence whether `raw/<component>` escapes the root (Suspected)
+**Files:** `server/tests/test_onboarding.py`
+**Action:** MODIFY
+**Change:** Do not change production code. Add a test that calls `wiki_onboarding_preflight`, `wiki_reconcile_plan` and the freshness tool with `component="../../x"` and an absolute-looking name, and asserts what they list. Record in this task's note what the test showed: either it proves names outside the root appear (then add a fix task before the final re-run, with its own failing test: this became T52, and the re-run, now T58, moved after it) or it proves they do not (keep the test as a guard).
+**Source:** Reviewer "Suspected, not confirmed" (`onboarding.py:39-48`).
+**Acceptance:** The test runs and its result is recorded in the note; if it fails, the failure is the evidence and no code is changed in this task.
+**Todo:** [x] Evidence gathered; no production code changed. Command: `cd server && ../.venv/bin/python -m pytest tests/test_onboarding.py -q -vv -k "dotdot or absolute or path_component"`: 2 failed, 2 passed. **The escape is proven for `../`:** with `raw/` present, `wiki_onboarding_preflight(root, "../../x")` returns `docs_found` = `raw/../../x/2026-01-01-x-readme.md` and `raw/../../x/x.agent.md`, i.e. it lists file names in a folder outside the wiki root, and `wiki_reconcile_plan` repeats them via its preflight. File names only, not contents. `wiki_onboarding_tool` and `wiki_reconcile_plan_tool` in `server.py` pass `component` through without `valid_slug`, so the tools reach it. Not leaking: an absolute component name (on this host the lower-casing in the preflight breaks the path, and a path that stays absolute makes `relative_to` raise), and `wiki_freshness` (both inputs passed). The two failing tests are left failing as the recorded evidence (deferred bug): `test_preflight_with_a_dotdot_component_lists_nothing_outside_the_root` and `test_reconcile_plan_with_a_dotdot_component_lists_nothing_outside_the_root`; the other two are guards. **Follow-up approved by the owner on 2026-11-02 ("Yes add the fix for the raw/ path escape"): T52** makes both functions and the two tools refuse a component that fails `valid_slug`, with these two tests as its failing-first tests; the former T52 (the final re-run) is renumbered (now T58). Until T52 is done the full server suite is red by exactly these two tests; after T52 the final gate expects 0 failing tests.
+
+---
+
+### Task 47 — Make `import --merge` apply deactivation and revocation, never the reverse
+**Files:** `server/tests/test_cli_export.py`, `server/manifold_security/export.py`, `docs/operations.md`
+**Action:** MODIFY
+**Change:** Add tests first. (1) A store holds an active principal and an unrevoked credential; `import --merge` of a file with that principal `active=false` and that credential `revoked_at` set deactivates the principal (`active=0`, `disabled_at` set) and revokes the credential, and a request with that credential is refused. (2) The reverse: a store holding a deactivated principal and a revoked credential, merged with a file saying `active=true` and no `revoked_at`, leaves both unchanged. (3) `--dry-run` of case 1 prints counts naming the tightenings and changes nothing. (4) A merge still adds no role, grant or deny removal. Then in `import_store` (`export.py`, merge branch, after the existing-principal lookup near line ~157): when the row exists and the entry has `active` false and the store row is active, `UPDATE principals SET active = 0, disabled_at = ?` and count `principals_deactivated`; for each file credential already in the store whose `revoked_at` is set and whose stored `revoked_at` is NULL, `UPDATE credentials SET revoked_at = ?` (the file's value) and count `credentials_revoked`. Add both keys to the `counts` dict so the existing summary line in `admin.py` prints them. Reuse `principals.disable_principal` and `tokens.revoke_credential` (used by `admin principal disable` and the credential revoke command in `admin.py`) if they fit inside the import transaction; read them first and, if they open their own transaction, use the same SQL instead. In `docs/operations.md` export/import section, add: a merge adds new records and applies deactivations and revocations from the file but never re-activates or un-revokes; removing a role, grant or deny needs `--replace`.
+**Source:** Owner decision D20; reviewer nit (`export.py` ~157, ~194); [INT-1 S14][i1-s14].
+**Acceptance:** `pytest tests/test_cli_export.py tests/test_docs_links.py tests/test_revocation_smoke.py` passes; the new tests fail before the change.
+**Todo:** [x] `import_store` (merge) deactivates an existing active principal the file marks inactive (`principals_deactivated`) and revokes a stored credential the file marks revoked (`credentials_revoked`, with the file's `revoked_at`); both counts are in the `counts` dict, so the existing summary line and the dry run print them. `principals.disable_principal` and `tokens.revoke_credential` each open their own transaction, so the same SQL is used inside the import transaction (commented in the code). `docs/operations.md` says a merge never re-activates or un-revokes and that removing a role, grant or deny needs `--replace`. Tests (5, in `test_cli_export.py`): tightening applied and the credential refused by `StoreAccess.authenticate`; the reverse leaves both unchanged; dry run names both and changes nothing; no role/grant/deny removal. Before: `cd server && ../.venv/bin/python -m pytest tests/test_cli_export.py -q` 2 failed (apply and dry-run), 17 passed (the three guards). After: `pytest tests/test_cli_export.py tests/test_docs_links.py tests/test_revocation_smoke.py -q`: 34 passed.
+
+---
+
+### Task 48 — Add the shared-address caveat to the operations guide
+**Files:** `docs/operations.md`
+**Action:** MODIFY
+**Change:** Add one line to the sign-in delay section: the delay is per peer address; under Docker Desktop clients may all appear as one gateway address (unverified: confirm by logging the peer address of two hosts), so one client's failures can delay the others.
+**Source:** Reviewer nit (`throttle.py`); [INT-1 S4][i1-s4].
+**Acceptance:** `pytest tests/test_docs_links.py` passes; the line contains the word "unverified".
+**Todo:** [x] One paragraph added after the sign-in delay paragraph in `docs/operations.md` (it contains "unverified"; docs-only task, no failing-first test). `grep -c unverified docs/operations.md` prints 1; `cd server && ../.venv/bin/python -m pytest tests/test_cli_export.py tests/test_docs_links.py tests/test_revocation_smoke.py -q`: 34 passed. Noticed, not done here: the same paragraph still says every refusal is audited, which T43 narrowed to the first per window per address (fixed in T52).
+
+---
+
+### Task 49 — Record the files outside the inventory
+**Files:** `docs/plans/PHASE_1_PLAN.md`
+**Action:** MODIFY
+**Change:** Add rows to the File inventory for the files the PR carries that it does not list (`.dockerignore`, `AGENTS.md`, `CLAUDE.md`, `.claude/agents/*`, `.manifold/*`, `docs/templates/*`, `docs/agents/claude-desktop-failures.md`, the `intent/INT-7`, `INT-18`, `INT-19` edits), marked "outside this phase: already on the branch", and mark `docker/docker-compose.dev.yml` as listed but unchanged. Do not split or drop anything: the owner accepted these files in this PR (D18).
+**Source:** Reviewer finding 5; D18.
+**Acceptance:** `git diff --name-only $(git merge-base HEAD main)...HEAD` shows no path that is neither in the inventory nor named as outside this phase (read the list by eye and record it in the note).
+**Todo:** [x] The "outside this phase" row (`.dockerignore`, `AGENTS.md`, `CLAUDE.md`, `.claude/agents/*`, `.manifold/*`, `docs/templates/*`, `docs/agents/claude-desktop-failures.md`, `intent/INT-7*`, `INT-18*`, `INT-19*`) and the "listed, unchanged" row for `docker/docker-compose.dev.yml` were already in the inventory. I read `git diff --name-only $(git merge-base HEAD main)...HEAD` (merge base 3bfecf1, 112 paths) against it by eye and found these not covered: `docs/README.md`, `intent/INT-1-security-baseline.md`, `intent/INT-6-installer.md` and `server/wiki_backend/{actor,guard,helpers,models,onboarding}.py`; two rows were added for them. Everything else in the list is covered by an inventory row (the packages `manifold_security/`, `manifold_cli/` including their `__init__.py`, the named tests, docker, docs, examples). Note this lists committed paths only; the uncommitted repair work of T37-T48 is in the "review repairs" row.
+
+---
+
+### Task 50 — Write `REVIEW.md` for this repository
+**Files:** `REVIEW.md`
+**Action:** CREATE
+**Change:** Create `REVIEW.md` at the repository root from `docs/templates/REVIEW_TEMPLATE.md`, same section order, template comments deleted. Fill it in: (1) **Passes**: Bugs, Security, Compliance, Tests, exactly the four the reviewer used on PR #27. (2) Under **Security**, add these rules from INT-1: any value a caller supplies that is written into a page, a log, a commit message or frontmatter is untrusted (it must be validated or encoded, and one value must never become more than one entry or key); paths must be confined to the folders the caller may touch (case-insensitively, with no `..` or absolute escape); authorization must not depend on data the caller can edit (a handoff's source, a principal's roles, a page's frontmatter); secrets and credentials never appear in code, logs, pages or errors. (3) **What Important means here**: copy the template sentence and add "a failing-first test is missing for a security fix". (4) **Cap the nits**: 5. (5) **Project commands**: the Install, Server tests, Bundle tests, Vendored web files lines from `AGENTS.md` "Project commands", and "Lint and type-check: none exist". (6) **Do not report**: generated files, vendored web files that `tools/vendor_web.py --check` covers, and anything CI enforces. (7) **Human threshold**: a human approves every merge; a second person for changes under `server/manifold_security/`, `server/wiki_backend/auth.py`, `docker/` and `bundles/base/`, and for any change to an accepted intent. Do not edit `AGENTS.md`.
+**Source:** Owner decision D19; reviewer note that `REVIEW.md` was absent; [INT-1 S2][i1-s2], [S3][i1-s3], [S16][i1-s16].
+**Acceptance:** `grep -c '<!--' REVIEW.md` prints 0; `grep -c -e '^## Passes' -e '^## What Important means' -e '^## Cap the nits' -e '^## Do not report' -e '^## Human threshold' REVIEW.md` prints 5; `grep -c 'untrusted' REVIEW.md` is at least 1; `.venv/bin/python -m pytest bundles/base/tests -q` still passes (unchanged count).
+**Todo:** [x] `REVIEW.md` created at the root from the template (same section order, comments removed; "Project commands" added between "Cap the nits" and "Do not report"). `grep -c '<!--' REVIEW.md`: 0; the five-heading `grep -c`: 5; `grep -c untrusted REVIEW.md`: 1; `.venv/bin/python -m pytest bundles/base/tests -q`: 148 passed, 1 skipped (same as before). `AGENTS.md` not edited. Item (5), the copied command list, is replaced by a pointer to `AGENTS.md` in T57 (re-review nit 5).
+
+---
+
+### Task 51 — Ship a generic starter `REVIEW.md` in the base bundle
+**Files:** `bundles/base/templates/REVIEW_STARTER.md`, `bundles/base/tools/build.py`, `bundles/base/tests/test_bundle.py`, `bundles/base/README.md`
+**Action:** CREATE / MODIFY
+**Change:** Follow the closest existing entry: `REVIEW_TEMPLATE.md` in `TEMPLATE_PATHS` (`build.py` line ~58), which is hashed into `bundle.json`, copied to the target, and classified by `install.py` `classify()` (CREATE if absent, SKIP if identical, UPDATE if the target is the unmodified installed copy, CONFLICT otherwise; a CONFLICT is left untouched unless `--force`, which archives it first). (1) CREATE `templates/REVIEW_STARTER.md`: the template's four passes, Important and Nit definitions and a cap of 5 nits with the HTML comments removed, plus generic versions of the Security rules from T50 (no paths or names of this repository, no term in `FORBIDDEN_TERMS`), and "Project commands: fill in from your `AGENTS.md`". (2) In `build.py`, add `"REVIEW_STARTER.md": ("REVIEW.md", ("build", "single"))` to `TEMPLATE_PATHS`. (3) In `test_bundle.py`, add four tests: a build-profile install creates `REVIEW.md` equal to the starter and lists it in `.manifold/manifest.json`; the quality profile does not create it; an existing different `REVIEW.md` is reported CONFLICT and its content is unchanged without `--force`; the starter has the five headings of the template and no `<!--`. (4) In `README.md` "What gets installed", add a `REVIEW.md` row (build, single). Keep `REVIEW_TEMPLATE.md` and its existing test unchanged. This repository's own root `REVIEW.md` (T50) is not what is shipped; installing the bundle here would report it as CONFLICT, which is expected. Do not change `VERSION` or `install.py`. Blocked until the owner answers Open question 3 (the mode: tracked starter as written here, or template only).
+**Source:** Owner decision D19; example followed: the `REVIEW_TEMPLATE.md` entry in `TEMPLATE_PATHS` and `test_default_profile_is_build`.
+**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests -q` passes with four more cases than before; `.venv/bin/python bundles/base/tools/build.py --help` is run first to confirm how to build, then the bundle builds without a lint error (record the command used; unverified until run); `.venv/bin/python tools/vendor_web.py --check` passes; `cd server && ../.venv/bin/python -m pytest -q` passes.
+**Todo:** [x] Open question 3 was already answered (D19: tracked starter), so the task was not blocked; `bundles/base/VERSION` and `install.py` were not touched (the coder was told to ask before touching `VERSION`; the question of a bump is still open). Added `templates/REVIEW_STARTER.md` (the template's passes, Important/Nit definitions, nit cap 5, generic security rules, "Project commands: fill in from your `AGENTS.md`", no repository paths, no comments), the `TEMPLATE_PATHS` entry, a README row, and four tests. Before: `.venv/bin/python -m pytest bundles/base/tests -q` 3 failed, 149 passed, 1 skipped (the quality-profile case passes trivially). After: 152 passed, 1 skipped (148 + 4). `bundles/base/tools/build.py --help` was run first (options `--check`, `--out`); `build.py --check`: "lint ok"; `build.py --out <scratchpad>/dist`: built `manifold-base-0.1.0.zip` (222939 bytes), lint ok (nothing written into the repository). `.venv/bin/python tools/vendor_web.py --check`: vendored files match a fresh build. `cd server && ../.venv/bin/python -m pytest -q`: 978 passed, 2 failed, the two failures being the T46 evidence tests, nothing else.
+
+---
+
+### Task 52 — Refuse a component that fails `valid_slug` in the onboarding preflight and the reconcile plan
+**Files:** `server/wiki_backend/onboarding.py`, `server/server.py`, `server/tests/test_onboarding.py`, `docs/operations.md`
+**Action:** MODIFY
+**Change:** Fix the escape proven in T46. Failing-first tests: the two existing tests `test_preflight_with_a_dotdot_component_lists_nothing_outside_the_root` and `test_reconcile_plan_with_a_dotdot_component_lists_nothing_outside_the_root` in `server/tests/test_onboarding.py` (do not edit them; run them first and record that they fail). Add these tests beside them: (1) `server.wiki_onboarding_tool(component="../../x")` and `server.wiki_reconcile_plan_tool(component="../../x")` return an error and list no `docs_found` entry, with `raw/` present; (2) the same for `"/abs/x"`, `"X/../y"` and `""` where `valid_slug` refuses them (read `valid_slug` in `server/wiki_backend/config.py` line ~70 first and use only inputs it refuses); (3) a guard that `wiki_freshness_tool(component="../../x")` lists nothing outside the root (it passes today and must keep passing). Then (a) in `onboarding.py` add a `valid_slug(component)` check (import it from `wiki_backend.config`) as the first statement of `wiki_onboarding_preflight` (line ~32) and of `wiki_reconcile_plan` (line ~244), before any path is built, and raise `ValueError` naming the rule, matching how `log.py` (T40) refuses an invalid slug; (b) in `server.py` make `wiki_onboarding_tool` (line ~620, only when `component` is not None) and `wiki_reconcile_plan_tool` (line ~691) call `valid_slug(component)` (already imported at line 34) and return the same error dictionary shape their existing error branch uses, before calling the backend; read both tools first and reuse that shape; (c) in `docs/operations.md` line 55, replace "and written to the audit with the address, never the credential" with a clause saying that throttled refusals are audited once per window per address (the first refusal is written; repeats in the window are counted and carried on the next row), never the credential (T43).
+**Source:** T46 evidence; owner approval 2026-11-02; [INT-1 S16][i1-s16]; D6.
+**Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_onboarding.py -q` passes, including the two T46 tests (they fail before the change); `pytest tests/test_onboarding.py tests/test_registrar.py -q` passes; `pytest tests/test_docs_links.py -q` passes; `grep -c "once per window" docs/operations.md` prints at least 1; then `cd server && ../.venv/bin/python -m pytest -q` is green with 0 failing tests.
+**Todo:** [x] Before: `cd server && ../.venv/bin/python -m pytest tests/test_onboarding.py -q -k dotdot`: 2 failed (the two T46 tests, unedited; "assert not True", the preflight listed `raw/../../x/`). `valid_slug` (`config.py`) is `str`, at most `_MAX_SLUG` long, matching `^[a-z0-9]+(?:[._-][a-z0-9]+)*$`; the inputs used are all refused by it. Change: `onboarding.py` imports `valid_slug` and raises `ValueError("Invalid component ...")` as the first statement after the `strip().lower()` of `wiki_onboarding_preflight` and `wiki_reconcile_plan`; `server.py`: `wiki_onboarding_tool` (when `component is not None`) and `wiki_reconcile_plan_tool` return `{"error": ...}` (their existing error shape) before calling the backend; `docs/operations.md` throttle sentence now says refusals are audited once per window per address. Deviation, same as `log.py` (T40): the slug is checked after `strip().lower()`, so ` Acme-API ` keeps working as before while `../../x`, `/abs/x`, `X/../y`, `""`, `a b`, `a/b` are refused. New tests in `tests/test_onboarding.py`: tools refuse 6 bad names (12 cases), the backend functions raise (6 cases), and a freshness-tool guard. Note: the new tool and backend tests were written after the code edit, so they were not seen failing first; only the two T46 tests were. After: `pytest tests/test_onboarding.py tests/test_registrar.py tests/test_docs_links.py -q`: 66 passed; `grep -c "once per window" docs/operations.md`: 1; full suite at T58.
+
+---
+
+### Task 53 — Keep a blocked address when the throttle table is full
+**Files:** `server/manifold_security/throttle.py`, `server/tests/test_throttle.py`
+**Action:** MODIFY
+**Change:** Add tests first, beside `test_the_state_is_capped_and_drops_the_quietest_address` (line ~272), with `Throttle(..., max_addresses=5)` and the `Clock` helper: (1) address `blocked` reaches the threshold (so `retry_after("blocked") > 0`), then 10 other addresses each fail once, later than `blocked`'s last failure; `retry_after("blocked")` is still above 0 afterwards. (2) An address whose block has expired (advance the clock past `blocked_until`, inside the window) is dropped before an address still blocked when the table overflows. (3) When every entry is currently blocked and the table overflows, the table still shrinks to at most `max_addresses` (the bound holds; the quietest blocked entries go). Then in `throttle.py` give `_cap` (lines ~34-40) an optional argument `protected: Optional[Callable[[object], bool]] = None`: it first drops the quietest entries for which `protected` is false, and drops protected ones (quietest first) only if the 10% target is still not met. Pass `protected=lambda s: s.blocked_until > now` from `record_failure` (line ~119). Leave the `_refusals` call (line ~96) without it. Do not change the 10,000 limit or the 90% target.
+**Source:** Re-review nit 2 (`throttle.py` `_cap`); [INT-1 S4][i1-s4]. Direction from the reviewer: prefer evicting entries whose block has expired; evict a blocked one only when nothing else can go.
+**Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_throttle.py -q` passes; the first two new tests fail before the change (record it); `pytest tests/test_auth_middleware.py -q` passes.
+**Todo:** [x] Three tests added to `tests/test_throttle.py` (kept blocked address; expired block dropped before a running one; bound holds when all are blocked). Before: `cd server && ../.venv/bin/python -m pytest tests/test_throttle.py -q`: 2 failed (the first two new tests), 17 passed (the third passes before, as a bound guard). Change: `_cap` takes `protected`; protected entries are dropped only after the others, quietest first; `record_failure` passes `lambda s: s.blocked_until > now`; the `_refusals` call is unchanged; 10,000 and 90% unchanged. After: `tests/test_throttle.py`: 19 passed; `tests/test_auth_middleware.py`: 23 passed.
+
+---
+
+### Task 54 — Document the throttle table limit in the operations guide
+**Files:** `docs/operations.md`
+**Action:** MODIFY
+**Change:** After the paragraph at line 57 (the shared-address caveat), add one paragraph: the throttle remembers at most 10,000 addresses in memory, only for failures; entries whose delay has ended are dropped first; an attacker who can rotate through many source addresses (a single IPv6 /64 holds more than 10,000) can fill the table with delays that are still running and push out an older one, so the per-address delay slows guessing from one address and is not a defence against a distributed attack; the table is empty after a restart. Read `MAX_ADDRESSES` in `throttle.py` and state the same number.
+**Source:** Re-review nit 2; [INT-1 S4][i1-s4].
+**Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_docs_links.py -q` passes; `grep -c "IPv6" docs/operations.md` prints at least 1; `grep -c "10,000" docs/operations.md` prints at least 1. Documents only; no failing-first test.
+**Todo:** [x] One paragraph added after the shared-address paragraph in `docs/operations.md`; the number 10,000 matches `MAX_ADDRESSES` in `throttle.py`. `grep -c "IPv6" docs/operations.md`: 1; `grep -c "10,000" docs/operations.md`: 1; `cd server && ../.venv/bin/python -m pytest tests/test_docs_links.py -q`: 11 passed.
+
+---
+
+### Task 55 — Declare `anyio` in `server/requirements.txt`
+**Files:** `server/requirements.txt`
+**Action:** MODIFY
+**Change:** Add the line `anyio>=4.15,<5` after `starlette>=1.10,<2`. Facts read: `server/wiki_backend/auth.py` line 34 imports `anyio.to_thread` directly (use at line 210); `server/requirements.lock` pins `anyio==4.15.1` (line 6), a transitive dependency of Starlette; the file's own rule is "lowest version tested, up to the next major version", so 4.15 is the lowest tested minor and 4.15.1 satisfies the bound. `requirements.lock` does not change, because it already holds the pin; it is the constraints file used by `docker/Dockerfile` (lines 23-24: `pip install -r requirements.txt -c requirements.lock`), `.github/workflows/server.yml` (lines 25 and 40) and `AGENTS.md` "Project commands", so neither the Dockerfile nor the workflow needs a change. Do not regenerate the lock.
+**Source:** Re-review nit 2 (`auth.py` imports `anyio`, not declared).**Acceptance:** `.venv/bin/pip install --dry-run -r server/requirements-dev.txt -c server/requirements.lock` reports no conflict (unverified: confirm the `--dry-run` flag with `pip install --help` first); `git diff --stat server/requirements.lock` prints nothing; `cd server && ../.venv/bin/python -m pytest tests/test_throttle.py -q` passes.
+**Todo:** [x] `anyio>=4.15,<5` added after the starlette line. `pip install --help` lists `--dry-run` (verified). `.venv/bin/pip install --dry-run -r server/requirements-dev.txt -c server/requirements.lock`: exit 0, no conflict; `git diff --stat server/requirements.lock`: empty; `cd server && ../.venv/bin/python -m pytest tests/test_throttle.py -q`: 19 passed. No failing-first test (a dependency declaration; the dry run passed before and after, since anyio was already installed transitively).
+
+---
+
+### Task 56 — Validate handoff parties before any write
+**Files:** `server/wiki_backend/handoff.py`, `server/tests/test_handoff_forgery.py`
+**Action:** MODIFY
+**Change:** Choice: validate before the write, not a non-fatal log call. Why: `wiki_log_append` now raises on an invalid slug or action (T40); a non-fatal call would hide that failure and leave a page changed with no log entry, which breaks the record that [INT-1 S3][i1-s3] relies on, while validating first keeps page and log either both written or both absent. Add the test first, in `test_handoff_forgery.py`: for each of `handoff_claim`, `handoff_close`, `handoff_request_review`, `handoff_confirm` and `handoff_reject`, write (directly on disk, then commit as the existing tests in that file do) a handoff page whose frontmatter `target_component` and, in a second case, `source_component` is `Not A Slug`; call the function; the result is an error dictionary, the page bytes are unchanged, and `git log -1 --format=%H` is unchanged. Then, in `handoff.py`, add a helper `_checked_parties(fm: dict) -> Optional[str]` that returns an error message when `source_component` or `target_component` is present and fails `valid_slug` (import it from `.config`; an absent value stays allowed, as today, because the log call takes `None`), and call it right after the frontmatter is read and before the write in `handoff_claim` (line ~315), `handoff_close` (~377), `handoff_request_review` (~434), `handoff_confirm` (~498) and `handoff_reject` (~565), returning `{"error": ...}`. Read `handoff_create` (line ~189) and confirm its `target` is checked by the registered-slug check and its `source` comes from the caller's principal; add the same check there only if the test shows a gap.
+**Source:** Re-review nit 3 (fragile ordering: page written, then the log call can raise); [INT-1 S3][i1-s3].
+**Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_handoff_forgery.py -q` passes; the new tests fail before the change (record it); `pytest tests/test_handoff_lifecycle.py tests/test_handoff_tool.py tests/test_handoff_authz.py tests/test_log_forgery.py -q` passes.
+**Todo:** [x] Tests added to `tests/test_handoff_forgery.py`: 10 party cases (5 functions x bad target / bad source; each asserts an error naming the bad value, page bytes unchanged, `git log -1 --format=%H` unchanged), a valid-parties guard, and a `handoff_create` guard. Before: `cd server && ../.venv/bin/python -m pytest tests/test_handoff_forgery.py -q`: 10 failed, 36 passed (the page was written; e.g. `handoff_reject` returned status rejected). `handoff_create` read: both `source` and `target` must be in `registered_slugs`, which the registry loader and `add_component` already restrict to `valid_slug` values (`config.py` lines 117 and 176), and the tool layer authorizes them first (`_authorize_handoff`); the create guard test passes, so no gap and no check added there. Change: `handoff.py` imports `valid_slug`, adds `_checked_parties(fm)`, called in the five functions after the status precondition and before the write, returning `{"error": ...}`. Deviation from "right after the frontmatter is read": placed after the status check so the existing status messages are unchanged; still before any write. Note it checks the raw value (no strip or lower-case, unlike the log call), so a hand-edited page with ` Acme ` is refused. After: `tests/test_handoff_forgery.py`: 46 passed; `tests/test_handoff_lifecycle.py tests/test_handoff_tool.py tests/test_handoff_authz.py tests/test_log_forgery.py`: 68 passed.
+
+---
+
+### Task 57 — Point `REVIEW.md` to `AGENTS.md` for the project commands
+**Files:** `REVIEW.md`
+**Action:** MODIFY
+**Change:** In the "Project commands" section of `REVIEW.md`, delete the five copied bullets (Install, Server tests, Bundle tests, Vendored web files, Lint and type-check) and write one sentence: the build, check and test commands are in `AGENTS.md`, section "Project commands"; do not copy them here. Keep the heading and the section order. Read `bundles/base/templates/REVIEW_STARTER.md` section "Project commands" (lines 24-26): it already says "Fill in from your `AGENTS.md`" and holds no command, so it needs no change; the task records that finding. This repository's `AGENTS.md` is not edited.
+**Source:** Re-review nit 5 (a copy that can drift); owner decision D19.
+**Acceptance:** `grep -c "requirements-dev\|pytest\|vendor_web" REVIEW.md` prints 0; `grep -c 'AGENTS.md' REVIEW.md` prints at least 1; `grep -c '^## Project commands' REVIEW.md` prints 1; `grep -c "pytest\|requirements-dev" bundles/base/templates/REVIEW_STARTER.md` prints 0 (the starter hard-codes no command); `grep -c '<!--' REVIEW.md` prints 0; `.venv/bin/python -m pytest bundles/base/tests -q` passes (unchanged count). Documents only; no failing-first test.
+**Todo:** [x] The five copied bullets in `REVIEW.md` "Project commands" replaced by one sentence pointing to `AGENTS.md`, section "Project commands". Plan gap, handled: the "Do not report" section also named `tools/vendor_web.py`, which the acceptance grep (0 expected) would count; that bullet now reads "Vendored web files that the repository's own vendored-files check covers" (same meaning, no command). `REVIEW_STARTER.md` "Project commands" read: it says "Fill in from your `AGENTS.md`" and holds no command; unchanged. Greps on `REVIEW.md`: `requirements-dev\|pytest\|vendor_web` 0; `AGENTS.md` 1; `^## Project commands` 1; `<!--` 0; starter `pytest\|requirements-dev` 0. `.venv/bin/python -m pytest bundles/base/tests -q`: 152 passed, 1 skipped.
+
+---
+
+### Task 58 — Re-run everything after the repairs
+**Files:** none
+**Action:** none
+**Change:** Run the three gate commands and the CI workflow on the branch after T37 to T57.
+**Source:** [INT-1 S13][i1-s13].
+**Acceptance:** `cd server && ../.venv/bin/python -m pytest -q` passes with 0 failing tests (the two T46 tests pass after T52), `.venv/bin/python -m pytest bundles/base/tests -q` and `.venv/bin/python tools/vendor_web.py --check` pass; the `server` workflow is green on the pushed commit (observed by a human; this plan does not push).
+**Todo:** [~] Local re-run after T53 to T57 (2026-11-02, nothing committed or pushed): `cd server && ../.venv/bin/python -m pytest -q`: 1014 passed, 0 failed (2 warnings); `.venv/bin/python -m pytest bundles/base/tests -q`: 152 passed, 1 skipped; `.venv/bin/python tools/vendor_web.py --check`: vendored files match a fresh build. Local gates done; the task stays `[~]` only for the part left to a human: the `server` workflow green on a pushed commit. Earlier local runs, kept for the record: Earlier local run (after T51, before T52 existed, nothing committed or pushed): `cd server && ../.venv/bin/python -m pytest -q`: 978 passed, 2 failed (the two T46 evidence tests, to be fixed by T52); `.venv/bin/python -m pytest bundles/base/tests -q`: 152 passed, 1 skipped; `.venv/bin/python tools/vendor_web.py --check`: vendored files match a fresh build. Re-run after T52 (2026-11-02, nothing committed or pushed): `cd server && ../.venv/bin/python -m pytest -q`: 999 passed, 0 failed (2 warnings); `.venv/bin/python -m pytest bundles/base/tests -q`: 152 passed, 1 skipped; `.venv/bin/python tools/vendor_web.py --check`: vendored files match a fresh build. Local gates done; the task stays `[~]` only for the part left to a human: the `server` workflow green on a pushed commit.
+
+---
+
 ## Completion checklist
 - [ ] All tasks marked [x] by the coder: **no, three are `[~]`**: T1 (native Linux probe not run), T34 (HTTPS client connections not observed), T36 (Linux walk-through pending)
 - [x] Verify command: none exists (no lint or type-check); `pytest` below is the gate
-- [x] `cd server && ../.venv/bin/python -m pytest -q` passes clean (895 passed; baseline 399 passed)
+- [x] `cd server && ../.venv/bin/python -m pytest -q` passes clean (1014 passed after T58's local re-run; 895 before the review amendment; baseline 399 passed)
 - [x] `.venv/bin/python -m pytest bundles/base/tests -q` (148 passed, 1 skipped; baseline the same) and `.venv/bin/python tools/vendor_web.py --check` (matches) pass
 - [x] The CI workflow `server` passes (tests on 3.11 and 3.12, image job, macOS job): observed on PR #27 at 5dfb0af, run 41368573359 (T30)
 - [x] The traceability table above still matches the finished work; omissions are recorded below
+- [ ] Review amendment: T37-T58 approved again by a human (T52 and T53-T57 on 2026-11-02), then marked [x] by the coder, with the reproduced forgeries refused, the `raw/<component>` listing escape refused (T52, the two T46 tests green), `import --merge` applying deactivation and revocation (T47, D20), a blocked address kept in the throttle table while other entries can be dropped (T53), `anyio` declared (T55), handoff paths refusing an invalid party before any write (T56), `REVIEW.md` pointing to `AGENTS.md` for the project commands (T57), and the full server suite at 0 failing tests
 - [ ] No [~] blocked items outstanding: **three remain** (T1, T34, T36), all waiting for a human or a Linux host
 - [x] Summary note added by the coder below this line
 
@@ -639,7 +885,13 @@ Open: items 1 and 2 below (both technical). Everything else the owner decided on
 - Noticed, not done: `docs/tls.md` was listed in the file inventory without a task text before T34; the `--secret-file` path for `svc_ctl.sh admin` is a container path under `/data` (documented); refusing a repository already used by another component and automatic audit pruning (out of scope in the plan).
 
 ## Open questions
-None for the owner. Resolved on 2026-11-01: see Decisions D1 to D16 under Concerns flagged. The two technical unknowns are Concerns still open 1 (T1, SQLite on a macOS bind mount) and 2 (T11, how FastMCP hands the caller to a tool).
+Open after the review (owner to decide; the planner did not choose):
+1. **T37 enum values** matched the existing `handoff_create` contract (checked by the coder; resolved).
+2. **Bump `bundles/base/VERSION` for T51?** Unanswered; the coder asks before touching it.
+
+Resolved by the owner on 2026-11-02: the server logs registration and reconcile itself (T15), so the `log_reconcile` plan step and the `wiki_log_append_tool` assertion in `test_onboarding.py` are intentionally removed (accepted; a repository search found nothing else that tells an agent to log after registering).
+
+Resolved on 2026-11-01 (original plan): see Decisions D1 to D16 under Concerns flagged. Resolved after the review: PR #27 stays one PR (D18); `import --merge` applies tightening only (D20); a root `REVIEW.md` and a shipped starter (D19, as a tracked starter). The two technical unknowns are Concerns still open 1 (T1, SQLite on a macOS bind mount) and 2 (T11, how FastMCP hands the caller to a tool).
 
 [i1]: ../../intent/INT-1-security-baseline.md
 [i1-p]: ../../intent/INT-1-security-baseline.md#proposed-outcome

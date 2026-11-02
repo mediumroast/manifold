@@ -52,7 +52,11 @@ Inside the container a secret file must be under `/data`; on the host it is then
 | take a person or agent away entirely | `admin principal disable <name>` (all its credentials stop at once; `enable` restores) |
 | see who did what | `admin audit show [--since 7d] [--principal ana] [--event credential.]` |
 
-Taking access away is **immediate**: the next request is refused, with no restart. It is also **durable**, because the state is in the store, not in memory. Failed sign-ins are slowed down per address (5 failures in 10 minutes, then a delay that doubles from 1 second to 15 minutes) and written to the audit with the address, never the credential; a credential is never locked, so an attacker cannot lock a person out.
+Taking access away is **immediate**: the next request is refused, with no restart. It is also **durable**, because the state is in the store, not in memory. Failed sign-ins are slowed down per address (5 failures in 10 minutes, then a delay that doubles from 1 second to 15 minutes) and throttled refusals are written to the audit once per window per address (the first refusal is written; repeats in the window are counted and carried on the next row), never the credential; a credential is never locked, so an attacker cannot lock a person out.
+
+The delay is per peer address. Under Docker Desktop clients may all appear as one gateway address (unverified: confirm by logging the peer address of two hosts), in which case one client's failures can delay the others.
+
+The throttle keeps at most 10,000 addresses in memory, and only for failed sign-ins. When the table is full, entries whose delay has ended are dropped first. Someone who can rotate through many source addresses (a single IPv6 /64 holds far more than 10,000) can fill the table with delays that are still running and push out an older one, so the per-address delay slows guessing from one address and is not a defence against a distributed attack. The table is empty after a restart.
 
 ## Roles, grants and denies
 
@@ -106,6 +110,8 @@ A request for the wrong `Host`, or a `POST`, `PUT`, `PATCH` or `DELETE` carrying
 ## Export, import and backup
 
 `admin export <file>` writes one JSON file: principals, roles, grants, denies, per-component authority and settings. It contains **no credentials and no hashes** unless you add `--with-hashes` (then credentials keep working after an import on another host; keep that file as private as the data folder). `admin import <file>` into an empty store loads it; into a store that already has principals it needs `--merge` or `--replace`; `--dry-run` shows what would change. The whole file is checked before anything is written.
+
+A merge adds new records and applies deactivations and revocations from the file (a principal the file marks inactive is deactivated, a credential the file marks revoked is revoked), but it never re-activates a principal and never un-revokes a credential. Removing a role, a grant or a deny needs `--replace`.
 
 To **back up**, save the instance (below) and the data folder, or an export plus the instance. Copy the data folder only while the service is stopped (`stop`), or use `admin export --with-hashes` while it runs; do not copy `manifold.db` by itself from a running server.
 
