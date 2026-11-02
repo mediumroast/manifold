@@ -125,7 +125,6 @@ class Session:
         self.answers = []
         self.settings = dict(system="Linux", python=(3, 11, 4), tty=False, present=("git", "docker"))
         self.settings.update(overrides)
-        self.clock = [0.0]
 
     def runtime(self):
         s = self.settings
@@ -135,23 +134,30 @@ class Session:
             return self.answers.pop(0) if self.answers else ""
 
         def sleep(seconds):
-            self.clock[0] += seconds
-            time.sleep(0.05)
+            # REAL time, shortened: the wait for the server is a real wait. (The first version of this helper
+            # advanced a fake clock by 2 s per poll and slept 0.05 s, so "40 seconds" was about one second of
+            # real time: enough on a warm developer machine, not for a cold CI runner importing the server.)
+            time.sleep(min(seconds, 0.25))
 
         return init_cmd.Runtime(
             repo_root=self.checkout, out=self.out, err=self.err, system=lambda: s["system"],
             python_version=lambda: s["python"], which=lambda name: ("/usr/bin/" + name) if name in s["present"] else None,
             run=self.services, ask=ask, is_tty=s["tty"], user=lambda: "tester",
-            port_in_use=lambda host, port: False, sleep=sleep, clock=lambda: self.clock[0])
+            port_in_use=lambda host, port: False, sleep=sleep, clock=time.monotonic)
 
     def options(self, **kw):
         base = dict(env_name=ENV, instance=self.tmp_path / "manifold-instance", data_dir=self.tmp_path / "manifold-data",
-                    port=self.port, yes=True, name="pat", wait_seconds=40)
+                    port=self.port, yes=True, name="pat", wait_seconds=120)
         base.update(kw)
         return init_cmd.Options(**base)
 
     def run(self, **kw):
-        return init_cmd.run_init(self.options(**kw), self.runtime())
+        code = init_cmd.run_init(self.options(**kw), self.runtime())
+        log = self.services.log
+        if "did not become healthy" in self.text and log.is_file():
+            # The server's own output is otherwise lost; a failure on a CI runner must show why it was not healthy.
+            self.err.write("--- tail of the server log ---\n%s\n" % "\n".join(log.read_text().splitlines()[-30:]))
+        return code
 
     @property
     def text(self):

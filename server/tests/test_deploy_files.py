@@ -434,8 +434,13 @@ def test_compose_config_renders_for_tls_on_and_off(tmp_path, tls, caddyfile):
     env_file.write_text(text)
     result = run(root, "production", "config")
     assert result.returncode == 0, result.stderr
-    assert caddyfile in result.stdout
-    assert "https://localhost:8686, https://127.0.0.1:8686, https://192.168.1.5:8686" in result.stdout
-    assert "CADDY_DEFAULT_SNI: 192.168.1.5" in result.stdout
-    assert "MANIFOLD_TLS: " + ("'on'" if tls == "on" else "'off'") in result.stdout
-    assert "published:" in result.stdout and result.stdout.count("published:") == 1  # only Caddy publishes
+    # Parse the rendered YAML instead of searching its text: the way compose quotes a value ('on' or "on", and
+    # 'off' which YAML would read as a boolean) differs between compose versions (it differed on the CI runner).
+    rendered = yaml.safe_load(result.stdout.split("\n", 1)[1])  # the first line is svc_ctl.sh's own heading
+    manifold, caddy = rendered["services"]["manifold"], rendered["services"]["caddy"]
+    assert any(v["source"].endswith("docker/caddy/" + caddyfile) and v["target"] == "/etc/caddy/Caddyfile"
+               for v in caddy["volumes"])
+    assert caddy["environment"]["CADDY_SITES"] == "https://localhost:8686, https://127.0.0.1:8686, https://192.168.1.5:8686"
+    assert caddy["environment"]["CADDY_DEFAULT_SNI"] == "192.168.1.5"
+    assert str(manifold["environment"]["MANIFOLD_TLS"]).strip().lower() in (tls, {"on": "true", "off": "false"}[tls])
+    assert "ports" not in manifold and len(caddy["ports"]) == 1  # only Caddy publishes
