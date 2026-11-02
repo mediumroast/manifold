@@ -1,0 +1,34 @@
+{
+  "name": "manifold",
+  "bundle": "base",
+  "version": "0.1.0",
+  "installed_at": "2026-11-01T05:18:14Z",
+  "formats": [
+    "claude"
+  ],
+  "profiles": [
+    "build"
+  ],
+  "files": {
+    ".claude/agents/bug-coder.md": "74f12963eda6149b73aee32aa9f6a751053d069c3838534fd76fb17be0cbe954",
+    ".claude/agents/coder.md": "09f6df9068a6a92d828e0031b884ef0efa0dfe99cfd36fd42d3b910aa8e13aed",
+    ".claude/agents/planner.md": "62faf8b5e0bbbe264c77adf86d9f6671d091131966079b21859e8b54fcd22824",
+    ".claude/agents/reviewer.md": "8eb8481169fc09aaa91bc31704bcbfcb908497ebe00deb89e150ea128f6f5cf8",
+    ".claude/agents/test-coder.md": "5dd9f53b5eecaa5a3d6684b63d71f0d6126e36ddef87c1356d6b3102ebad6f25",
+    ".claude/agents/test-planner.md": "bc0aa2e95358e37dc105ac37cb6db55a8f3ab548d104f939ce5c39fb4f4c7768",
+    ".manifold/LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    ".manifold/NOTICE": "ceb5dd17a271ae545ba0af0da2bfc651df569b602993948538a8a215a4a27867",
+    "docs/templates/INTENT_TEMPLATE.md": "6b1d9f2c279a8ef71197949dc0ebff64b1b6f1a60ebb6a7a754e358eec868ab6",
+    "docs/templates/PHASE_PLAN_TEMPLATE.md": "ae83ed50fc8ead4c1e87218cc6cbc6f02e8862ea2ab134a2ce5839c37da909ee",
+    "docs/templates/PHASE_TEST_PLAN_TEMPLATE.md": "21fe2ca30359836035bd33d7256d8c2a85ecd192219fc17d62538f4fb080a73e",
+    "docs/templates/REVIEW_TEMPLATE.md": "64e3f686f4c59502c5ee6c8b9e3f6d405c645ecc622a2ce5dd8980adfd61937d",
+    "docs/templates/WT_TEMPLATE.md": "6a8b50f86a14651c8ecf0b51db87b68ccbd8313c6ebc5bee60883b724a5e9af9"
+  },
+  "instructions": {
+    "file": "AGENTS.md",
+    "created": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ]
+  }
+}

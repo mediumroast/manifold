@@ -9,69 +9,30 @@ the MCP endpoints, the write path, the HTTP routes and the wiki browser.
 import asyncio
 import base64
 import json
-import os
-import socket
 import subprocess
-import sys
-import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 import pytest
 
 pytest.importorskip("fastmcp")
 
+from tests.realserver import EXAMPLE, running_server  # noqa: E402
 from wiki_backend.ping import _TOOL_NAMES  # noqa: E402
 
-SERVER_DIR = Path(__file__).resolve().parents[1]
-EXAMPLE = SERVER_DIR.parent / "examples" / "acme"
-TOKEN = "smoke-test-token-0123456789abcdef"
+TOKEN = None  # set by the server fixture: the generated credential of the smoke-test principal
 
 pytestmark = pytest.mark.skipif(not EXAMPLE.is_dir(), reason="no examples/acme beside the server")
 
 
-def _free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
-
-
 @pytest.fixture(scope="module")
 def server(tmp_path_factory):
-    import shutil
-    root = tmp_path_factory.mktemp("smoke") / "acme-wiki"
-    shutil.copytree(EXAMPLE, root)
-    for args in (["init", "-q"], ["config", "user.name", "t"], ["config", "user.email", "t@t.test"],
-                 ["add", "-A"], ["commit", "-q", "-m", "start"]):
-        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
-    port = _free_port()
-    env = dict(os.environ, CONTAINER_WIKI_ROOT=str(root), PORT=str(port), MANIFOLD_TOKEN=TOKEN,
-               MANIFOLD_HOST="127.0.0.1", PYTHONUNBUFFERED="1")
-    env.pop("MANIFOLD_RELOAD", None)
-    log = root.parent / "server.log"
-    with open(log, "w") as out:
-        process = subprocess.Popen([sys.executable, "server.py"], cwd=SERVER_DIR, env=env, stdout=out, stderr=out)
-        base = "http://127.0.0.1:%d" % port
-        try:
-            deadline = time.time() + 30
-            while time.time() < deadline:
-                if process.poll() is not None:
-                    pytest.fail("the server exited early:\n" + log.read_text())
-                try:
-                    urllib.request.urlopen(base + "/health", timeout=1).read()
-                    break
-                except (urllib.error.URLError, ConnectionError, OSError):
-                    time.sleep(0.2)
-            else:
-                pytest.fail("the server did not start:\n" + log.read_text())
-            yield {"base": base, "root": root}
-        finally:
-            process.terminate()
-            try:
-                process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                process.kill()
+    """The real server with one principal (a contributor); TOKEN becomes that principal's generated credential."""
+    global TOKEN
+    spec = [("smoke-user", "human", ["contributor"], ["acme-api", "acme-web", "_shared"])]
+    with running_server(tmp_path_factory.mktemp("smoke"), spec) as running:
+        TOKEN = running["tokens"]["smoke-user"]
+        yield running
 
 
 def request(server, path, method="GET", body=None, auth="bearer", read=True):
@@ -141,7 +102,7 @@ def test_the_server_lists_every_tool_ping_reports(server):
         async with Client(StreamableHttpTransport(server["base"] + "/mcp", headers={"Authorization": "Bearer " + TOKEN})) as c:
             return {t.name for t in await c.list_tools()}
     listed = asyncio.run(names())
-    assert listed == set(_TOOL_NAMES) and len(listed) == 15
+    assert listed == set(_TOOL_NAMES) and len(listed) == 16
 
 
 def test_the_mcp_endpoint_refuses_a_client_without_the_token(server):
@@ -156,7 +117,7 @@ def test_the_mcp_endpoint_refuses_a_client_without_the_token(server):
 
 def test_ping_reports_the_server_name_and_status(server):
     result = mcp(server, "wiki_ping_tool")
-    assert result["status"] == "connected" and result["server"] == "manifold" and result["tool_count"] == 15
+    assert result["status"] == "connected" and result["server"] == "manifold" and result["tool_count"] == 16
 
 
 def test_a_page_can_be_read(server):
@@ -183,7 +144,8 @@ def test_a_handoff_is_created_on_disk_and_committed(server):
         "title": "Smoke test handoff", "summary": "Created by the smoke test.", "what_needs_to_happen": "Nothing."})
     assert created["status"] == "created"
     assert (server["root"] / created["path"]).read_text().startswith("---")
-    assert any(line.startswith("manifold|") and "Smoke test handoff" in line for line in _git_log(server))
+    # The commit is authored by the principal behind the credential (T15), not by the server.
+    assert any(line.startswith("smoke-user|") and "Smoke test handoff" in line for line in _git_log(server))
 
 
 def test_a_page_is_written_with_its_etag_and_a_stale_etag_is_refused(server):

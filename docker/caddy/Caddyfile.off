@@ -1,0 +1,13 @@
+# Plain HTTP (MANIFOLD_TLS=off): the default on a loopback address.
+# Caddy only forwards. It never contacts a certificate authority: automatic HTTPS is off, which also
+# keeps the setup offline-clean.
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT} {
+	# The Host header is passed through unchanged, so the server's own Host check sees what the client sent.
+	# Responses of type text/event-stream (the /sse endpoint) are flushed at once by default.
+	reverse_proxy manifold:{$PORT}
+}

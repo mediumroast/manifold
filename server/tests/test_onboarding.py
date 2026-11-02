@@ -160,7 +160,7 @@ def test_reconcile_plan_without_agents_ends_with_the_bundle_steps(wiki_root: Pat
     assert result.get("required_inputs", []) == []
     calls = [s["tool_call"] for s in result["action_plan"]]
     assert any("wiki_register_component_tool" in c for c in calls)
-    assert any("wiki_log_append_tool" in c for c in calls)
+    assert not any("wiki_log_append_tool" in c for c in calls)  # the server logs the reconcile itself
     assert calls[-3:] == [
         "wiki_bundle_info_tool()",
         "wiki_export_component_helpers_tool()",
@@ -178,7 +178,7 @@ def test_reconcile_plan_with_published_agents_has_no_bundle_steps(wiki_root: Pat
     result = wiki_reconcile_plan(wiki_root, "acme-api", repo="https://github.com/acme/acme-api")
 
     assert result["status"] == "plan_ready"
-    assert [s["action"] for s in result["action_plan"]] == ["reconcile_wiki_page", "log_reconcile", "freshness_check"]
+    assert [s["action"] for s in result["action_plan"]] == ["reconcile_wiki_page", "freshness_check"]
     assert result["status_audit"]["agents_published"] == ["raw/acme-api/agents/acme-api-planner.agent.md"]
 
 

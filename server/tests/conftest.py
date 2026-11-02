@@ -64,3 +64,163 @@ def wiki_root(tmp_path: Path) -> Path:
     git("commit", "-m", "test: init wiki skeleton")
 
     return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def _fresh_throttle():
+    """The server module keeps one in-memory sign-in throttle; start every test with it empty."""
+    module = sys.modules.get("server")
+    if module is not None and hasattr(module, "_throttle"):
+        module._throttle._state.clear()
+    yield
+
+
+class AuthWorld:
+    """A security store holding two principals with a credential each (generated, never real)."""
+
+    def __init__(self, conn, data_dir):
+        from manifold_security import principals, tokens
+        self.conn = conn
+        self.data_dir = data_dir
+        self.human = principals.create_principal(conn, "alice", "human")
+        principals.set_role(conn, "alice", "contributor")
+        self.agent = principals.create_principal(conn, "build-bot", "agent")
+        principals.set_role(conn, "build-bot", "reader")
+        self.human_credential = tokens.issue_credential(conn, self.human.id, "test")
+        self.agent_credential = tokens.issue_credential(conn, self.agent.id, "test")
+        self.human_token = self.human_credential.token
+        self.agent_token = self.agent_credential.token
+
+
+@pytest.fixture()
+def auth_world(tmp_path: Path, monkeypatch):
+    """
+    Isolated store with a human and an agent principal, each with a credential.
+
+    ``MANIFOLD_DATA_DIR`` points at it for the test, so code that opens the store from
+    the environment (the server's middleware) uses this one and no real data folder.
+    """
+    from manifold_security.store import open_store
+
+    data_dir = tmp_path / "auth-data"
+    conn = open_store(data_dir, wiki_root=tmp_path / "wiki-root")
+    monkeypatch.setenv("MANIFOLD_DATA_DIR", str(data_dir))
+    monkeypatch.setenv("CONTAINER_WIKI_ROOT", str(tmp_path / "wiki-root"))
+    world = AuthWorld(conn, data_dir)
+    yield world
+    conn.close()
+
+
+class ToolWorld:
+    """
+    Calls the real MCP tools in-process as chosen principals, against a temporary wiki and store.
+
+    ``who(name, ...)`` creates a principal (with its roles, grants and denies and a generated
+    credential); ``call(name, tool, **args)`` runs the tool the way the server does, with that
+    principal as the authenticated caller.  Nothing real is touched: the wiki is the ``wiki_root``
+    fixture and the store is a temporary folder.
+    """
+
+    def __init__(self, conn, data_dir, root, server_module):
+        self.conn = conn
+        self.data_dir = data_dir
+        self.root = root
+        self.server = server_module
+        self.callers = {}
+        self.tokens = {}
+
+    def who(self, name, kind="human", roles=(), grants=(), denies=(), self_grant=False):
+        from manifold_security import principals, tokens
+        from manifold_security.context import Caller
+        principal = principals.create_principal(self.conn, name, kind)
+        for role in roles:
+            principals.set_role(self.conn, name, role)
+        for scope in grants:
+            principals.add_grant(self.conn, name, scope)
+        for scope in denies:
+            principals.add_deny(self.conn, name, scope)
+        if self_grant:
+            principals.set_may_self_grant(self.conn, name, True)
+        credential = tokens.issue_credential(self.conn, principal.id, "test")
+        self.tokens[name] = credential.token
+        self.callers[name] = Caller(principal.id, name, kind, tuple(sorted(roles)), credential.credential_id)
+        return self.callers[name]
+
+    def call(self, who, tool, **arguments):
+        import asyncio
+        from fastmcp import Client
+        from manifold_security.context import current_caller_var
+        caller = self.callers[who]
+
+        async def run():
+            token = current_caller_var.set(caller)
+            try:
+                async with Client(self.server.app) as client:
+                    result = await client.call_tool(tool, arguments, raise_on_error=False)
+                    return result.data
+            finally:
+                current_caller_var.reset(token)
+        return asyncio.run(run())
+
+    def git_log(self, fmt="%an|%b|%s", count=5):
+        return subprocess.run(["git", "log", "--format=" + fmt, "-%d" % count], cwd=self.root,
+                              capture_output=True, text=True, check=True).stdout
+
+
+@pytest.fixture()
+def tool_world(tmp_path: Path, wiki_root: Path, monkeypatch):
+    """A :class:`ToolWorld` over the ``wiki_root`` fixture (see the class)."""
+    pytest.importorskip("fastmcp")
+    from manifold_security.store import open_store
+    import server
+
+    data_dir = tmp_path.parent / (tmp_path.name + "-store")  # outside the wiki root, which is tmp_path
+    conn = open_store(data_dir, wiki_root=wiki_root)
+    monkeypatch.setenv("MANIFOLD_DATA_DIR", str(data_dir))
+    monkeypatch.setenv("CONTAINER_WIKI_ROOT", str(wiki_root))
+    monkeypatch.setattr(server, "WIKI_ROOT", wiki_root)
+    world = ToolWorld(conn, data_dir, wiki_root, server)
+    yield world
+    conn.close()
+
+
+class CliRunner:
+    """Runs the host command in-process against a temporary data folder (never a real one)."""
+
+    def __init__(self, data_dir: Path, wiki_root: Path):
+        self.data_dir = data_dir
+        self.wiki_root = wiki_root
+
+    def __call__(self, *args, tty=False, group="admin"):
+        import io
+        from manifold_cli.runner import main
+        out, err = io.StringIO(), io.StringIO()
+        argv = [group, "--data-dir", str(self.data_dir), "--wiki-root", str(self.wiki_root), *args]
+        code = main(argv, out=out, err=err, is_tty=tty)
+        return code, out.getvalue(), err.getvalue()
+
+    def store(self):
+        from manifold_security.store import open_store
+        return open_store(self.data_dir, wiki_root=self.wiki_root)
+
+
+@pytest.fixture()
+def cli(tmp_path: Path):
+    """A :class:`CliRunner` whose data folder is outside its wiki root (``tmp_path/wiki-root``)."""
+    return CliRunner(tmp_path / "cli-data", tmp_path / "wiki-root")
+
+
+@pytest.fixture()
+def security_conn(tmp_path: Path):
+    """
+    Isolated security store (a fresh SQLite file in a temporary folder).
+
+    The data folder is ``<tmp>/security-data`` and the wiki root passed to the
+    store is ``<tmp>/wiki-root``, so the "not inside the instance repository"
+    rule is exercised without touching any real data folder.
+    """
+    from manifold_security.store import open_store
+
+    conn = open_store(tmp_path / "security-data", wiki_root=tmp_path / "wiki-root")
+    yield conn
+    conn.close()

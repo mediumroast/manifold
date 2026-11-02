@@ -2,23 +2,26 @@
 """Wiki inventory and graph operations."""
 
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Iterable, Optional
 import frontmatter
 from .models import WikiInventoryResponse, InventoryComponent, InventoryHandoff
 
 
-def wiki_inventory(wiki_root: Path) -> WikiInventoryResponse:
+def wiki_inventory(wiki_root: Path, archived: Optional[Iterable[str]] = None) -> WikiInventoryResponse:
     """
     Build a complete inventory of the wiki graph.
-    
+
     Includes pages, frontmatter, components, handoffs, and backlinks.
-    
+
     Args:
         wiki_root: Path to wiki repository root
-        
+        archived: slugs of archived components (from the security store); each is marked
+                  ``status="archived"``, the others ``"active"``
+
     Returns:
         WikiInventoryResponse with complete wiki graph
     """
+    archived_slugs = set(archived or ())
     components = []
     handoffs = []
     all_files = []
@@ -50,7 +53,8 @@ def wiki_inventory(wiki_root: Path) -> WikiInventoryResponse:
                         path=str(relative_path),
                         description=frontmatter_dict.get("summary", frontmatter_dict.get("description", "")),
                         owner=frontmatter_dict.get("owner"),
-                        repo=frontmatter_dict.get("repo")
+                        repo=frontmatter_dict.get("repo"),
+                        status="archived" if md_file.stem in archived_slugs else "active",
                     )
                     components.append(component)
             

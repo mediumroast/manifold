@@ -20,7 +20,7 @@ from wiki_backend.inventory import wiki_inventory
 from wiki_backend.log import wiki_log_append
 from wiki_backend.models import WikiLogRequest, WikiWriteRequest
 from wiki_backend.read import wiki_read
-from wiki_backend.write import wiki_write_page
+from wiki_backend.handoff import wiki_write_handoff_page
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -98,7 +98,7 @@ def test_post_creates_handoff(wiki_root):
         etag=None,
         message="acme-api agent: post JWT refresh v2 handoff for acme.io",
     )
-    resp = wiki_write_page(wiki_root, req)
+    resp = wiki_write_handoff_page(wiki_root,req)
 
     assert resp.status == "created"
     assert resp.etag is not None
@@ -110,11 +110,11 @@ def test_post_duplicate_blocked(wiki_root):
     """A second create attempt (no etag) is rejected as a conflict."""
     # Ensure file exists first
     req = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message="setup")
-    wiki_write_page(wiki_root, req)
+    wiki_write_handoff_page(wiki_root,req)
 
     # Second create without etag → conflict
     req2 = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message="dupe")
-    resp = wiki_write_page(wiki_root, req2)
+    resp = wiki_write_handoff_page(wiki_root,req2)
 
     assert resp.status == "conflict"
     assert "already exists" in resp.error
@@ -138,7 +138,7 @@ def test_post_creates_git_commit(wiki_root):
     """wiki_write_page auto-commits; the commit message matches the agent message."""
     msg = "acme-api agent: post JWT refresh v2 handoff for acme.io"
     req = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message=msg)
-    wiki_write_page(wiki_root, req)
+    wiki_write_handoff_page(wiki_root,req)
 
     log = _git_log(wiki_root)
     assert any(msg in line for line in log), f"Expected commit not found in:\n{chr(10).join(log)}"
@@ -156,7 +156,7 @@ def test_pickup_inventory_shows_open_handoff(wiki_root):
     """
     # Post the handoff first
     req = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message="setup")
-    wiki_write_page(wiki_root, req)
+    wiki_write_handoff_page(wiki_root,req)
 
     inv = wiki_inventory(wiki_root)
     handoffs = inv.handoffs
@@ -172,7 +172,7 @@ def test_pickup_inventory_shows_open_handoff(wiki_root):
 def test_pickup_read_returns_content_and_etag(wiki_root):
     """wiki_read returns the full page body, parsed frontmatter, and etag."""
     req = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message="setup")
-    write_resp = wiki_write_page(wiki_root, req)
+    write_resp = wiki_write_handoff_page(wiki_root,req)
 
     page = wiki_read(wiki_root, HANDOFF_PATH)
 
@@ -187,7 +187,7 @@ def test_pickup_read_returns_content_and_etag(wiki_root):
 def test_pickup_claim_sets_in_progress(wiki_root):
     """acme.io agent claims the handoff; status transitions to in-progress."""
     req = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message="setup")
-    create_resp = wiki_write_page(wiki_root, req)
+    create_resp = wiki_write_handoff_page(wiki_root,req)
 
     in_progress_content = OPEN_CONTENT.replace("status: open", "status: in-progress")
     update_req = WikiWriteRequest(
@@ -196,7 +196,7 @@ def test_pickup_claim_sets_in_progress(wiki_root):
         etag=create_resp.etag,
         message="acme.io agent: claim handoff, status → in-progress",
     )
-    update_resp = wiki_write_page(wiki_root, update_req)
+    update_resp = wiki_write_handoff_page(wiki_root,update_req)
 
     assert update_resp.status == "updated"
     assert update_resp.etag != create_resp.etag  # new etag after change
@@ -208,7 +208,7 @@ def test_pickup_claim_sets_in_progress(wiki_root):
 def test_pickup_stale_etag_rejected(wiki_root):
     """Writing with a stale etag returns status=conflict and reports both etags."""
     req = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message="setup")
-    create_resp = wiki_write_page(wiki_root, req)
+    create_resp = wiki_write_handoff_page(wiki_root,req)
 
     # First update — advances the etag
     update_req = WikiWriteRequest(
@@ -217,7 +217,7 @@ def test_pickup_stale_etag_rejected(wiki_root):
         etag=create_resp.etag,
         message="claim",
     )
-    wiki_write_page(wiki_root, update_req)
+    wiki_write_handoff_page(wiki_root,update_req)
 
     # Second update with the original (now stale) etag
     stale_req = WikiWriteRequest(
@@ -226,7 +226,7 @@ def test_pickup_stale_etag_rejected(wiki_root):
         etag=create_resp.etag,  # stale
         message="should be rejected",
     )
-    conflict_resp = wiki_write_page(wiki_root, stale_req)
+    conflict_resp = wiki_write_handoff_page(wiki_root,stale_req)
 
     assert conflict_resp.status == "conflict"
     assert "Etag mismatch" in conflict_resp.error
@@ -236,7 +236,7 @@ def test_pickup_complete_handoff(wiki_root):
     """Full open→in-progress→completed transition; final inventory shows completed."""
     # Create
     req = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message="setup")
-    create_resp = wiki_write_page(wiki_root, req)
+    create_resp = wiki_write_handoff_page(wiki_root,req)
 
     # Claim
     claimed_content = OPEN_CONTENT.replace("status: open", "status: in-progress")
@@ -246,7 +246,7 @@ def test_pickup_complete_handoff(wiki_root):
         etag=create_resp.etag,
         message="claim",
     )
-    claim_resp = wiki_write_page(wiki_root, claim_req)
+    claim_resp = wiki_write_handoff_page(wiki_root,claim_req)
 
     # Complete
     completed_content = claimed_content.replace("status: in-progress", "status: completed")
@@ -256,7 +256,7 @@ def test_pickup_complete_handoff(wiki_root):
         etag=claim_resp.etag,
         message="acme.io agent: mark completed",
     )
-    complete_resp = wiki_write_page(wiki_root, complete_req)
+    complete_resp = wiki_write_handoff_page(wiki_root,complete_req)
 
     assert complete_resp.status == "updated"
     assert complete_resp.error is None
@@ -286,7 +286,7 @@ def test_pickup_git_commits_each_transition(wiki_root):
 
     # Post
     req = WikiWriteRequest(path=HANDOFF_PATH, content=OPEN_CONTENT, etag=None, message="post")
-    create_resp = wiki_write_page(wiki_root, req)
+    create_resp = wiki_write_handoff_page(wiki_root,req)
 
     # Log the post
     wiki_log_append(wiki_root, WikiLogRequest(action="create-handoff", message="posted", component="acme-api"))
@@ -298,7 +298,7 @@ def test_pickup_git_commits_each_transition(wiki_root):
         etag=create_resp.etag,
         message="claim",
     )
-    claim_resp = wiki_write_page(wiki_root, claim_req)
+    claim_resp = wiki_write_handoff_page(wiki_root,claim_req)
 
     # Complete
     complete_req = WikiWriteRequest(
@@ -307,7 +307,7 @@ def test_pickup_git_commits_each_transition(wiki_root):
         etag=claim_resp.etag,
         message="complete",
     )
-    wiki_write_page(wiki_root, complete_req)
+    wiki_write_handoff_page(wiki_root,complete_req)
 
     # Log the completion
     wiki_log_append(wiki_root, WikiLogRequest(action="complete-handoff", message="done", component="acme.io"))

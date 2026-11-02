@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import date, datetime
 from .models import WikiLogRequest
 from .git import git_commit
+from .actor import current_actor
 
 
 def _derive_pages(action: str, component: str | None) -> str:
@@ -53,6 +54,11 @@ def wiki_log_append(wiki_root: Path, request: WikiLogRequest) -> dict:
         words = request.message.split()
         title = " ".join(words[:6]) + ("…" if len(words) > 6 else "")
         agent = "agent"
+
+    # The agent line names the principal behind the credential, never a name the caller supplied.
+    actor = current_actor()
+    if actor is not None:
+        agent = actor.name
 
     pages = _derive_pages(request.action, request.component)
 

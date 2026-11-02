@@ -65,11 +65,13 @@ def _client(monkeypatch, root):
     from starlette.testclient import TestClient
     import server
     monkeypatch.setattr(server, "WIKI_ROOT", root)
-    return TestClient(server.asgi_app)
+    return TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")  # an address the Host guard accepts
 
 
-def test_route_returns_200_with_checks_when_healthy(wiki_root, monkeypatch):
-    response = _client(monkeypatch, wiki_root).get("/health")
+def test_route_returns_200_with_checks_when_healthy(wiki_root, monkeypatch, auth_world):
+    # Detail is shown to an authenticated caller only (the unauthenticated answer is tested in test_auth.py).
+    response = _client(monkeypatch, wiki_root).get(
+        "/health", headers={"Authorization": "Bearer " + auth_world.human_token})
     assert response.status_code == 200
     assert response.json()["status"] == "healthy" and "checks" in response.json()
 

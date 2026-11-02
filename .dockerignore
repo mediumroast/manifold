@@ -13,6 +13,8 @@ handoffs/
 **/__pycache__/
 **/*.pyc
 server/tests/
+# The security store (credential hashes) and Caddy's files may live in the checkout; never in the image.
+.manifold-data/
 # Environment files hold local settings; only the templates are tracked.
 docker/.env.dev
 docker/.env.staging

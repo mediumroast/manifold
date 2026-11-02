@@ -14,6 +14,7 @@ _TOOL_NAMES = [
     "wiki_log_append_tool",
     "wiki_inventory_tool",
     "wiki_register_component_tool",
+    "wiki_component_manage_tool",
     "wiki_freshness_tool",
     "wiki_onboarding_tool",
     "wiki_reconcile_plan_tool",
@@ -34,7 +35,7 @@ def _server_name(wiki_root: Optional[Path]) -> str:
         return DEFAULT_SERVER_NAME
 
 
-def wiki_ping(wiki_root: Optional[Path] = None) -> dict:
+def wiki_ping(wiki_root: Optional[Path] = None, principal: Optional[dict] = None) -> dict:
     """
     Return server status and the canonical list of available MCP tool names.
     Called by wiki_ping_tool in server.py.  The server name comes from
@@ -42,6 +43,7 @@ def wiki_ping(wiki_root: Optional[Path] = None) -> dict:
     """
     return {
         "status": "connected",
+        "principal": principal,  # who the server believes is calling: name, kind, roles (never the credential)
         "server": _server_name(wiki_root),
         "tool_count": len(_TOOL_NAMES),
         "tools": list(_TOOL_NAMES),

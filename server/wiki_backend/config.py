@@ -228,6 +228,95 @@ def add_component(wiki_root: Path, component: Component) -> bool:
     return True
 
 
+def _entry_span(lines: List[str], slug: str):
+    """``(start, end, indent)`` of the registry entry for ``slug`` in the lines of manifold.yaml."""
+    start_pattern = re.compile(r"^(\s*)-\s+slug:\s*[\"']?%s[\"']?\s*(#.*)?$" % re.escape(slug))
+    start = next((i for i, l in enumerate(lines) if start_pattern.match(l.rstrip("\n"))), None)
+    if start is None:
+        raise ConfigError("the entry for %r in %s is written in a form that cannot be edited automatically; "
+                          "change it by hand." % (slug, CONFIG_FILE))
+    indent = start_pattern.match(lines[start].rstrip("\n")).group(1)
+    end = start + 1
+    while end < len(lines):
+        line = lines[end]
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and (_ITEM.match(line) or not line[0] in " \t"):
+            break
+        end += 1
+    # Keep trailing blank or comment lines that belong to what follows.
+    while end > start + 1 and (not lines[end - 1].strip() or lines[end - 1].strip().startswith("#")):
+        end -= 1
+    return start, end, indent
+
+
+def remove_component(wiki_root: Path, slug: str) -> bool:
+    """
+    Remove the registry entry of ``slug`` from ``manifold.yaml`` (edited as text, like :func:`add_component`).
+
+    Returns False if it was not registered.  On any problem the original text is restored and
+    :class:`ConfigError` is raised.
+    """
+    path = config_path(wiki_root)
+    existing = load_config(wiki_root)
+    if slug not in existing.slugs():
+        return False
+    original = path.read_text(encoding="utf-8")
+    lines = original.splitlines(keepends=True)
+    start, end, _ = _entry_span(lines, slug)
+    del lines[start:end]
+    text = "".join(lines)
+    if slug in [c.slug for c in existing.components] and len(existing.components) == 1:
+        # The last entry: leave an empty list that still loads.
+        text = re.sub(r"^components:\s*(#.*)?$", "components: []", text, flags=re.MULTILINE)
+    path.write_text(text, encoding="utf-8")
+    try:
+        if load_config(wiki_root).slugs() != [s for s in existing.slugs() if s != slug]:
+            raise ConfigError("the edited file does not list the expected components")
+    except ConfigError as exc:
+        path.write_text(original, encoding="utf-8")
+        raise ConfigError("could not remove %r from %s automatically (%s); the file was left as it was. "
+                          "Remove the entry by hand." % (slug, CONFIG_FILE, exc))
+    return True
+
+
+def update_component(wiki_root: Path, slug: str, description: Optional[str] = None,
+                     repo: Optional[str] = None, owner: Optional[str] = None) -> bool:
+    """
+    Change the description, repository or owner of a registered component in ``manifold.yaml``.
+
+    Only the fields given are changed.  Like :func:`add_component` the file is edited as text and
+    loaded again afterwards; on any problem the original text is restored and :class:`ConfigError`
+    is raised.  Returns False when nothing changed.
+    """
+    path = config_path(wiki_root)
+    existing = load_config(wiki_root)
+    current = next((c for c in existing.components if c.slug == slug), None)
+    if current is None:
+        raise ConfigError("%r is not a registered component." % slug)
+    updated = Component(
+        slug=slug,
+        repo=current.repo if repo is None else repo,
+        owner=current.owner if owner is None else owner,
+        description=current.description if description is None else description,
+    )
+    if updated == current:
+        return False
+    original = path.read_text(encoding="utf-8")
+    lines = original.splitlines(keepends=True)
+    start, end, indent = _entry_span(lines, slug)
+    lines[start:end] = _entry_lines(updated, indent)
+    path.write_text("".join(lines), encoding="utf-8")
+    try:
+        reloaded = next((c for c in load_config(wiki_root).components if c.slug == slug), None)
+        if reloaded != updated:
+            raise ConfigError("the edited file does not hold the new values")
+    except ConfigError as exc:
+        path.write_text(original, encoding="utf-8")
+        raise ConfigError("could not update %r in %s automatically (%s); the file was left as it was. "
+                          "Change the entry by hand." % (slug, CONFIG_FILE, exc))
+    return True
+
+
 _SLUG_LIST_HEADER = "Valid component slugs:"
 
 
