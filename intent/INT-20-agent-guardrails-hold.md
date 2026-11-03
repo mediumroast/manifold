@@ -3,10 +3,10 @@ id: INT-20
 title: Agent guardrails hold, and breaches are recorded
 author: Michael Hay
 created: 2026-11-02
-status: draft
+status: accepted
 affects: [bundles/base]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay on November 3, 2026
 ---
 
 # Intent: Agent guardrails hold, and breaches are recorded
@@ -92,9 +92,9 @@ Two things are missing. First, a rule that depends on the agent remembering it i
 - The review procedure (INT-21) and the coordinator agent (INT-22), except as users of the record.
 
 ## Open questions
-- Where does the record live (`docs/agents/claude-desktop-failures.md` as today, or a client-neutral name since the copilot flavor is covered too), and does it ship in the bundle as a template or stay a file in this repository only? (the product owner)
-- Which mechanism enforces the rule in Claude Code: a project hook in `.claude/settings.json` written by the installer, or a hook shipped inside the bundle? The installer's rule on global config changes (`no-global-config-changes`) points to project-level only; confirm. (the product owner)
-- What does the Copilot flavor have that is equivalent to a pre-tool hook? If nothing, is a documented gap plus a reviewer check enough? (the product owner, with a check of the current Copilot capabilities)
-- Is the `planner`'s need to edit plan files better met by giving it a specific plan-update route (see INT-21) than by a rule alone? (the product owner)
-- Should a breach found only by the reviewer (not disclosed by the agent) count differently in the record? (the product owner)
-- Who can grant a one-off exception to the hook, and how is it recorded? (the product owner)
+- Where does the record live (`docs/agents/claude-desktop-failures.md` as today, or a client-neutral name since the copilot flavor is covered too), and does it ship in the bundle as a template or stay a file in this repository only? (the product owner) Answer: Harness specific name to help, over time, understand the state of harnesses with respect to jumping guardrails. It should be a template in the bundle so that the coordinator can add to it and the result returned to Manifold. We need a process documented to return the result via an issue on GitHub to help with improvement.
+- Which mechanism enforces the rule in Claude Code: a project hook in `.claude/settings.json` written by the installer, or a hook shipped inside the bundle? The installer's rule on global config changes (`no-global-config-changes`) points to project-level only; confirm. (the product owner) Answer: Hook in the bundle for consistent install.
+- What does the Copilot flavor have that is equivalent to a pre-tool hook? If nothing, is a documented gap plus a reviewer check enough? (the product owner, with a check of the current Copilot capabilities) Answer: We need to find this out during planning. This is a question for the planner to research and provide some suggestions for.
+- Is the `planner`'s need to edit plan files better met by giving it a specific plan-update route (see INT-21) than by a rule alone? (the product owner) Answer: Yes.
+- Should a breach found only by the reviewer (not disclosed by the agent) count differently in the record? (the product owner) Answer: Yes it was a post hoc finding that the offending agent hid so we need a signal that's more forceful from the reviewer.
+- Who can grant a one-off exception to the hook, and how is it recorded? (the product owner) Answer: Only a human, the agent needs to ask and present what it already tried.
