@@ -3,10 +3,10 @@ id: INT-23
 title: Is a review policy file needed, and what should it say
 author: Michael Hay
 created: 2026-11-02
-status: draft
+status: accepted
 affects: [bundles/base]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay on November 3, 2026
 ---
 
 # Intent: Is a review policy file needed, and what should it say
@@ -91,8 +91,8 @@ The intent is resolved when the owner picks an option for each question, the bun
 - Changing the review passes themselves.
 
 ## Open questions
-- Which option (A-D) for question 1? (the product owner)
-- If a file stays, which of its sections are required? (the product owner)
-- Should the file declare its mode (solo or team), or should the agents infer it? (the product owner)
-- Should CODEOWNERS, or a similar hosted setting, carry the team rule instead of a file the agents read? (the product owner)
-- What happens to `REVIEW_STARTER.md` in the bundle under each option? (the product owner)
+- Which option (A-D) for question 1? (the product owner) Answer: Not what is listed, 1. Keep the review template, 2. Place a section in AGENTS.md for the review process where the type of repository is stated plainly (solo vs. team), 3. If the repository has a companion quality repo for held out scenarios. This has install time implications for the bundle install both in the current form and in the future form with the MCP tools.
+- If a file stays, which of its sections are required? (the product owner) Answer: See the answer to the first question.
+- Should the file declare its mode (solo or team), or should the agents infer it? (the product owner) Answer: See the answer to the first question
+- Should CODEOWNERS, or a similar hosted setting, carry the team rule instead of a file the agents read? (the product owner) Answer: See the answer to the first question
+- What happens to `REVIEW_STARTER.md` in the bundle under each option? (the product owner) Answer: I'm leaning towards not needing it, but the planner should put forward options and a pro/con view of keeping it or removing it.
