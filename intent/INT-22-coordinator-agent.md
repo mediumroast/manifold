@@ -3,10 +3,10 @@ id: INT-22
 title: A coordinator agent that runs the cycle
 author: Michael Hay
 created: 2026-11-02
-status: draft
+status: accepted
 affects: [bundles/base]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay on November 3, 2026
 ---
 
 # Intent: A coordinator agent that runs the cycle
@@ -138,11 +138,11 @@ This agent is an exception to the rule that process improvements do not go into 
 - Choosing which model runs which agent.
 
 ## Open questions
-- The ready check includes the review policy's approval rule. Whether that rule exists, and what it is in a solo repository, is decided in INT-23. Until then, does the coordinator apply only the "review exists and a human confirms" condition? (the product owner)
-- Is the coordinator a true agent definition (in `.claude/agents/`, `.github/agents/`) that starts other agents, or a procedure the main session follows? Subagents in some clients cannot start other subagents; this decides the design. (the product owner, after a check of what each client allows)
-- Which install profiles include it (`build`, `quality`, `single`)? (the product owner)
-- Where does the PR template live and how is it applied (`.github/pull_request_template.md`, or only in the coordinator's instructions)? (the product owner)
-- Does "ready" mean taking the PR out of draft, and who may do it: only the owner, or the coordinator at the owner's request? (the product owner)
-- What counts as a sufficient review before ready: any one cycle, or a cycle on the final commit with no open Important findings? (the product owner)
-- How does the coordinator observe tool calls in a client where it cannot read another agent's transcript? (the product owner, with a check of the client capabilities)
-- Should INT-20, INT-21, INT-22 and INT-23 be accepted and planned as separate phases, in the order 20, 21, 23, 22, or planned together? (INT-23 settles the review policy that INT-21's procedure and this agent's ready check read.) (the product owner)
+- The ready check includes the review policy's approval rule. Whether that rule exists, and what it is in a solo repository, is decided in INT-23. Until then, does the coordinator apply only the "review exists and a human confirms" condition? (the product owner) Answer: We're going to bundle the 4 intents together for a single plan so we will wait for resolution from the plan and from the consumption of INT-23.
+- Is the coordinator a true agent definition (in `.claude/agents/`, `.github/agents/`) that starts other agents, or a procedure the main session follows? Subagents in some clients cannot start other subagents; this decides the design. (the product owner, after a check of what each client allows) Answer: Yes we need to follow what VS Code and Claude Code allow from starting subagents from a coordinator. This may mean we have a full agent in Claude Code only, but that depends on the planner's research which must happen.  Generally we want a full blown agent.
+- Which install profiles include it (`build`, `quality`, `single`)? (the product owner) Answer: All
+- Where does the PR template live and how is it applied (`.github/pull_request_template.md`, or only in the coordinator's instructions)? (the product owner) Answer: All templates belong in the same place meaning docs/templates
+- Does "ready" mean taking the PR out of draft, and who may do it: only the owner, or the coordinator at the owner's request? (the product owner) Answer: No only a human can move a PR out of draft.
+- What counts as a sufficient review before ready: any one cycle, or a cycle on the final commit with no open Important findings? (the product owner) Answer: Leaning toward the latter, but at the end of the day the coordinator and the human must reach a consensus.
+- How does the coordinator observe tool calls in a client where it cannot read another agent's transcript? (the product owner, with a check of the client capabilities) Answer: Yes it depends on client capabilities and I expect the planner to address this in the plan with real reading of the literature on the internet for each client with included sources for cross checking.
+- Should INT-20, INT-21, INT-22 and INT-23 be accepted and planned as separate phases, in the order 20, 21, 23, 22, or planned together? (INT-23 settles the review policy that INT-21's procedure and this agent's ready check read.) (the product owner) Answer: Yes 20, 21, 22 and 23 should be planned together with one plan.
