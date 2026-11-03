@@ -3,10 +3,10 @@ id: INT-21
 title: A written review-to-repair loop with checkpoints
 author: Michael Hay
 created: 2026-11-02
-status: draft
+status: accepted
 affects: [bundles/base]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay on November 3, 2026
 ---
 
 # Intent: A written review-to-repair loop with checkpoints
@@ -161,14 +161,14 @@ The same procedure states:
 - Test-side agents' own review loop (`test-planner`, `test-coder`), unless the owner asks.
 
 ## Open questions
-- How does the `reviewer`, which has no edit tool, write `REVIEW_PLAN_X.md`? Options: allow `edit` with a rule limited to that one file; or have the coordinator or a human save the report. (the product owner)
-- Is `REVIEW_PLAN_X.md` a revision-in-place across re-reviews or a new file each time (`REVIEW_PLAN_X.1.md`)? (the product owner)
-- Does the review template (the repository's policy, becomes `REVIEW.md`) stay as is, with a separate `REVIEW_PLAN_TEMPLATE.md` for the per-phase document? (the product owner)
-- What ends the loop: no open Important findings, or a named human decision? And is there a maximum number of rounds? (the product owner)
-- Does the planner amend the plan file in place, or write an addendum section? The ask says amend; confirm that completed tasks must stay untouched. (the product owner)
-- Should the checkpoints apply to bug fixes and to the test-side agents? (the product owner)
-- Whether the review policy stays a `REVIEW.md`, is folded into this procedure, or is dropped is decided in INT-23. Until then the procedure reads `REVIEW.md` if present and uses built-in defaults if not. (the product owner)
-- Is there a maximum number of review rounds before the owner must decide? (the product owner)
-- Who edits an existing test when the owner approves the change: the `coder` itself, or a separate step? (the product owner)
-- Does the coordinator check CI itself (needs read access to the host) or ask a human to report it? (the product owner)
-- Which checkpoint size is right (a rule of thumb such as "at most N tasks" or "ends in a demonstrable result")? (the product owner)
+- How does the `reviewer`, which has no edit tool, write `REVIEW_PLAN_X.md`? Options: allow `edit` with a rule limited to that one file; or have the coordinator or a human save the report. (the product owner) Answer: yes
+- Is `REVIEW_PLAN_X.md` a revision-in-place across re-reviews or a new file each time (`REVIEW_PLAN_X.1.md`)? (the product owner) Answer: Revision in place with clear markers that there was a revision including a "revision version" and a timestamp.
+- Does the review template (the repository's policy, becomes `REVIEW.md`) stay as is, with a separate `REVIEW_PLAN_TEMPLATE.md` for the per-phase document? (the product owner) Answer: Yes, but I'm unsure what REVIEW.md has to do with the template. I know there is a stale reference to REVIEW.md in AGENTS.md. The plan should clarify that.
+- What ends the loop: no open Important findings, or a named human decision? And is there a maximum number of rounds? (the product owner) Answer: Ideal - Until nothing or only nits remain; Limit - 3 runs or until the human says enough; Exception - the human defines the limit.
+- Does the planner amend the plan file in place, or write an addendum section? The ask says amend; confirm that completed tasks must stay untouched. (the product owner) Answer: Amend
+- Should the checkpoints apply to bug fixes and to the test-side agents? (the product owner) Answer: Yes
+- Whether the review policy stays a `REVIEW.md`, is folded into this procedure, or is dropped is decided in INT-23. Until then the procedure reads `REVIEW.md` if present and uses built-in defaults if not. (the product owner) Answer: We will resolve in INT-23.
+- Is there a maximum number of review rounds before the owner must decide? (the product owner) Answer: Ideal - Until nothing or only nits remain; Limit - 3 runs or until the human says enough; Exception - the human defines the limit.
+- Who edits an existing test when the owner approves the change: the `coder` itself, or a separate step? (the product owner) Answer: Coder
+- Does the coordinator check CI itself (needs read access to the host) or ask a human to report it? (the product owner) Answer: Coordinator checks CI
+- Which checkpoint size is right (a rule of thumb such as "at most N tasks" or "ends in a demonstrable result")? (the product owner) Answer: Demonstrable result
