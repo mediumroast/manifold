@@ -1,6 +1,6 @@
 # PHASE_2_PLAN.md
 
-**Approved by:**
+**Approved by:** Michael Hay on November 6, 2026
 **Source intent:** [INT-20 Agent guardrails hold][i20], [INT-21 A written review-to-repair loop][i21], [INT-22 A coordinator agent][i22] and [INT-23 Review policy][i23]. All four are `status: accepted`, `accepted_by: Michael Hay on November 3, 2026`, and are planned together as the owner asked ([INT-22 Open questions][i22-oq]).
 
 ## Objective
