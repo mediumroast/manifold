@@ -210,7 +210,7 @@ def test_zip_has_one_visible_top_level_folder_and_safe_paths(built):
     with zipfile.ZipFile(built) as zf:
         names = zf.namelist()
     tops = {n.split("/")[0] for n in names}
-    assert tops == {"manifold-base-0.1.0"}
+    assert tops == {"manifold-base-" + (ROOT / "VERSION").read_text().strip()}
     assert not any(n.startswith("/") or ".." in n.split("/") for n in names)
 
 
@@ -482,7 +482,7 @@ def test_apply_installs_agents_templates_instructions_and_manifest(bundle_dir, r
     assert "<!-- manifold:begin v=1 -->" in agents and "<!-- manifold:end -->" in agents
     assert "## Project commands" in agents
     manifest = json.loads((repo / ".manifold/manifest.json").read_text())
-    assert manifest["version"] == "0.1.0" and set(AGENT_FILES) <= set(manifest["files"])
+    assert manifest["version"] == (ROOT / "VERSION").read_text().strip() and set(AGENT_FILES) <= set(manifest["files"])
 
 
 def test_installed_agent_files_start_with_frontmatter(bundle_dir, repo):
