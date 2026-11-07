@@ -36,6 +36,17 @@ COMMANDS_STUB = (
     "     repository and ask you to confirm them; keep the confirmed ones here. The managed block above\n"
     "     is overwritten on update; this section is yours. -->\n"
 )
+# Added after COMMANDS_STUB, outside the managed block. The owner fills it in; no agent does.
+REVIEW_PROCESS_STUB = (
+    "## Review process\n\n"
+    "<!-- Fill these in yourself; agents do not. The reviewer and the coordinator read this section to know\n"
+    "     who approves. Repository type is solo (one maintainer) or team. A solo repository has no second\n"
+    "     approver. -->\n"
+    "Repository type:\n"
+    "Companion quality repository:\n"
+    "Second approver (team only):\n"
+)
+STUBS = COMMANDS_STUB + "\n" + REVIEW_PROCESS_STUB
 
 
 class InstallError(Exception):
@@ -206,6 +217,8 @@ def apply_block(existing: str, block: str, begin: str, end: str) -> str:
         text = existing.rstrip("\n") + ("\n\n" if existing.strip() else "") + block
     if re.search(r"^## Project commands\s*$", text, re.MULTILINE) is None:
         text = text.rstrip("\n") + "\n\n" + COMMANDS_STUB
+    if re.search(r"^## Review process\s*$", text, re.MULTILINE) is None:
+        text = text.rstrip("\n") + "\n\n" + REVIEW_PROCESS_STUB
     return text
 
 
@@ -471,8 +484,9 @@ def cmd_uninstall(bundle, target, apply_) -> int:
             untouched = True
             for name in created:
                 current = new_text if (name == info["file"] and new_text is not None) else (target / name).read_text(encoding="utf-8")
-                expected = COMMANDS_STUB if name == info["file"] else "@AGENTS.md\n"
-                if current.strip() != expected.strip():
+                # an install made before the review stub existed left only the commands stub
+                expected = (COMMANDS_STUB.strip(), STUBS.strip()) if name == info["file"] else ("@AGENTS.md",)
+                if current.strip() not in expected:
                     untouched = False
             if untouched:
                 for name in created:

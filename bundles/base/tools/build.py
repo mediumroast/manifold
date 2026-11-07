@@ -59,7 +59,7 @@ TEMPLATE_PATHS = {
     "PHASE_TEST_PLAN_TEMPLATE.md": ("docs/templates/PHASE_TEST_PLAN_TEMPLATE.md", ALL_PROFILES),
     "WT_TEMPLATE.md": ("docs/templates/WT_TEMPLATE.md", ALL_PROFILES),
     "REVIEW_TEMPLATE.md": ("docs/templates/REVIEW_TEMPLATE.md", ("build", "single")),
-    "REVIEW_STARTER.md": ("REVIEW.md", ("build", "single")),
+    "REVIEW_PLAN_TEMPLATE.md": ("docs/templates/REVIEW_PLAN_TEMPLATE.md", ("build", "single")),
     "AGENT_FAILURES_TEMPLATE.md": ("docs/templates/AGENT_FAILURES_TEMPLATE.md", ALL_PROFILES),
     "SCENARIO_TEMPLATE.md": ("docs/templates/SCENARIO_TEMPLATE.md", ("quality", "single")),
     "SATISFACTION_REPORT_TEMPLATE.md": ("docs/templates/SATISFACTION_REPORT_TEMPLATE.md", ("quality", "single")),
@@ -419,9 +419,11 @@ def render_instructions_block(agents: dict, rules, style: str = "agents", profil
     docs = ["- Intents (what and why, with scenario seeds) follow `docs/templates/INTENT_TEMPLATE.md`."]
     if profile in ("build", "single"):
         docs += ["- Plans live in `docs/plans/PHASE_<N>_PLAN.md`. Start from `docs/templates/PHASE_PLAN_TEMPLATE.md`; the coder records its completion summary in the plan.",
-                 "- Review policy lives in `REVIEW.md`, written from `docs/templates/REVIEW_TEMPLATE.md`."]
+                 "- Review: the passes and severity defaults are built into the `reviewer`; `REVIEW.md` (from `docs/templates/REVIEW_TEMPLATE.md`) is optional and adds repository-specific passes or exclusions; who approves is stated in the `Review process` section below.",
+                 "- Each review leaves `docs/plans/REVIEW_PLAN_<N>.md`, written from `docs/templates/REVIEW_PLAN_TEMPLATE.md`."]
     docs += ["- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
-             "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`."]
+             "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`.",
+             "- Rule breaches by agents are recorded from `docs/templates/AGENT_FAILURES_TEMPLATE.md` by the procedure in `docs/process/BREACH_PROCEDURE.md`."]
     if profile in ("quality", "single"):
         docs += ["- Behavior scenarios follow `docs/templates/SCENARIO_TEMPLATE.md`; run results follow `docs/templates/SATISFACTION_REPORT_TEMPLATE.md`; thresholds and visibility are settings in `.manifold/quality-settings.json`."]
     lines += ["", "## Plans and templates", ""] + docs + ["", "## Working rules", ""]

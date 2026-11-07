@@ -940,6 +940,65 @@ def test_edited_project_commands_keeps_all_created_files(bundle_dir, repo):
     assert (repo / "CLAUDE.md").read_text() == "@AGENTS.md\n"
 
 
+REVIEW_PROCESS_LABELS = ("Repository type:", "Companion quality repository:", "Second approver (team only):")
+
+
+def test_a_fresh_install_writes_the_review_process_stub_outside_the_managed_block(bundle_dir, repo):
+    """T16 (INT-23): the owner fills the section in; an agent never does."""
+    run(bundle_dir, repo, "--apply")
+    text = (repo / "AGENTS.md").read_text()
+    assert text.count("## Review process") == 1
+    after_block = text.split("<!-- manifold:end -->")[1]
+    assert "## Review process" in after_block and "## Project commands" in after_block
+    for label in REVIEW_PROCESS_LABELS:
+        assert label in after_block, label
+    assert "solo" in after_block and "team" in after_block
+    # nothing is filled in: each label line ends with its colon
+    for line in after_block.splitlines():
+        if line.startswith(REVIEW_PROCESS_LABELS):
+            assert line.rstrip().endswith(":"), line
+
+
+def test_an_existing_review_process_section_is_left_alone_by_the_stub(bundle_dir, repo):
+    mine = "# Mine\n\n## Review process\n\nRepository type: team\nSecond approver (team only): Sam\n"
+    (repo / "AGENTS.md").write_text(mine)
+    run(bundle_dir, repo, "--apply")
+    run(bundle_dir, repo, "--apply")
+    text = (repo / "AGENTS.md").read_text()
+    assert text.count("## Review process") == 1
+    assert "Repository type: team" in text and "Second approver (team only): Sam" in text
+    assert "Companion quality repository:" not in text
+
+
+def test_uninstall_removes_an_untouched_created_file_with_both_stubs(bundle_dir, repo):
+    run(bundle_dir, repo, "--apply")
+    assert "## Review process" in (repo / "AGENTS.md").read_text()
+    rc, out = run(bundle_dir, repo, "--uninstall", "--apply")
+    assert rc == 0, out
+    assert not (repo / "AGENTS.md").exists() and not (repo / "CLAUDE.md").exists()
+
+
+def test_uninstall_keeps_a_created_file_whose_review_process_was_filled_in(bundle_dir, repo):
+    run(bundle_dir, repo, "--apply")
+    agents = repo / "AGENTS.md"
+    agents.write_text(agents.read_text().replace("Repository type:", "Repository type: solo"))
+    rc, out = run(bundle_dir, repo, "--uninstall", "--apply")
+    assert rc == 0 and "holds your content" in out
+    text = agents.read_text()
+    assert "manifold:begin" not in text and "Repository type: solo" in text
+
+
+def test_uninstall_still_removes_a_file_created_with_only_the_old_commands_stub(bundle_dir, repo):
+    """An install made before the review stub existed: the created file holds only the commands stub."""
+    run(bundle_dir, repo, "--apply")
+    agents = repo / "AGENTS.md"
+    text = agents.read_text()
+    agents.write_text(text[: text.index("## Review process")].rstrip("\n") + "\n")
+    rc, out = run(bundle_dir, repo, "--uninstall", "--apply")
+    assert rc == 0, out
+    assert not agents.exists()
+
+
 def test_edited_claude_md_keeps_all_created_files(bundle_dir, repo):
     run(bundle_dir, repo, "--apply")
     (repo / "CLAUDE.md").write_text("@AGENTS.md\n\nAlways answer in French.\n")
@@ -1193,6 +1252,30 @@ def test_rendered_instructions_block_carries_the_shell_write_rule_for_every_prof
         assert "`Write`" in line and ".manifold/scratch/" in line and "replace_all" in line
 
 
+def test_rendered_instructions_state_the_review_policy_once_and_point_only_at_shipped_paths():
+    """T18 (INT-23): the stale 'Review policy lives in REVIEW.md' line is gone; every path named is installed."""
+    import re
+    agents, rules = build.load_agents(ROOT), build.load_rules(ROOT)
+    for style in ("agents", "skills", "both"):
+        for profile in build.PROFILES:
+            block = build.render_instructions_block(agents, rules, style, profile)
+            assert "Review policy lives in" not in block
+            shipped = {dst for dst, profiles in list(build.TEMPLATE_PATHS.values()) + list(build.PROCESS_PATHS.values())
+                       if profile in profiles}
+            for path in re.findall(r"`(docs/(?:templates|process)/[A-Za-z_.]+)`", block):
+                assert path in shipped, (profile, path)
+            review = [x for x in block.splitlines() if x.startswith("- Review:")]
+            if profile in ("build", "single"):
+                (line,) = review
+                assert "built into the `reviewer`" in line and "optional" in line
+                assert "docs/templates/REVIEW_TEMPLATE.md" in line and "`Review process` section" in line
+                assert "docs/templates/REVIEW_PLAN_TEMPLATE.md" in block
+            else:
+                assert not review and "REVIEW_PLAN_TEMPLATE" not in block
+            assert "docs/templates/AGENT_FAILURES_TEMPLATE.md" in block
+            assert "docs/process/BREACH_PROCEDURE.md" in block
+
+
 # ----------------------------------------------------- intent, review, scenarios
 
 def _agent_text(role):
@@ -1225,12 +1308,40 @@ def test_planner_has_intent_mode_and_never_accepts_its_own_plan():
 
 
 def test_reviewer_is_read_only_and_never_approves():
+    # T21: assertion changed with the owner's approval of the plan (INT-21 Open questions, answer "yes"):
+    # the reviewer now has an edit tool and may write only its one review file; it still never approves.
     tools = _tools("reviewer")
-    assert "edit" not in tools and "write" not in tools
+    assert "edit" in tools and "write" not in tools
     t = _agent_text("reviewer")
     assert "must not review its own change" in t
     assert "you do **not approve or block** anything" in t
-    assert "REVIEW.md" in t and "Read-only" in t
+    assert "REVIEW.md" in t
+    assert "You edit only `docs/plans/REVIEW_PLAN_<N>.md`" in t
+    assert "never edit code or the plan" in t
+    assert "Read-only, by role" not in t
+
+
+def test_reviewer_states_its_built_in_review_defaults_and_which_policy_it_used():
+    """T15 (INT-23): REVIEW.md is optional; the defaults live in the reviewer; no invented human threshold."""
+    t = _agent_text("reviewer")
+    assert "built-in defaults" in t and "nit cap" in t.lower() and "Important" in t
+    assert "states which policy" in t
+    assert "never stop for lack of a policy file" in t and "never invent a human threshold" in t
+    assert "Review process" in t and "applies / does not apply" in t
+    assert "second person" not in t
+    assert "and the review policy, and" in t.split("---")[1]
+    assert "REVIEW.md's" not in t.split("---")[1]
+
+
+def test_reviewer_says_how_the_four_passes_apply_to_documents():
+    """T17 (INT-21): no new pass; the standard is in docs/process/REVIEW_CYCLE.md."""
+    t = _agent_text("reviewer")
+    assert "## When the change is mostly documents or agent instructions" in t
+    assert "docs/process/REVIEW_CYCLE.md" in t
+    section = t.split("## When the change is mostly documents or agent instructions")[1].split("\n## ")[0]
+    for needle in ("**Bugs:**", "**Compliance:**", "**Tests:**", "No new pass"):
+        assert needle in section, needle
+    assert "Important" in section and "Nit" in section
 
 
 def test_claude_format_denies_the_tools_an_agent_does_not_declare():
@@ -1241,7 +1352,11 @@ def test_claude_format_denies_the_tools_an_agent_does_not_declare():
         # up to the guard hook block (T6), whose matcher names Bash, Edit and Write on purpose
         return out.split("---")[1].split("\nhooks:")[0]
     reviewer = fm("reviewer")
-    assert "disallowedTools: Edit, Write, NotebookEdit, WebFetch, WebSearch" in reviewer
+    # T21: the reviewer writes exactly one file (REVIEW_PLAN_<N>.md), so it keeps the edit tools and the
+    # guard's write allowlist limits it; assertion changed with the owner's approval of the plan (INT-21 Open questions)
+    assert "disallowedTools: WebFetch, WebSearch" in reviewer
+    disallowed = [l for l in reviewer.splitlines() if l.startswith("disallowedTools:")]
+    assert len(disallowed) == 1 and "Edit" not in disallowed[0] and "Write" not in disallowed[0]
     assert "Bash" not in reviewer
     # search is Bash in Claude Code, so a role that may search keeps it (the 7c live run: the
     # test-planner could not list scenarios/ and stopped)
@@ -1325,40 +1440,94 @@ def test_satisfaction_report_states_thresholds_and_per_seed_results():
 
 def test_review_template_has_passes_and_a_nit_cap():
     t = (ROOT / "templates" / "REVIEW_TEMPLATE.md").read_text()
-    for needle in ("## Passes", "What Important means", "Cap the nits", "Do not report", "Human threshold"):
+    for needle in ("## Passes", "What Important means", "Cap the nits", "Do not report"):
         assert needle in t, needle
 
 
-STARTER = ROOT / "templates" / "REVIEW_STARTER.md"
+def test_review_template_is_the_optional_policy_and_has_no_human_threshold():
+    """T20 (INT-23): defaults live in the reviewer; who approves lives in AGENTS.md 'Review process'."""
+    t = (ROOT / "templates" / "REVIEW_TEMPLATE.md").read_text()
+    assert "Human threshold" not in t
+    assert "Review process" in t and "AGENTS.md" in t
+    header = t.split("-->")[0]
+    assert "optional" in header and "additions and exclusions" in header and "built-in defaults" in header
+    assert "second person" not in t.lower()
 
 
-def test_build_profile_installs_review_md_from_the_starter(bundle_dir, repo):
-    rc, out = run(bundle_dir, repo, "--apply")
-    assert rc == 0, out
-    assert (repo / "REVIEW.md").read_bytes() == STARTER.read_bytes()
-    assert "REVIEW.md" in json.loads((repo / ".manifold/manifest.json").read_text())["files"]
+def test_review_plan_template_has_every_section_of_the_review_document():
+    """T19 (INT-21 S1, S6): the per-phase review document; a re-review revises it in place."""
+    t = (ROOT / "templates" / "REVIEW_PLAN_TEMPLATE.md").read_text()
+    for needle in ("# REVIEW_PLAN_<N>.md", "**Phase:**", "**Intent:**", "**Commit reviewed:**", "**Plan version:**",
+                   "**Policy used:**", "**Revision:**", "## Revision log", "## Counts by severity", "## Findings",
+                   "### Bugs", "### Security", "### Compliance", "### Tests", "### Context files",
+                   "**State:**", "`open`", "`repaired`", "`deferred`", "`rejected`",
+                   "## Rule exceptions compared", "## Gates run", "## CI on the pushed commit", "## Tests run and changed",
+                   "## Could not check", "## A human decides"):
+        assert needle in t, needle
+    for word in ("Evidence", "Direction", "Location"):
+        assert word.lower() in t.lower(), word
+    assert "not run" in t
+    assert "in place" in t
+    # the reviewer never approves or blocks
+    assert "does not approve or block" in t
 
 
-def test_quality_profile_does_not_install_review_md(bundle_dir, repo):
+def test_review_plan_template_is_installed_for_build_and_single_not_quality(bundle_dir, repo):
+    assert run(bundle_dir, repo, "--apply")[0] == 0
+    assert (repo / "docs/templates/REVIEW_PLAN_TEMPLATE.md").read_bytes() == (ROOT / "templates" / "REVIEW_PLAN_TEMPLATE.md").read_bytes()
+
+
+def test_review_plan_template_is_not_installed_in_the_quality_profile(bundle_dir, repo):
     assert run(bundle_dir, repo, "--profile", "quality", "--apply")[0] == 0
+    assert not (repo / "docs/templates/REVIEW_PLAN_TEMPLATE.md").exists()
+
+
+# T22 (Open question 6, the owner chose "remove"): REVIEW.md is optional and per repository, so the bundle
+# no longer installs a REVIEW.md. These tests replaced four that pinned the REVIEW_STARTER.md file
+# (changes approved by the owner with the plan); see the T22 note.
+
+def test_the_review_starter_is_gone_from_the_bundle():
+    assert not (ROOT / "templates" / "REVIEW_STARTER.md").exists()
+    assert "REVIEW_STARTER.md" not in build.TEMPLATE_PATHS
+    assert "REVIEW.md" not in [dst for dst, _profiles in build.TEMPLATE_PATHS.values()]
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_no_profile_installs_a_review_md(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
     assert not (repo / "REVIEW.md").exists()
+    assert "REVIEW.md" not in json.loads((repo / ".manifold/manifest.json").read_text())["files"]
 
 
-def test_an_existing_different_review_md_is_a_conflict_and_is_left_alone(bundle_dir, repo):
+def test_an_existing_review_md_is_not_touched_by_an_install(bundle_dir, repo):
     mine = repo / "REVIEW.md"
     mine.write_text("# My own review policy\n")
     rc, out = run(bundle_dir, repo, "--apply")
-    assert rc == 2 and "CONFLICT" in out and "REVIEW.md" in out
+    assert rc == 0 and "CONFLICT" not in out, out
     assert mine.read_text() == "# My own review policy\n"
 
 
-def test_the_review_starter_has_the_template_headings_and_no_comments():
-    text = STARTER.read_text()
-    for heading in ("## Passes", "## What Important means here", "## Cap the nits", "## Do not report",
-                    "## Human threshold"):
-        assert heading in text, heading
-    assert "<!--" not in text
-    assert "mediumroast" not in text.lower()
+def test_upgrading_from_a_payload_that_shipped_review_md_keeps_the_file(tmp_path, monkeypatch):
+    """The installer never removes a file the bundle stopped shipping (an install made before T22)."""
+    old_src = copy_source(tmp_path / "old_src")
+    (old_src / "templates" / "REVIEW_STARTER.md").write_text("# Review instructions\n\nOld starter.\n")
+    monkeypatch.setitem(build.TEMPLATE_PATHS, "REVIEW_STARTER.md", ("REVIEW.md", ("build", "single")))
+    old_zip = build.build_zip(old_src, tmp_path / "old_dist")
+    monkeypatch.delitem(build.TEMPLATE_PATHS, "REVIEW_STARTER.md")
+    new_zip = build.build_zip(ROOT, tmp_path / "new_dist")
+    target = tmp_path / "repo"
+    (target / ".git").mkdir(parents=True)
+    for z, name in ((old_zip, "old"), (new_zip, "new")):
+        with zipfile.ZipFile(z) as zf:
+            zf.extractall(tmp_path / name)
+    (old_dir,) = [p for p in (tmp_path / "old").iterdir() if p.is_dir()]
+    (new_dir,) = [p for p in (tmp_path / "new").iterdir() if p.is_dir()]
+    assert run(old_dir, target, "--apply")[0] == 0
+    assert (target / "REVIEW.md").read_text().endswith("Old starter.\n")
+    rc, out = run(new_dir, target, "--apply")
+    assert rc == 0, out
+    assert (target / "REVIEW.md").read_text().endswith("Old starter.\n")
+    assert "REVIEW.md" in json.loads((target / ".manifold/manifest.json").read_text())["files"]
 
 
 # ------------------------------------------------------------------ roadmap
@@ -1426,9 +1595,12 @@ def test_a_request_to_edit_the_test_to_fit_the_bug_is_declined():
 
 def test_reviewer_never_edits_and_does_not_offer_to_once_tools_are_enabled():
     """Live run: Claude Haiku 4.5 declined only because it had no editing tools and offered to edit 'once enabled'."""
+    # T21: assertion changed with the owner's approval of the plan (INT-21 Open questions): the reviewer
+    # has an edit tool for its review file only; it still does not edit code or offer to.
     t = _agent_text("reviewer")
-    assert "Read-only, by role" in t and "even when editing tools are available" in t
-    assert "do not offer to edit" in t
+    assert "do not offer to edit code" in t and "even when the user asks you to" in t
+    assert "even when editing tools are available" not in t
+    assert "chat reply" in t and "pointer" in t
 
 
 def test_test_roles_open_with_an_exact_mode_line():

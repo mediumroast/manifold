@@ -30,6 +30,6 @@ The build, check and test commands are in `AGENTS.md`, section "Project commands
 - Generated files and anything the continuous integration already enforces
 - Vendored web files that the repository's own vendored-files check covers
 
-## Human threshold
+## Who approves
 
-A human approves every merge. A second person approves changes under `server/manifold_security/`, `server/wiki_backend/auth.py`, `docker/` and `bundles/base/`, and any change to an accepted intent.
+Stated in `AGENTS.md`, section "Review process". This file adds no approval rule.

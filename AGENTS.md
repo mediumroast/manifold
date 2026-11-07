@@ -72,3 +72,11 @@ Confirmed by the owner on 2026-11-01 (from PHASE_1_PLAN.md, run and verified by 
 - In a plan, `pytest` means the server tests command above.
 
 <!-- The managed block above is overwritten on update; this section is yours. -->
+
+## Review process
+
+Confirmed by the owner (Michael Hay) on 2026-11-06 (Phase 2 plan, Open question 5).
+
+Repository type: solo (one maintainer, the owner)
+Companion quality repository: none
+Second approver (team only): none; this repository is solo, so no second person is required
