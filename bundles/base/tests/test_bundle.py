@@ -320,9 +320,15 @@ def test_copilot_hook_file_has_the_verified_schema_and_calls_the_guard():
     assert entry["type"] == "command"
     # CP2a T14a (named in the plan): the exact-command assertion changes with the fail-closed command (T14b);
     # the old expectation was "python3 .manifold/hooks/guard.py --client copilot" alone.
-    command = entry["command"]
-    assert "python3 .manifold/hooks/guard.py --client copilot" in command
-    assert "test -f .manifold/hooks/guard.py" in command and build.GUARD_MISSING_MESSAGE in command
+    # CP2b T14h, R5 (named in the plan): the three `in` checks below are replaced by one exact `==` against the
+    # whole command, so dropping the `||` fallback or the `test -f` check fails it. The change makes the test stricter.
+    deny = '{"permissionDecision":"deny","permissionDecisionReason":"%s"}'
+    expected = (
+        "test -f .manifold/hooks/guard.py || { echo '" + deny % build.GUARD_MISSING_MESSAGE + "'; exit 0; }; "
+        "python3 .manifold/hooks/guard.py --client copilot || echo '"
+        + deny % "The Manifold guard failed to run, so this tool call is blocked. Tell a human." + "'"
+    )
+    assert entry["command"] == expected
     assert isinstance(entry["timeoutSec"], int)
 
 

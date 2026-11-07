@@ -1,8 +1,8 @@
 # What each client can enforce
 
-Phase 2, Task 1 (`docs/plans/PHASE_2_PLAN.md`). Every cell carries a source tag `[S#]` (list below) and was read on 2026-11-06, or says "unverified: confirm with <source>". Nothing here was run: no hook was executed in any client for this document. Claude Code on this machine is 2.1.312 (`claude --version`); VS Code and Copilot CLI versions were not read.
+Phase 2, Task 1 (`docs/plans/PHASE_2_PLAN.md`). Every cell carries a source tag `[S#]` (list below) and was read on 2026-11-06, or says "unverified: confirm with <source>". The tables were read from the cited pages; the "Guard limits and exit codes" section also records what was run (the T14b shell-form runs under `sh`, `bash`, `zsh` and `dash`, the tests, and the T14g replay). Claude Code on this machine is 2.1.312 (`claude --version`); VS Code and Copilot CLI versions were not read.
 
-How the pages were read: each page was fetched with WebFetch, which returns a model-written answer to a question, not the raw page. The Claude Code hooks page (288,603 characters) was read in three windows (0 to 300,000 characters covered across calls, the last window only through a saved copy searched for the command-hook fields); the sub-agents page was read for its first 100,000 of 116,722 characters, so its last 16,722 characters were not read. A claim marked "unverified" is one the pages did not state. Re-read the page before relying on a cell for a safety decision.
+How the pages were read: each page was fetched with WebFetch, which returns a model-written answer to a question, not the raw page. The Claude Code hooks page measured 288,603 characters on 2026-11-06 and 289,837 on 2026-11-07 (the page changed or the tool counts differently; unverified which). It was read in three windows (0 to 300,000 characters covered across calls, the last window only through a saved copy searched for the command-hook fields); the sub-agents page was read for its first 100,000 of 116,722 characters, so its last 16,722 characters were not read. A claim marked "unverified" is one the pages did not state. Re-read the page before relying on a cell for a safety decision.
 
 ## Sources
 
@@ -49,12 +49,12 @@ S3 says VS Code, the GitHub Copilot app and Copilot CLI "share the Copilot harne
 
 ## Guard limits and exit codes
 
-Phase 2, CP2a Task 14f. S1 and S6 were re-read with WebFetch on 2026-11-07 (S1: characters 0 to 100,000 of 289,837 were covered by the answer, which included the exit-code and shell-form sections; S6: the answer covered the exit-code, timeout and `cwd` statements). Each cell says read, ran or unverified.
+Phase 2, CP2a Task 14f. S1 and S6 were re-read with WebFetch on 2026-11-07 (S1: the answer covered characters 0 to 100,000 of the page, whose size is given at the top of this document, and included the exit-code and shell-form sections; the exit-code statement matches the documented behavior and was not re-verified end to end; S6: the answer covered the exit-code, timeout and `cwd` statements). Each cell says read, ran or unverified.
 
 | Question | Claude Code | VS Code Copilot Chat (Local) | Copilot CLI |
 |---|---|---|---|
 | What an exit code other than 2 does for `PreToolUse` | Read [S1]: exit 0 lets the action go ahead unless JSON denies it; exit 2 blocks; "any other code, or fails in some other way, such as not starting or printing invalid JSON. The action goes ahead", with a `hook error` notice in the transcript; the page warns that exit 1 is a non-blocking error and says to use exit 2 to enforce a policy. So the pre-CP2a "exits 1" for unreadable input was a silent allow | unverified: confirm with S3 (external event reference) | Read [S6]: `preToolUse` is fail-closed, a non-zero exit other than 2 denies; exit 2 is a deny; timeouts are fail-open |
-| What the guard does on its own failure | Exit 2 with "Manifold guard failed: ..." for any exception or unreadable input (T14b, ran: tests) | Prints the deny JSON and exits 0 (the form S3 documents); exit-code handling unverified: confirm with S3 | Same deny JSON, exit 0 (ran: tests) |
+| What the guard does on its own failure | Exit 2 with "Manifold guard failed: ..." for any exception or unreadable input (T14b, ran: tests) | Prints the deny JSON and exits 0 (the form S3 documents); exit-code handling unverified: confirm with S3 | Same deny JSON, exit 0 (ran: tests); the output may carry the guard's partial output before the fallback deny JSON |
 | Missing guard script, python3 missing, or the guard dying with another code | The agent's hook command (`build.GUARD_COMMAND`) prints the missing-script sentence or "Manifold guard failed (exit code N)" and exits 2 (ran under `sh`, `bash`, `zsh`, `dash` on macOS). Shell form is `sh -c` on macOS and Linux, Git Bash or PowerShell on Windows [S1, read]; the command is written for `sh` and is unverified on Windows | unverified: confirm with S3 | `hooks/copilot-guard.json` prints the deny JSON with the same sentence when `.manifold/hooks/guard.py` is missing or the guard exits non-zero (ran under `sh`, `bash`, `zsh`, `dash`) |
 | Working directory | The command uses `${CLAUDE_PROJECT_DIR}`; handlers run in the current directory, with a fallback order if it was deleted [S1, read] | unverified: confirm with S3 | The Copilot command uses the relative path `.manifold/hooks/guard.py`; `cwd` is "relative to repository root or absolute" when set [S6, read]; the default working directory of a hook is unverified: confirm with S6 or Task 37b. A wrong directory shows as the missing-script deny, not as a pass |
 | Path exceptions | `.manifold/guard-allow.json` entries with `"scope": "path"` and a required `"expires": "YYYY-MM-DD"` (UTC, through that date); never for the three `.manifold` files and never for the shell (ran: tests) | same | same |
@@ -62,8 +62,14 @@ Phase 2, CP2a Task 14f. S1 and S6 were re-read with WebFetch on 2026-11-07 (S1: 
 
 Residual gaps, in the guard's own words (the module docstring of `bundles/base/hooks/guard.py` is the source):
 
-- a script that writes when it is run from a file (`bash s.sh`, `bash < s.sh`, `source s.sh`, and the scratch-script route that is prescribed) is not read;
-- a command built from a variable (`eval $CMD`, `sh -c "$CMD"`);
+- a script that writes when it is run from a file (`bash s.sh`, `bash < s.sh`, `source s.sh`) is not read;
+- a command or a path built from a variable (`eval $CMD`, `sh -c "$CMD"`, `X=.manifold/guard-allow.json; cp a $X`);
+- the scratch route reaches protected files: a snippet written with Write to `.manifold/scratch/` and run is not read, so it can write `.manifold/guard-allow.json` (a path exception) and the agent can then Edit its own definition; the control is the coordinator's listing of every entry in `.manifold/guard-allow.json` and its review of each `exception-used` log line against an entry a human granted;
+- code is matched, not understood: `-c`/`--eval` code is refused when it names a protected path or an API on the list, so a path built from parts (`"op"+"en"`) or an API not on the list passes;
+- git commands that rewrite files without naming them (`git stash`, `reset --hard`, `checkout`, `restore`, `merge`, `pull`, `rebase`, `cherry-pick`) are allowed, they are normal work;
+- wrappers and stdin: `script -c`, `su -c` and `xargs` fed from standard input are not followed;
+- Copilot output may carry the guard's partial output before the fallback deny JSON;
+- kept refusals: `cd` into a protected directory, and `python3 .manifold/hooks/guard.py` typed by an agent (the client runs the hook);
 - command substitution inside double quotes;
 - `sed` with a `w` command (it cannot be told from text without parsing sed);
 - other languages, editors and tools than the ones named in the shell rule;

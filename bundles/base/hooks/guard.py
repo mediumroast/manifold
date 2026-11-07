@@ -23,6 +23,9 @@ standard input. The guard enforces three rules and refuses the call when one is 
    - unless a human grants a path exception: `.claude/agents/*.md`, `.claude/settings.json`,
      `.claude/settings.local.json`, `.claude/skills/<name>/SKILL.md`, `.github/agents/*.agent.md`,
      `.github/hooks/manifold-guard.json` (PROTECTED_DEFINITIONS).
+   Definitions are protected wherever they are, inside or outside the project, by the end of the path
+   (a Write to another checkout's `.claude/agents/coder.md` is refused), and `.github` itself is protected
+   against the shell (`rm -rf .github`; its other contents are not).
    The shell may only read these files and their directories (cat, grep, ls, diff, git status/diff/log ...).
    Root `AGENTS.md` and `CLAUDE.md` are not protected: the installer writes the managed rules block there,
    but the same files carry "Project commands" and the "Review process" section that agents edit routinely;
@@ -47,7 +50,7 @@ A human exception is an entry in `.manifold/guard-allow.json`, a JSON list of ob
   through the whole of that date (UTC) and grants nothing after it, or when `expires` is missing or not a real date.
 A command entry's `pattern` is a regular expression that must match the whole command, so a second command
 appended to an allowed one is still judged. A path entry's `pattern` must match the whole normalised
-project-relative path; it lifts a protected definition and the reviewer and coordinator allowlist refusals, never
+project-relative path (for a path outside the project, the whole path as given); it lifts a protected definition and the reviewer and coordinator allowlist refusals, never
 the three PROTECTED_FILES, and never a shell command. An entry missing a field, or an unreadable file, grants nothing.
 
 Every refusal appends `{time, rule, tool, agent_type, command}` to `.manifold/guard-log.jsonl`
@@ -55,9 +58,20 @@ Every refusal appends `{time, rule, tool, agent_type, command}` to `.manifold/gu
 `command` is the first 80 characters, which keeps secrets out.
 
 Residual gaps (stated, not fixed), one per line:
-- a script that writes when it is run from a file (`bash s.sh`, `bash < s.sh`, `source s.sh`, and the
-  scratch-script route that is prescribed) is not read;
-- a command built from a variable (`eval $CMD`, `sh -c "$CMD"`);
+- a script that writes when it is run from a file (`bash s.sh`, `bash < s.sh`, `source s.sh`) is not read;
+- a command or a path built from a variable (`eval $CMD`, `sh -c "$CMD"`, `X=.manifold/guard-allow.json; cp a $X`);
+- the scratch route reaches protected files: a snippet written with Write to `.manifold/scratch/` and run is not
+  read, so it can write `.manifold/guard-allow.json` (a path exception) and the agent can then Edit its own
+  definition; the control is the coordinator's listing of every entry in `.manifold/guard-allow.json` and its review
+  of each `exception-used` log line against an entry a human granted;
+- code is matched, not understood: `-c`/`--eval` code is refused when it names a protected path or an API on the
+  list, so a path built from parts (`"op"+"en"`) or an API not on the list passes;
+- git commands that rewrite files without naming them (`git stash`, `reset --hard`, `checkout`, `restore`, `merge`,
+  `pull`, `rebase`, `cherry-pick`) are allowed, they are normal work;
+- wrappers and stdin: `script -c`, `su -c` and `xargs` fed from standard input are not followed;
+- Copilot output may carry the guard's partial output before the fallback deny JSON;
+- kept refusals: `cd` into a protected directory, and `python3 .manifold/hooks/guard.py` typed by an agent (the
+  client runs the hook);
 - command substitution inside double quotes;
 - `sed` with a `w` command (it cannot be told from text without parsing sed);
 - other languages, editors and tools than the ones named in the shell rule;
@@ -108,7 +122,10 @@ TWO_WORD_WRAPPERS = {"uv": "run", "poetry": "run", "pipx": "run", "pyenv": "exec
 ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 INTERPRETERS = {"python", "node", "nodejs", "deno", "ruby", "perl", "php"}
 READ_ONLY = {"cat", "head", "tail", "less", "more", "wc", "grep", "egrep", "fgrep", "rg", "ls", "stat", "file",
-             "diff", "cmp", "sha256sum", "shasum", "echo", "printf", "test", "[", "[[", "find", "git"}
+             "diff", "cmp", "sha256sum", "shasum", "echo", "printf", "test", "[", "[[", "find", "git",
+             # reading forms only: the write forms (sed -i, awk -i inplace, awk redirects and system()) are judged
+             # in scan_command before touches_protected runs
+             "sed", "awk", "jq", "comm"}
 READ_GIT = {"status", "diff", "log", "show", "blame", "ls-files", "check-ignore", "rev-parse", "grep", "add", "commit"}
 BARE_PROTECTED = {"guard-allow.json", "guard-log.jsonl", "manifold-guard.json"}
 SEPARATORS = {";", "&&", "||", "|", "&", "(", ")"}
@@ -124,8 +141,11 @@ CODE_WRITE_RE = re.compile(
     r"|\.write_text\s*\(|\.write_bytes\s*\("
     r"|\bshutil\.(copy|copy2|copyfile|copytree|move|rmtree)\b"        # python
     r"|\bos\.(system|popen|rename|replace|remove|unlink|rmdir|truncate|mkdir|makedirs|symlink|link|exec\w*|spawn\w*)\b"
-    r"|\.(touch|mkdir|rename|replace|unlink|rmdir|symlink_to)\s*\("
+    r"|\.(touch|mkdir|rename|unlink|rmdir|symlink_to)\s*\("
     r"|shell\s*=\s*True"
+    r"|\bsubprocess\.|__import__|(?<![.\w])(exec|eval)\s*\("                                                   # run anything
+    r"|\bos\.open\b|\bfileinput\b|\bimportlib\b|\bpty\.|\bdistutils\b"
+    r"|\blogging\.(File|Rotating|Timed)\w*Handler\b"
     r"|(zipfile|tarfile)[\s\S]*\.extract(all)?\s*\("
     r"|(ZipFile|TarFile|tarfile\.open)\s*\([^)]*,\s*['\"][wax]"
     r"|sqlite3\.connect\s*\((?!\s*['\"]:memory:['\"])"
@@ -140,6 +160,13 @@ CODE_WRITE_RE = re.compile(
     r"|(?<![.\w])(file_put_contents|fwrite|rename|mkdir|rmdir|copy|touch|chmod)\s*\("                         # php
     r"|(?<![.\w])fopen\s*\([^)]*,\s*['\"][wax+]"
     r"|(?<![.\w])(system|passthru|shell_exec)\s*\(")
+# `.replace(` is str.replace in most code, so it counts only with Path or pathlib in the same code (CP2b R9).
+PATH_REPLACE_RE = re.compile(r"\.replace\s*\(")
+# A protected name inside `-c`/`--eval` code or a here-string is refused whatever the API (CP2b R4); reading goes
+# through cat, grep or the Read tool. Case-insensitive substrings; `.manifold/scratch/` does not match.
+CODE_PROTECTED_NAMES = (".manifold/guard-allow.json", ".manifold/guard-log.jsonl", ".manifold/hooks", "guard-allow.json",
+                        "guard-log.jsonl", "manifold-guard.json", ".claude/agents", ".claude/settings", ".claude/skills",
+                        ".github/agents", ".github/hooks")
 # The mechanism itself: always protected, no exception route.
 PROTECTED_FILES = (".manifold/guard-allow.json", ".manifold/guard-log.jsonl", ".manifold/hooks/guard.py")
 PROTECTED_RE = re.compile(r"(^|/)\.manifold/(guard-allow\.json|guard-log\.jsonl|hooks/guard\.py)$", re.IGNORECASE)
@@ -155,10 +182,14 @@ PROTECTED_DEFINITIONS = (
     r"\.github/agents/[^/]+\.agent\.md",
     r"\.github/hooks/manifold-guard\.json",
 )
-DEFINITION_RE = re.compile(r"(%s)$" % "|".join(PROTECTED_DEFINITIONS))
+# Judged by the end of the normalised path, like PROTECTED_RE, so a definition outside the project is recognised too.
+DEFINITION_RE = re.compile(r"(^|/)(%s)$" % "|".join(PROTECTED_DEFINITIONS))
 # Directories whose contents the shell may only read (T14d).
 PROTECTED_DIRS = (".manifold", ".manifold/hooks", ".claude", ".claude/agents", ".github/hooks", ".github/agents")
-DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+# Directories protected as a whole against the shell: the directory itself, not its other contents (`.github/workflows`
+# stays writable; `.github/hooks` and `.github/agents` are in PROTECTED_DIRS).
+EXACT_PROTECTED_DIRS = (".github",)
+DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})\Z")  # \Z, not $: "2026-11-07\n" is not a date
 REVIEW_FILE_RE = re.compile(r"^docs/plans/REVIEW_PLAN_[0-9]+\.md$")
 FAILURES_RE = re.compile(r"^docs/agents/[^/]+-failures\.md$")
 INTENT_RE = re.compile(r"^intent/INT-[^/]+\.md$")
@@ -189,7 +220,8 @@ def protected_message(path):
 def definition_message(path):
     return ("Refused by the Manifold guard (rule %s): %s is part of the agent definitions or hook setup; "
             "only a human changes it. Ask a human to add a path exception to %s (scope path, pattern, reason, "
-            "granted_by, date, expires). Do not work around this block." % (RULE_PROTECTED, path, ALLOW_FILE))
+            "granted_by, date, expires; for a path outside the project the pattern must match the whole path). "
+            "Do not work around this block." % (RULE_PROTECTED, path, ALLOW_FILE))
 
 
 def allowlist_message(agent_type, allowed, path):
@@ -529,6 +561,26 @@ def code_options(cmd, args):
     return codes, ("script" if plain and "-" not in args else "stdin")
 
 
+def code_names_protected(code):
+    """The protected name the interpreter code contains (case-insensitive), else None."""
+    text = code.lower()
+    return next((name for name in CODE_PROTECTED_NAMES if name in text), None)
+
+
+def code_writes(code):
+    return bool(CODE_WRITE_RE.search(code) or (PATH_REPLACE_RE.search(code) and ("Path" in code or "pathlib" in code)))
+
+
+def code_reason(cmd, code):
+    """Judge interpreter code (not shell): a protected name first, then the API patterns."""
+    name = code_names_protected(code)
+    if name:
+        return ProtectedHit(name)
+    if code_writes(code):
+        return "%s code that writes, copies, moves or deletes files, or runs a command" % cmd
+    return None
+
+
 def program_reason(cmd, args, depth, stdin):
     """Judge the program an interpreter or shell is given: on the command line, as a here-string or from a pipe."""
     codes, kind = code_options(cmd, args)
@@ -537,14 +589,17 @@ def program_reason(cmd, args, depth, stdin):
             reason = scan(code, depth + 1)
             if reason:
                 return reason
-        elif CODE_WRITE_RE.search(code):
-            return "%s code that writes, copies, moves or deletes files, or runs a command" % cmd
+        else:
+            reason = code_reason(cmd, code)
+            if reason:
+                return reason
     if kind == "stdin":
         if stdin.here is not None:
             if cmd in SHELLS:
                 return scan(stdin.here, depth + 1)
-            if CODE_WRITE_RE.search(stdin.here):
-                return "%s code that writes, copies, moves or deletes files, or runs a command" % cmd
+            reason = code_reason(cmd, stdin.here)
+            if reason:
+                return reason
         elif stdin.piped and not stdin.from_file:
             return ("a program read from a pipe into %s cannot be inspected; write it with Write to %s and run the file"
                     % (cmd, SCRATCH))
@@ -625,9 +680,64 @@ def protected_dirs():
     return PROTECTED_DIRS + (".claude/skills",) + tuple(".claude/skills/" + n for n in SKILL_DIRS)
 
 
+def _brace_groups(word, limit):
+    """Expand the first comma list in `word` (`a{b,c}d`), then the rest, recursively. A brace group without a
+    top-level comma (`{}`, `{a}`, `${VAR}`, `${V:-a,b}`) is left as written. Raises ValueError for unbalanced
+    braces and OverflowError when more than `limit` words would result."""
+    start = 0
+    while True:
+        i = word.find("{", start)
+        if i < 0:
+            return [word]
+        depth, j, commas = 0, i, []
+        while j < len(word):
+            c = word[j]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            elif c == "," and depth == 1:
+                commas.append(j)
+            j += 1
+        else:
+            raise ValueError("unbalanced braces")
+        if commas and not (i > 0 and word[i - 1] == "$"):
+            bounds = [i] + commas + [j]
+            out = []
+            for a, b in zip(bounds, bounds[1:]):
+                out.extend(_brace_groups(word[:i] + word[a + 1:b] + word[j + 1:], limit))
+                if len(out) > limit:
+                    raise OverflowError("too many words")
+            return out
+        start = i + 1
+
+
+def expand_braces(word, limit=64):
+    """The words a shell would make of `word` by brace expansion (comma lists, nested, leading). A word with
+    unbalanced braces, or one that would expand to more than `limit` words, is judged like a glob by its literal
+    prefix (the text before the first `{`, then `*`)."""
+    if "{" not in word:
+        return [word]
+    try:
+        return _brace_groups(word, limit)
+    except (ValueError, OverflowError):
+        return [word.split("{", 1)[0] + "*"]
+
+
 def protected_name(word):
-    """Return the normalised path when `word` names a protected file, definition or directory (or is a glob that
-    reaches one), else None. A part after `=` (`of=...`, `--output=...`) is judged too."""
+    """Return the normalised path when `word` (or one of its brace expansions) names a protected file, definition or
+    directory, or is a glob that reaches one, else None."""
+    for expanded in expand_braces(word):
+        hit = _protected_name(expanded)
+        if hit:
+            return hit
+    return None
+
+
+def _protected_name(word):
+    """One word, no brace expansion. A part after `=` (`of=...`, `--output=...`) is judged too."""
     for text in ([word, word.split("=", 1)[1]] if "=" in word else [word]):
         if not text or " " in text:
             continue
@@ -651,6 +761,8 @@ def protected_name(word):
             return norm
         if any(under(norm, d) for d in protected_dirs()):
             return norm
+        if any(under(norm, d) for d in EXACT_PROTECTED_DIRS):
+            return norm
     return None
 
 
@@ -666,6 +778,14 @@ def touches_protected(words, starts):
             continue
         if is_read_only(words, i):
             continue
+        if cmd == "cp":
+            # a copy out: the sources are only read when the destination is not protected (mv, install, ln and
+            # rsync are not, a move removes the protected file)
+            dest, sources = target_directory(words[i + 1:])
+            if dest is None and sources:
+                dest = sources[-1]
+            if dest is not None and protected_name(dest) is None:
+                continue
         for a in words[i + 1:]:
             hit = protected_name(a)
             if hit:
@@ -789,7 +909,7 @@ def normalise_agent(agent_type):
 
 
 def is_definition(norm):
-    return bool(DEFINITION_RE.match(norm.lower()))
+    return bool(DEFINITION_RE.search(norm.lower()))
 
 
 def parse_expires(value):
@@ -871,7 +991,7 @@ def load_allow(project_dir):
     try:
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, RecursionError) as exc:  # RecursionError: a deeply nested file
         return [], "could not read %s (%s); it grants no exception" % (ALLOW_FILE, exc)
     if not isinstance(data, list):
         return [], "%s must be a JSON list; it grants no exception" % ALLOW_FILE
@@ -1002,9 +1122,12 @@ def write_candidates(project_dir, path):
     path and in the project directory. A path outside the project is judged as given."""
     full = os.path.abspath(path if os.path.isabs(path) else os.path.join(project_dir, path))
     out = []
-    for target, base in ((full, os.path.abspath(project_dir)), (real_target(full), os.path.realpath(project_dir))):
+    for target, base, resolved in ((full, os.path.abspath(project_dir), False),
+                                   (real_target(full), os.path.realpath(project_dir), True)):
         rel = os.path.relpath(target, base)
-        shown = path if rel.startswith("..") else rel
+        # Outside the project: the path as given, and for the resolved spelling the resolved absolute path, so a
+        # symlink that points at another checkout's definitions is judged by where it lands (CP2b R1).
+        shown = (target if resolved else path) if rel.startswith("..") else rel
         if shown not in out:
             out.append(shown)
     return out
