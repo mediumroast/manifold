@@ -940,3 +940,52 @@ def test_r4_r9_code_and_write_forms_are_refused_with_the_shell_message(command):
 def test_r6_r9_the_read_only_look_and_the_copy_out_stay_allowed(command):
     allowed, message = guard.classify_bash(command)
     assert allowed is True, (command, message)
+
+
+# ---- T31 (INT-22): the coordinator's write allowlist. The coordinator is default-deny in the guard, so the
+# refusal cases below were expected to pass at once; the one that fails first is the new skill folder.
+
+COORDINATOR_REFUSED = [
+    "docs/plans/PHASE_2_PLAN.md", "docs/plans/PHASE_2_TEST_PLAN.md", "docs/plans/REVIEW_PLAN_2.md",
+    "server/app.py", "bundles/base/tests/test_x.py", "bundles/base/agents/coder.agent.md",
+    "REVIEW.md", "AGENTS.md", "CLAUDE.md", "docs/templates/PULL_REQUEST_TEMPLATE.md",
+    "docs/process/REVIEW_CYCLE.md", "docs/agents/harness-capabilities.md", "docs/agents/sub/x-failures.md",
+    ".manifold/scratch/probe.py", "intent/notes.md", "intent/sub/INT-30-x.md",
+]
+
+
+@pytest.mark.parametrize("path", COORDINATOR_REFUSED)
+@pytest.mark.parametrize("exists", [True, False])
+def test_t31_the_coordinator_cannot_write_plans_reviews_source_tests_or_documents(path, exists):
+    allowed, message = guard.classify_write("coordinator", path, exists)
+    assert allowed is False, path
+    assert "coordinator" in message and "failures" in message and "INT-" in message
+
+
+@pytest.mark.parametrize("path,exists", [
+    ("docs/agents/claude-desktop-failures.md", True), ("docs/agents/claude-desktop-failures.md", False),
+    ("docs/agents/vscode-copilot-failures.md", True), ("docs/agents/cli-failures.md", False),
+    ("intent/INT-31-gap.md", False),
+])
+def test_t31_the_coordinator_may_append_to_failure_records_and_create_a_draft_intent(path, exists):
+    assert guard.classify_write("coordinator", path, exists) == (True, "")
+
+
+@pytest.mark.parametrize("tool", ["Write", "Edit", "MultiEdit", "NotebookEdit"])
+@pytest.mark.parametrize("name", ["docs/plans/PHASE_2_PLAN.md", "server/app.py", "bundles/base/tests/test_x.py"])
+def test_t31_a_coordinator_write_to_a_plan_source_or_test_is_refused_by_the_hook_and_logged(tmp_path, tool, name):
+    payload = {"tool_name": tool, "agent_type": "coordinator", "tool_input": {"file_path": str(tmp_path / name)}}
+    p = run_hook(tmp_path, payload)
+    assert p.returncode == 2 and "coordinator" in p.stderr
+    (entry,) = log_lines(tmp_path)
+    assert entry["agent_type"] == "coordinator" and entry["tool"] == tool
+
+
+def test_t31_the_coordinators_skill_file_is_protected_like_every_other_skill_file():
+    # the guard cannot import build.py; T32 adds the coordinate-cycle skill, so the guard's list must name it
+    path = ".claude/skills/coordinate-cycle/SKILL.md"
+    for agent in AGENTS_ALL:
+        allowed, message = guard.classify_write(agent, path, True)
+        assert allowed is False, agent
+        assert "path exception" in message
+    assert "coordinate-cycle" in guard.SKILL_DIRS

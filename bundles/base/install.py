@@ -246,7 +246,7 @@ def timestamp() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-KNOWN_ROLES = ("scenario-writer", "bug-coder", "test-planner", "test-coder", "reviewer", "planner", "coder")
+KNOWN_ROLES = ("scenario-writer", "bug-coder", "test-planner", "test-coder", "reviewer", "planner", "coder", "coordinator")
 AGENT_DIRS = {"claude": (".claude/agents", ".md"), "copilot": (".github/agents", ".agent.md")}
 
 
@@ -521,8 +521,8 @@ def main(argv=None) -> int:
                          "or a comma list such as claude,skills (default: claude)")
     ap.add_argument("--profile", choices=PROFILE_NAMES, default=None,
                     help="which roles to install: build (product repository: planner, coder, bug-coder, reviewer, "
-                         "test-planner, test-coder; default), quality (a separate repository for behavior scenarios: "
-                         "scenario-writer, test-planner, test-coder) or single (everything in one repository, "
+                         "test-planner, test-coder, coordinator; default), quality (a separate repository for behavior "
+                         "scenarios: scenario-writer, test-planner, test-coder, coordinator) or single (everything in one repository, "
                          "with a warning that verification is not independent)")
     ap.add_argument("--skills-dir", default=None,
                     help="where skills go, relative to the repository (default: .claude/skills; check your tool's documentation)")

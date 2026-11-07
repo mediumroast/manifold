@@ -171,7 +171,8 @@ CODE_PROTECTED_NAMES = (".manifold/guard-allow.json", ".manifold/guard-log.jsonl
 PROTECTED_FILES = (".manifold/guard-allow.json", ".manifold/guard-log.jsonl", ".manifold/hooks/guard.py")
 PROTECTED_RE = re.compile(r"(^|/)\.manifold/(guard-allow\.json|guard-log\.jsonl|hooks/guard\.py)$", re.IGNORECASE)
 # The skill folder names build.py writes (build.SKILL_NAMES values); a test compares this list with build.py.
-SKILL_DIRS = ("plan-change", "execute-plan", "fix-bug", "review-change", "plan-tests", "write-tests", "write-scenarios")
+SKILL_DIRS = ("plan-change", "execute-plan", "fix-bug", "review-change", "plan-tests", "write-tests", "write-scenarios",
+              "coordinate-cycle")
 # The agent definitions and hook setup: protected unless a human grants a path exception. Anchored at the
 # project root, matched on the normalised lower-case relative path.
 PROTECTED_DEFINITIONS = (

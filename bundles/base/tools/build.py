@@ -24,13 +24,14 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ROLES = ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer")
+ROLES = ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer", "coordinator")
 # Which roles each install profile gets. build: a product repository. quality: a separate
 # repository for behavior scenarios. single: one repository holding both (verification is
-# not independent there, and the installer says so).
+# not independent there, and the installer says so). The coordinator is in every profile
+# (owner's answer, INT-22 Open questions); its text uses no {{ref:...}} markers for that reason.
 PROFILES = {
-    "build": ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder"),
-    "quality": ("scenario-writer", "test-planner", "test-coder"),
+    "build": ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "coordinator"),
+    "quality": ("scenario-writer", "test-planner", "test-coder", "coordinator"),
     "single": ROLES,
 }
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
@@ -45,7 +46,7 @@ CLAUDE_AGENT_PATH = ".claude/agents/{name}.md"
 COPILOT_AGENT_PATH = ".github/agents/{name}.agent.md"
 SKILL_NAMES = {"planner": "plan-change", "coder": "execute-plan", "bug-coder": "fix-bug",
                "reviewer": "review-change", "test-planner": "plan-tests", "test-coder": "write-tests",
-               "scenario-writer": "write-scenarios"}
+               "scenario-writer": "write-scenarios", "coordinator": "coordinate-cycle"}
 SKILL_ROOT = ".claude/skills"
 SKILL_PATH = SKILL_ROOT + "/{name}/SKILL.md"
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -60,6 +61,7 @@ TEMPLATE_PATHS = {
     "WT_TEMPLATE.md": ("docs/templates/WT_TEMPLATE.md", ALL_PROFILES),
     "REVIEW_TEMPLATE.md": ("docs/templates/REVIEW_TEMPLATE.md", ("build", "single")),
     "REVIEW_PLAN_TEMPLATE.md": ("docs/templates/REVIEW_PLAN_TEMPLATE.md", ("build", "single")),
+    "PULL_REQUEST_TEMPLATE.md": ("docs/templates/PULL_REQUEST_TEMPLATE.md", ("build", "single")),
     "AGENT_FAILURES_TEMPLATE.md": ("docs/templates/AGENT_FAILURES_TEMPLATE.md", ALL_PROFILES),
     "SCENARIO_TEMPLATE.md": ("docs/templates/SCENARIO_TEMPLATE.md", ("quality", "single")),
     "SATISFACTION_REPORT_TEMPLATE.md": ("docs/templates/SATISFACTION_REPORT_TEMPLATE.md", ("quality", "single")),
@@ -421,8 +423,10 @@ def render_instructions_block(agents: dict, rules, style: str = "agents", profil
     if profile in ("build", "single"):
         docs += ["- Plans live in `docs/plans/PHASE_<N>_PLAN.md`. Start from `docs/templates/PHASE_PLAN_TEMPLATE.md`; the coder records its completion summary in the plan.",
                  "- Review: the passes and severity defaults are built into the `reviewer`; `REVIEW.md` (from `docs/templates/REVIEW_TEMPLATE.md`) is optional and adds repository-specific passes or exclusions; who approves is stated in the `Review process` section below.",
-                 "- Each review leaves `docs/plans/REVIEW_PLAN_<N>.md`, written from `docs/templates/REVIEW_PLAN_TEMPLATE.md`."]
-    docs += ["- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
+                 "- Each review leaves `docs/plans/REVIEW_PLAN_<N>.md`, written from `docs/templates/REVIEW_PLAN_TEMPLATE.md`.",
+                 "- Pull requests follow `docs/templates/PULL_REQUEST_TEMPLATE.md`; only a human moves a pull request out of draft."]
+    docs += ["- The review-to-repair loop (who does each step, how it ends, the ready check) is written in `docs/process/REVIEW_CYCLE.md`.",
+             "- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
              "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`.",
              "- Rule breaches by agents are recorded from `docs/templates/AGENT_FAILURES_TEMPLATE.md` by the procedure in `docs/process/BREACH_PROCEDURE.md`."]
     if profile in ("quality", "single"):
