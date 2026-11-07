@@ -17,7 +17,15 @@ The tooling that runs the base bundle in a real client and judges what it can fr
 
 - A Mac or Linux machine with Python 3.8 or newer, git and internet access; the client under test (Claude Code, or VS Code with GitHub Copilot Chat).
 - `export MANIFOLD_REPO=<your clone of this repository, on the branch under test>`
-- `export PRODUCT_SRC=<a product repository to copy>`
+- `export PRODUCT_SRC=<a product repository to copy>` (not needed with `LIVE_REPOS=manifold`)
+
+Optional settings:
+
+- `LIVE_REPOS`: which repositories `setup.sh`, `lp.sh` and `lp_verify.py` handle (default `product quality manifold`). `LIVE_REPOS=manifold` builds and reads only the clone of this repository and skips `PRODUCT_SRC`.
+- `LIVE_SEED`: `LIVE_SEED=none` makes `lp.sh ready` leave `AGENTS.md` "Project commands" as the repository has it (default: append the protocol's test command).
+- `MANIFOLD_DIR`: `lp.sh evidence` and `lp_verify.py` read this folder (a real checkout) instead of `$LIVE_ROOT/<client>/manifold`; the evidence folder is still under `$LIVE_ROOT/<client>/evidence`. `lp.sh ready` and `lp.sh reset` refuse to run while it is set.
+- `LIVE_ROOT`: the parent of the `<client>` folders (default `~/manifold-live`); `lp_verify.py` uses it too, and `PUBLIC_SRC` (default: this repository).
+- Evidence label `testset`: judges a phase test set in the `manifold` repository (changed files only under `server/tests/` and `docs/plans/`, and the result line of the server suite).
 
 ## About the sample product
 

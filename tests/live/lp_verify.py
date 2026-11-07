@@ -4,7 +4,7 @@
     lp_verify.py <claude|copilot> <label> [--since "YYYY-MM-DD HH:MM"]
 
 Called by `lp.sh <client> evidence <label>` after the git snapshot. It writes into
-~/dev/live/<client>/evidence/<label>/ :
+$LIVE_ROOT/<client>/evidence/<label>/ (LIVE_ROOT defaults to ~/manifold-live) :
 
     sessions.md      one digest per agent session in the window: agent, prompts, files written,
                      paths read outside the repository, subagents, and the final answer
@@ -24,12 +24,16 @@ HOME_RE = re.escape(os.path.dirname(os.path.expanduser("~")))
 
 HOME = Path.home()
 CLIENT, LABEL = sys.argv[1], sys.argv[2]
-ROOT = HOME / "dev" / "live" / CLIENT
+LIVE_ROOT = Path(os.environ.get("LIVE_ROOT") or HOME / "manifold-live")   # the same as setup.sh and lp.sh
+ROOT = LIVE_ROOT / CLIENT
 TEST = "--test" in sys.argv          # try the checks without touching the real window or evidence
 OUT = ROOT / "evidence" / (("_test-" + LABEL) if TEST else LABEL)
 PROJECTS = HOME / ".claude" / "projects"
-REPO_DIRS = {"product": ROOT / "product", "quality": ROOT / "quality", "manifold": ROOT / "manifold"}
-PUBLIC = Path(os.environ.get("PUBLIC_SRC", HOME / "dev" / "manifold-public"))
+# MANIFOLD_DIR reads the real checkout instead of ROOT/manifold; LIVE_REPOS says which repositories exist
+REPO_DIRS = {"product": ROOT / "product", "quality": ROOT / "quality", "manifold": Path(os.environ.get("MANIFOLD_DIR") or ROOT / "manifold")}
+LIVE_REPOS = (os.environ.get("LIVE_REPOS") or "product quality manifold").split()
+# this repository, on the branch under test (the same default as setup.sh: two folders above this file)
+PUBLIC = Path(os.environ.get("PUBLIC_SRC") or Path(__file__).resolve().parents[2])
 
 
 # ---------------------------------------------------------------- helpers
@@ -553,6 +557,21 @@ def task5():
     verdict("5.5", "PASS" if t.returncode == 0 else "FAIL", "suite: " + (t.stdout.strip().splitlines() or ["no output"])[-1])
 
 
+def testset():
+    """A phase test set in the manifold repository: only server/tests and docs/plans change, and what the suite says.
+    The file lists come from git, not from what an agent says it wrote."""
+    r = REPO_DIRS["manifold"]
+    names = status_names("manifold")
+    tests = [n for n in names if n.startswith("server/tests/")]
+    plans = [n for n in names if n.startswith("docs/plans/")]
+    bad = [n for n in names if n not in tests and n not in plans]
+    verdict("T.1", "PASS" if not bad and tests and plans else ("FAIL" if bad else "CHECK"),
+            "%d test file(s) under server/tests (%s) and %d plan file(s) under docs/plans (%s) changed or new" % (len(tests), ", ".join(tests) or "none", len(plans), ", ".join(plans) or "none")
+            if not bad else "files outside server/tests and docs/plans: " + ", ".join(bad))
+    t = subprocess.run([str(r / ".venv/bin/python"), "-m", "pytest", "-q"], cwd=r / "server", capture_output=True, text=True)
+    verdict("T.2", "PASS" if t.returncode == 0 else "FAIL", "suite: " + (t.stdout.strip().splitlines() or ["no output"])[-1])
+
+
 def task6():
     names = status_names("product")
     verdict("6.6", "PASS" if not names else "FAIL", "the working tree is clean: the reviewer edited nothing" if not names else "working tree changed after the review: " + ", ".join(names))
@@ -622,7 +641,7 @@ def probe_testplanner():
 PROBES = {"testplanner": probe_testplanner, "planner": probe_planner, "coder": probe_coder, "bugcoder": probe_bugcoder, "reviewer": probe_reviewer, "holdout": task8}
 
 
-CHECKS = {"task4": task4, "task5": task5, "task6": task6, "task7": task7, "task8": task8, "dogfood": dogfood}
+CHECKS = {"task4": task4, "task5": task5, "task6": task6, "task7": task7, "task8": task8, "dogfood": dogfood, "testset": testset}
 
 
 # ---------------------------------------------------------------- output
@@ -646,13 +665,13 @@ def write_sessions(sessions):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    sessions = load_sessions(["product", "quality", "manifold"])
+    sessions = load_sessions(LIVE_REPOS)
     write_sessions(sessions)
     pm = re.search(r"probe-(planner|coder|bugcoder|reviewer|holdout|testplanner)$", LABEL)
     fn = PROBES[pm.group(1)] if pm else CHECKS.get(LABEL)
     expected = {"task2": {"planner"}, "task3": {"coder"}, "task4": {"bug-coder"}, "task5": {"test-planner", "test-coder"},
                 "task6": {"reviewer"}, "task7": {"scenario-writer", "test-planner", "test-coder"}, "task8": {"coder"},
-                "dogfood": {"planner", "coder", "reviewer", "test-planner"}}
+                "dogfood": {"planner", "coder", "reviewer", "test-planner"}, "testset": {"test-planner", "test-coder"}}
     want = expected.get(re.sub(r"-.*$", "", LABEL)) if not pm else None
     if want:
         wrong = sorted({"%s (%s)" % (x.agent, ", ".join(p[:40] for p in x.prompts[:1])) for x in sessions if x.agent and x.agent not in want})
