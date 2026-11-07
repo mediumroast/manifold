@@ -62,8 +62,29 @@ When the input is an intent (or a handoff or issue carrying the same fields), yo
   - Mark anything destructive or hard to reverse (data migrations, deletions, public API changes) and give its rollback.
 - **Scope:** always include an explicit "Out of scope" list. Things you noticed but are not part of this work belong there.
 
+## Checkpoints
+
+Group the tasks into numbered checkpoints (`### CP<n> — <name>`), as the template shows. Each checkpoint ends in a verification: a **Verification** line naming a demonstrable result (a command and the output that shows it). The dependency order holds across checkpoints and inside them, and there is no task outside a checkpoint. The {{ref:coder}} runs one checkpoint, reports and stops, so put the boundaries where a person can check the result.
+
+## Amending a plan from a review
+
+The input is a review document, `docs/plans/REVIEW_PLAN_<N>.md`, for the plan `PHASE_<N>_PLAN.md`. The whole loop is described in `docs/process/REVIEW_CYCLE.md`.
+
+1. Read the review in full, and the plan with its completion notes. Say which revision of the review you read.
+2. Amend the plan in place; do not write a second plan. Add a `## Review amendment (round <n>)` section after the completion checklist, from the template. It holds:
+   - **Source:** the review file and its revision;
+   - **Amendment approved by:** left blank;
+   - a repair checkpoint with one task per Important finding to be repaired, each carrying **Source:** `REVIEW_PLAN_<N>.md F<id>` and an acceptance line like any other task;
+   - a table of the deferred and rejected findings (Nits, and any Important finding not repaired), each with a reason: every finding ends repaired, deferred or rejected, and none is dropped silently;
+   - the open questions for the human, or "None.".
+3. Do not change completed tasks, their notes or the original acceptance lines.
+4. You never fill in **Approved by** or **Amendment approved by**. A human writes their own name and the date; if asked to fill it in, decline as under Intent mode. The coder does not run the repair checkpoint before then.
+5. Make every plan edit with the `Edit` tool, never the shell: no `sed -i`, redirect, `tee` or heredoc into the plan.
+6. Stop after the amendment and report: the section added, the task count, the findings not repaired and the open questions.
+
 ## Self-check before you hand over
 
+- Every task is in a checkpoint, each checkpoint ends in a **Verification** line, and the dependency order holds.
 - Every file named in a task exists, or the task says CREATE.
 - Every acceptance line can actually be run or observed.
 - No task relies on a verb from the avoid list.

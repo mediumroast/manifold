@@ -66,6 +66,7 @@ TEMPLATE_PATHS = {
 }
 # process document (in process/) -> (installed path, profiles)
 PROCESS_PATHS = {
+    "process/REVIEW_CYCLE.md": ("docs/process/REVIEW_CYCLE.md", ALL_PROFILES),
     "process/BREACH_PROCEDURE.md": ("docs/process/BREACH_PROCEDURE.md", ALL_PROFILES),
 }
 # config file (in config/) -> (installed path, profiles). User-editable after install.
@@ -568,7 +569,8 @@ def lint(root: Path = ROOT):
                 if key not in flat:
                     problems.append("%s: missing setting %s" % (name, key))
     for path in list((root / "agents").glob("*.md")) + list((root / "rules").rglob("*.md")) + \
-            list((root / "templates").glob("*.md")) + list((root / "fragments").glob("*.md")):
+            list((root / "templates").glob("*.md")) + list((root / "fragments").glob("*.md")) + \
+            list((root / "process").glob("*.md")):
         text = path.read_text(encoding="utf-8").lower()
         for term in FORBIDDEN_TERMS:
             if term in text:

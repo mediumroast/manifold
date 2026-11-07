@@ -30,10 +30,23 @@
 
 **Seed and sample size:** <!-- Only if a check samples data or uses randomness. Fix both so reruns are comparable. Otherwise write "not applicable". -->
 
+## Checkpoints
+<!--
+  These checkpoints mirror the phase plan's: one row per checkpoint of PHASE_<N>_PLAN.md,
+  with its tasks and its Verification line as the gate. The test-coder implements one
+  checkpoint at a time and stops after each.
+  A phase plan without checkpoints is one checkpoint (CP1).
+-->
+
+| Checkpoint | Phase-plan tasks | Gate (the phase checkpoint's Verification) |
+|---|---|---|
+| CP1 | Task 1, Task 2 | |
+
 ## Manual test cases
 <!-- Cases that need human judgment. Order: task order from the phase plan. -->
 
 ### M1 — <short title>
+**Checkpoint:** CP<n>
 **Related task:** Task N from `PHASE_<N>_PLAN.md`
 **Precondition:** Exact state the system must be in before starting.
 **Steps:**
@@ -53,6 +66,7 @@
 -->
 
 ### A1 — <short title>
+**Checkpoint:** CP<n>
 **Related task:** Task N from `PHASE_<N>_PLAN.md`
 **Precondition:** System state and any fixtures or mocks required.
 **Action:** Exact operation or sequence to execute.

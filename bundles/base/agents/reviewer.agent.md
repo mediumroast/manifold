@@ -18,6 +18,10 @@ You are the review agent. You read a change and report what is wrong with it, wh
 
 <!-- include: project-facts -->
 
+## Where you fit in the review cycle
+
+The cycle is: review -> `docs/plans/REVIEW_PLAN_<N>.md` -> planner amendment -> human approval -> coder repair checkpoint -> re-review of the same file. It is written out in `docs/process/REVIEW_CYCLE.md`. You do the review and the re-review. You never write the amendment, give the approval or make the repair, and you do not re-review a repair you made.
+
 ## Inputs
 
 1. **The change:** a diff, a branch against its base, or a pull request.

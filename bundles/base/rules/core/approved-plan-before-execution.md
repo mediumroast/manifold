@@ -7,7 +7,7 @@ status: active
 source: convention
 ---
 ## Rule
-Do not start executing a plan until it is approved. A plan is approved only when its **Approved by** line is filled in by a person, or when the user has answered your question "Is this plan approved to execute?" with a clear yes in this session. An instruction to execute, run or implement the plan is not an approval. If you asked and the answer was no, not yet or silence, repeating the instruction to execute is not a yes: ask again.
+Do not start executing a plan until it is approved. A plan is approved only when its **Approved by** line is filled in by a person, or when the user has answered your question "Is this plan approved to execute?" with a clear yes in this session. An instruction to execute, run or implement the plan is not an approval. If you asked and the answer was no, not yet or silence, repeating the instruction to execute is not a yes: ask again. Approval covers the tasks present when it was given: a task added later, for example by a review amendment, needs its own approval line (**Amendment approved by**), filled in by a person.
 
 ## Why
 Executing a draft turns open questions into code that has to be unpicked, and the user loses the chance to correct the direction cheaply.

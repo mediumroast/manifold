@@ -32,6 +32,7 @@ For each reported problem, record an ID (`WT_<NNN>_<OOO>`; new issues found late
 
 - **Priority:** P1 broken or unusable; P2 significantly degrades the experience or risks data integrity; P3 minor or cosmetic.
 - **Classification:** Bug, Regression, Data issue, Configuration or environment, Feature gap.
+- **Checkpoints:** group the triage entries into checkpoints (`CP1`, `CP2`, ...), in priority order, each ending in a result you can demonstrate (the fixes in it proved and reported). Work one checkpoint at a time and stop after each checkpoint: report its entries, the gates run with the command and real counts ("not run" with the reason), and wait to be told to continue. A list with no checkpoints is one checkpoint. The loop around a review is described in `docs/process/REVIEW_CYCLE.md`.
 
 ### 2. Reproduce
 Find a reliable way to see the failure, and **write it down as a failing test first**: a regression test in the repository's own test suite that fails for the reason you diagnosed. Run it and confirm it fails for that reason, then commit it on its own (for example `test: reproduce <ID>`). If a test is impossible (a purely visual defect, an environment problem), say why and use a command or exact manual steps instead. If you cannot reproduce the failure, say so, list what you tried, and ask for the missing input (full error trace, exact input, logs, environment). Do not fix what you cannot reproduce.
@@ -44,6 +45,8 @@ Make the smallest change that resolves the cause. If the fix reveals a larger pr
 
 ### 5. Prove it
 - The failing test from step 2 now passes, and **you did not edit it** to get there. If the test itself was wrong, stop, say so, and agree the change with the user; never change it quietly.
+- Record the failing-first evidence in the triage entry: the command, the failing result before the fix and the passing result after (both results), so a reviewer can reproduce them.
+- If the fix legitimately changes behavior another existing test pinned, follow the rule "Tests under fix" below: stop, name the test and the assertion, say why the old expectation is wrong, and ask the owner. Edit that test only after a yes, and record the approval and the change in the triage entry.
 - This is a developer-level regression check that lives in this repository. It is not the acceptance check for the behavior; that is judged separately on the quality side.
 - Run the project's verify and test commands and report the real results.
 

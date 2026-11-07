@@ -35,6 +35,9 @@ Start your first reply with exactly one of these two lines, filling in the file:
 4. State your implementation order and flag ambiguities before starting: missing fixture patterns, unclear expected response shapes, preconditions that need state with no existing helper.
 5. Do not begin until the user confirms.
 
+### Checkpoints
+The test plan lists its checkpoints (`## Checkpoints`, mirroring the phase plan's). Work one checkpoint at a time: implement and verify every automated case in it, report the checkpoint by name with the commands run and their real results ("not run" with the reason), and stop until told to continue. Do not start the next checkpoint on your own. A test plan without checkpoints is one checkpoint.
+
 ### For each case
 1. **Read** the `A<N>` case in full, and the test file it names if that file exists.
 2. **Implement** the test in that file, following the rules below.

@@ -69,6 +69,10 @@ If the plan has `[~]` blocked tasks, list them as untestable, exclude them, and 
 
 When in doubt, prefer automated.
 
+## Checkpoints
+
+Write the test plan in checkpoints that mirror the phase plan's: one test-plan checkpoint (`CP<n>`) for each checkpoint of the phase plan, covering the tasks of that checkpoint, with the phase checkpoint's **Verification** line as its gate. Every case carries the **Checkpoint** it belongs to. A phase plan without checkpoints is one checkpoint. The {{ref:test-coder}} implements one checkpoint at a time and stops after each, so keep each checkpoint's automated cases together. See `docs/process/REVIEW_CYCLE.md` for the loop around a review.
+
 ## Ordering and wording
 
 - Manual cases first, in task order from the phase plan. Automated cases follow, also in task order.

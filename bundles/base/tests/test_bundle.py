@@ -1299,6 +1299,23 @@ def test_plan_template_carries_intent_concerns_and_cross_repository_lines():
     t = (ROOT / "templates" / "PHASE_PLAN_TEMPLATE.md").read_text()
     for needle in ("**Source intent:**", "## Concerns flagged", "**Needs from other repositories:**", "**Provides to other repositories:**", "**Approved by:**"):
         assert needle in t, needle
+    # T24 (INT-21): checkpoints, the amendment skeleton and the two completion-summary lines
+    for needle in ("### CP1", "**Verification:**", "a plan without checkpoints is one checkpoint",
+                   "## Review amendment (round <n>)", "**Amendment approved by:**", "**Source:**",
+                   "REVIEW_PLAN_<N>.md F<id>", "Rule exceptions", "Gates run"):
+        assert needle in t, needle
+
+
+def test_plan_template_puts_checkpoints_under_tasks_and_the_amendment_after_the_checklist():
+    """T24 (INT-21): the order of the sections, and that the human-only approval line of an amendment is blank."""
+    t = (ROOT / "templates" / "PHASE_PLAN_TEMPLATE.md").read_text()
+    assert t.index("## Tasks") < t.index("### CP1") < t.index("### Task 1") < t.index("## Completion checklist")
+    assert t.index("## Completion checklist") < t.index("## Review amendment (round <n>)")
+    amendment = t.split("## Review amendment (round <n>)", 1)[1]
+    for needle in ("**Source:**", "**Amendment approved by:**", "deferred", "rejected", "Open questions", "never fills in"):
+        assert needle in amendment, needle
+    line = [x for x in amendment.splitlines() if x.startswith("**Amendment approved by:**")][0]
+    assert "human" in line
 
 
 def test_planner_has_intent_mode_and_never_accepts_its_own_plan():
@@ -1593,6 +1610,93 @@ def test_a_request_to_edit_the_test_to_fit_the_bug_is_declined():
     assert "do not add a test that asserts the buggy behavior either" in _agent_text("bug-coder")
 
 
+def _both_flavors(role):
+    """The agent as rendered for Claude Code and for Copilot (T25 to T27: the same text in both)."""
+    return [build.render_agent(role, _agent_text(role), fmt, build.load_fragments(), build.load_rules())
+            for fmt in ("claude", "copilot")]
+
+
+def test_coder_stops_after_each_checkpoint_and_waits_for_the_amendment_approval():
+    """T25 (INT-21 S3): one checkpoint, gates with real counts, stop; a repair checkpoint needs a human's approval line."""
+    for out in _both_flavors("coder"):
+        assert "one checkpoint at a time" in out
+        assert "stop until told to continue" in out
+        assert "a plan without checkpoints is one checkpoint" in out
+        assert "**Verification**" in out
+        assert "real counts" in out and "not run" in out
+        assert "**Amendment approved by**" in out and "filled in by a person" in out
+        assert "docs/process/REVIEW_CYCLE.md" in out
+        assert "failing-first" in out and "both results" in out
+    # the approval gate is still stated first, and the old wording stays
+    assert "Check the plan's **Approved by** line" in _agent_text("coder")
+
+
+def test_approval_rule_covers_the_tasks_present_when_it_was_given():
+    """T25 (INT-21): a task added later needs its own approval line."""
+    t = (ROOT / "rules" / "core" / "approved-plan-before-execution.md").read_text()
+    assert "Approval covers the tasks present when it was given" in t
+    assert "**Amendment approved by**" in t and "its own approval line" in t
+    for out in _both_flavors("coder"):
+        assert "Approval covers the tasks present when it was given" in out
+
+
+def test_a_fix_that_changes_a_pinned_behavior_goes_to_the_owner_before_the_test_changes():
+    """T25 (INT-21 S10): stop, name the test and the assertion, say why the old expectation is wrong, ask the owner."""
+    t = (ROOT / "rules" / "core" / "dont-edit-the-test-to-pass.md").read_text()
+    for needle in ("legitimately changes behavior", "name the test and the assertion",
+                   "why the old expectation is wrong", "ask the owner", "only after the owner says yes",
+                   "record the approval and the change"):
+        assert needle in t, needle
+    # the decline of 'edit the test to match the bug' is unchanged (see test_a_request_to_edit_the_test_to_fit_the_bug_is_declined)
+    assert "is not an instruction to carry out in a fix" in t
+    for role in ("coder", "bug-coder", "test-coder", "reviewer"):
+        for out in _both_flavors(role):
+            assert "ask the owner" in out, role
+
+
+def test_planner_groups_tasks_into_checkpoints_and_amends_a_plan_from_a_review():
+    """T26 (INT-21 S2, S4): checkpoints; amendment from REVIEW_PLAN_<N>.md; never an approval; edits with Edit, never the shell."""
+    for out in _both_flavors("planner"):
+        assert "## Checkpoints" in out and "ends in a verification" in out
+        assert "no task outside a checkpoint" in out and "dependency order" in out
+        assert "## Amending a plan from a review" in out
+        assert "REVIEW_PLAN_<N>.md" in out and "## Review amendment (round <n>)" in out
+        assert "**Source:**" in out and "`REVIEW_PLAN_<N>.md F<id>`" in out
+        assert "one task per Important finding" in out
+        assert "deferred and rejected" in out and "open questions" in out
+        assert "completed tasks" in out and "original acceptance lines" in out
+        assert "**Amendment approved by**" in out and "never fill in" in out
+        assert "never the shell" in out
+        assert "docs/process/REVIEW_CYCLE.md" in out
+    section = _agent_text("planner").split("## Amending a plan from a review")[1].split("\n## ")[0]
+    assert "Edit" in section
+
+
+@pytest.mark.parametrize("role", ["bug-coder", "test-planner", "test-coder"])
+def test_checkpoints_apply_to_bug_fixes_and_the_test_side_agents(role):
+    """T27 (INT-21 Open questions: yes for bug fixes and the test-side agents)."""
+    for out in _both_flavors(role):
+        assert "checkpoint" in out.lower()
+    t = _agent_text(role)
+    if role == "bug-coder":
+        assert "group the triage entries into checkpoints" in t and "stop after each checkpoint" in t
+        assert "failing-first" in t and "both results" in t
+        assert "ask the owner" in "".join(_both_flavors(role))
+    elif role == "test-planner":
+        assert "checkpoints that mirror the phase plan's" in t
+    else:
+        assert "one checkpoint at a time" in t and "stop until told to continue" in t
+
+
+def test_test_plan_template_carries_checkpoints_that_mirror_the_phase_plan():
+    """T27 (INT-21): the test plan is written in checkpoints."""
+    t = (ROOT / "templates" / "PHASE_TEST_PLAN_TEMPLATE.md").read_text()
+    assert "## Checkpoints" in t and "CP1" in t
+    assert t.index("## Test environment") < t.index("## Checkpoints") < t.index("## Manual test cases")
+    assert t.count("**Checkpoint:**") >= 2  # the manual and the automated case blocks
+    assert "mirror" in t and "one checkpoint" in t
+
+
 def test_reviewer_never_edits_and_does_not_offer_to_once_tools_are_enabled():
     """Live run: Claude Haiku 4.5 declined only because it had no editing tools and offered to edit 'once enabled'."""
     # T21: assertion changed with the owner's approval of the plan (INT-21 Open questions): the reviewer
@@ -1635,3 +1739,153 @@ def test_models_page_ships_in_the_zip(tmp_path):
     built = build.build_zip(ROOT, tmp_path)
     with zipfile.ZipFile(built) as zf:
         assert any(n.endswith("/MODELS.md") for n in zf.namelist())
+
+
+# ------------------------------------------------ review-to-repair loop (T28, T29; INT-21)
+
+# The one-line sequence of docs/process/REVIEW_CYCLE.md: each step name must be in the document and in the
+# reviewer, in both flavors. T33 adds the coordinator to the agents checked here.
+CYCLE_STEPS = ("review", "REVIEW_PLAN_<N>.md", "planner amendment", "human approval", "repair checkpoint", "re-review")
+
+
+def _review_cycle():
+    return (ROOT / "process" / "REVIEW_CYCLE.md").read_text()
+
+
+def test_review_cycle_has_the_sequence_the_handling_and_the_ready_check():
+    """T28 (INT-21 S5, S8): who, input and output for each step; every point of 'How a review is handled'."""
+    t = _review_cycle()
+    for heading in ("## The sequence", "## How a review is handled", "## How tests are handled", "## The ready check",
+                    "## Compatibility", "## Reviewing documents and agent instructions"):
+        assert heading in t, heading
+    for step in CYCLE_STEPS:
+        assert step in t, step
+    sequence = t.split("## The sequence")[1].split("\n## ")[0]
+    for column in ("| Step | Who | Input | Output |", "| Review |", "| Amendment |", "| Approval |", "| Repair |", "| Re-review |"):
+        assert column in sequence, column
+    handled = t.split("## How a review is handled")[1].split("\n## ")[0]
+    for point in ("**Who runs it, and in which session.**", "**What it reads.**", "**Where the output goes.**",
+                  "**Who consumes it.**", "**How findings become plan tasks.**",
+                  "**What stops a pull request from being marked ready.**", "**How cycles end.**"):
+        assert point in handled, point
+    for needle in ("three runs", "until the human says enough", "the human may set another limit", "in place",
+                   "A finding is never deleted", "nothing open, or only Nits"):
+        assert needle in handled, needle
+
+
+def test_review_cycle_answers_the_five_test_handling_points():
+    t = _review_cycle().split("## How tests are handled")[1].split("\n## ")[0]
+    for point in ("**Who writes tests.**", "**Failing-first evidence.**",
+                  "**A fix that breaks a test that pinned the old behavior.**", "**How gates are run and reported.**",
+                  "**Who confirms CI on a pushed commit.**"):
+        assert point in t, point
+    for needle in ("asks the owner", "only after a yes", "not run", "real output", "exact commit", "neither writes nor reads held-out"):
+        assert needle in t, needle
+
+
+def test_review_cycle_ready_check_leaves_the_decisions_to_a_human():
+    t = _review_cycle().split("## The ready check")[1].split("\n## ")[0]
+    for needle in ("A review of the final commit exists", "repaired, deferred or rejected", "CI of that exact commit",
+                   "`Review process` section of `AGENTS.md`", "does not move a pull request out of draft", "does not merge"):
+        assert needle in t, needle
+    compat = _review_cycle().split("## Compatibility")[1].split("\n## ")[0]
+    assert "a plan without checkpoints is one checkpoint" in compat.lower() and "REVIEW.md" in compat
+
+
+def test_review_cycle_keeps_the_review_standard_and_matches_the_reviewer():
+    """The standard in the reviewer is the same text as in the process document (the reviewer says so)."""
+    standard = _review_cycle().split("## Reviewing documents and agent instructions")[1].split("\n## ")[0]
+    reviewer = _agent_text("reviewer")
+    for line in standard.splitlines():
+        if line.startswith("("):
+            assert line in reviewer, line
+
+
+@pytest.mark.parametrize("fmt", ["claude", "copilot"])
+def test_reviewer_and_the_other_agents_name_the_cycle_and_point_to_the_procedure(fmt):
+    def out(role):
+        return build.render_agent(role, _agent_text(role), fmt, build.load_fragments(), build.load_rules())
+    reviewer = out("reviewer")
+    for step in CYCLE_STEPS:
+        assert step in reviewer, step
+    for role in ("reviewer", "planner", "coder"):
+        assert "docs/process/REVIEW_CYCLE.md" in out(role), role
+
+
+def test_process_documents_are_shipped_and_linted_like_the_breach_procedure(tmp_path):
+    """T29: REVIEW_CYCLE.md is a process document (installed in every profile); lint checks its presence and its terms."""
+    target, profiles = build.PROCESS_PATHS["process/REVIEW_CYCLE.md"]
+    assert target == "docs/process/REVIEW_CYCLE.md" and profiles == build.ALL_PROFILES
+    src = copy_source(tmp_path / "src")
+    assert build.lint(src) == []
+    (src / "process" / "REVIEW_CYCLE.md").unlink()
+    assert any("missing process document: process/REVIEW_CYCLE.md" in x for x in build.lint(src))
+    src = copy_source(tmp_path / "src2")
+    path = src / "process" / "REVIEW_CYCLE.md"
+    path.write_text(path.read_text() + "\nSee the " + build.FORBIDDEN_TERMS[0] + " site.\n")
+    assert any("process/REVIEW_CYCLE.md contains forbidden term" in x for x in build.lint(src))
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_review_cycle_is_installed_in_every_profile(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    assert (repo / "docs/process/REVIEW_CYCLE.md").read_bytes() == (ROOT / "process" / "REVIEW_CYCLE.md").read_bytes()
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+# Paths that a document names and that are not installed, not created by a document and not in a list above:
+# none today. Add a path here only with the reason, in a comment.
+DOC_PATH_ALLOWLIST = set()
+# Folders a document asks the repository to create or that agents create when they run. The installed
+# templates and process documents are not here: those must be named exactly, as build.py installs them.
+DOC_PATH_PREFIXES = ("docs/plans/", "docs/agents/", "docs/walkthroughs/")
+SHIPPED_MARKDOWN = ("agents/*.md", "templates/*.md", "process/*.md", "rules/**/*.md", "fragments/*.md",
+                    "README.md", "INSTALL.md", "MODELS.md", "CONTRIBUTING.md")
+
+
+def _broken_references(root):
+    """Relative Markdown links that do not resolve in `root`, and backticked docs/ paths in an agent, template or
+    process document that are neither installed, nor created by a document, nor on the allowlist."""
+    import re
+    installed = {dst for dst, _ in list(build.TEMPLATE_PATHS.values()) + list(build.PROCESS_PATHS.values())}
+    problems = []
+    for pattern in SHIPPED_MARKDOWN:
+        for path in sorted(root.glob(pattern)):
+            text = path.read_text(encoding="utf-8")
+            rel = path.relative_to(root)
+            for target in re.findall(r"\]\(([^)\s]+)\)", text):
+                target = target.split("#")[0]
+                if not target or "://" in target or target.startswith("mailto:"):
+                    continue
+                if not (path.parent / target).resolve().exists():
+                    problems.append("%s: link %s does not resolve" % (rel, target))
+            if rel.parts[0] in ("agents", "templates", "process"):
+                for doc in re.findall(r"`(docs/[A-Za-z0-9_./-]+)`", text):
+                    if doc in installed or doc in DOC_PATH_ALLOWLIST or doc.endswith("/") or doc.startswith(DOC_PATH_PREFIXES):
+                        continue
+                    problems.append("%s: path %s is not installed and not created by a document" % (rel, doc))
+    return problems
+
+
+def test_markdown_links_and_paths_resolve():
+    """T29: every relative link in the shipped Markdown resolves in the source; every docs/ path an agent, template
+    or process document names is installed, created by a document, or on the allowlist."""
+    assert _broken_references(ROOT) == []
+
+
+def test_the_reference_check_fails_on_a_broken_link_and_a_broken_path(tmp_path):
+    """T29 acceptance: the check above fails when a bad link or path is added (run on a copy, never on the source)."""
+    src = copy_source(tmp_path / "src")
+    # the copy sits outside the repository, so the README's links to the repository root do not resolve there;
+    # compare with that baseline and look only at what the added lines change
+    baseline = _broken_references(src)
+    assert all(x.startswith("README.md: link ../../") for x in baseline), baseline
+    readme = src / "README.md"
+    readme.write_text(readme.read_text() + "\nSee [nothing](no/such/file.md).\n")
+    planner = src / "agents" / "planner.agent.md"
+    planner.write_text(planner.read_text() + "\nRead `docs/process/NOT_SHIPPED.md`.\n")
+    added = [x for x in _broken_references(src) if x not in baseline]
+    assert any("README.md: link no/such/file.md does not resolve" in x for x in added), added
+    assert any("docs/process/NOT_SHIPPED.md" in x for x in added), added
+    assert len(added) == 2, added
