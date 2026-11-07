@@ -230,7 +230,7 @@ Note (2026-11-06): appended F4 (planner), F5 (coder T37 to T52, with T13's count
 
 ### CP2a — Repairs from the CP2 review (INT-20; checks K1, K2, K3, K5). Amendment round 1.
 **Source:** the independent review of CP2 (the guard hook), reported by the `reviewer` and relayed by the coordinator on 2026-11-07. It left no `REVIEW_PLAN_<N>.md`, so its points are numbered here: F1 shell writes onto protected files; F2 trivial variations of the shell rule; F3 agent identity, protected paths, symlinks; F4 fail-open and missing guard script; F5 arithmetic read as redirects; F6 residual gaps not stated; F7 wrong counts in the T3 note; F8 forward reference in `BREACH_PROCEDURE.md`; F9 missing tests; F10 uninstall leaves `.manifold/`. Each probe in the report is a failure scenario and becomes a test in T14a.
-**Amendment approved by:** (blank; a human writes name and date. The coder does not start CP2a until it is filled. The **Approved by** line at the top is unchanged.)
+**Amendment approved by:** Michael Hay on November 7, 2026
 **Owner decisions that bind this checkpoint** (Michael Hay, 2026-11-07, relayed by the coordinator): (a) protect the agent definitions, `.claude/settings.json` and the Copilot hook file, as well as the three `.manifold` files, for every agent, against `Write`/`Edit` and the shell, with a human-granted exception route; (b) a missing or unrunnable guard blocks, with a plain message; an exception inside the guard blocks (exit 2); (c) close F1, F3, F4 fully, close the named parts of F2, document the rest.
 
 **How every finding ends** (INT-21: repaired, deferred or rejected, with a reason):
