@@ -4,7 +4,7 @@
     "preToolUse": [
       {
         "type": "command",
-        "command": "python3 .manifold/hooks/guard.py --client copilot",
+        "command": "test -f .manifold/hooks/guard.py || { echo '{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"The Manifold guard script .manifold/hooks/guard.py is missing, so this tool call is blocked. Restore it by re-running the installer from the Manifold bundle (install.py --apply; see INSTALL.md), or ask a human to.\"}'; exit 0; }; python3 .manifold/hooks/guard.py --client copilot || echo '{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"The Manifold guard failed to run, so this tool call is blocked. Tell a human.\"}'",
         "timeoutSec": 10
       }
     ]

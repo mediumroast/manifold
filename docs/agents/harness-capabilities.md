@@ -47,6 +47,34 @@ S3 says VS Code, the GitHub Copilot app and Copilot CLI "share the Copilot harne
 | Copilot hook file schema | Read, see the shape row above: `version: 1`, `hooks.preToolUse` list of `{type, command, timeoutSec}`, files in `.github/hooks/*.json` [S3, S6]. Exact deny semantics differ by product: S6 documents exit code 2 and JSON; S3 documents JSON only. Whether the VS Code Local harness runs these files unchanged is unverified: confirm with S3's Local reference. So T7 can write the file, but whether it enforces in VS Code Local is not established. |
 | Copilot agent keys for `agent` and subagent tools | Read: `tools` includes the alias `agent`; `agents` restricts which agents may be called; `agents: []` blocks subagents; omitted or `['*']` allows all [S4, S5]. |
 
+## Guard limits and exit codes
+
+Phase 2, CP2a Task 14f. S1 and S6 were re-read with WebFetch on 2026-11-07 (S1: characters 0 to 100,000 of 289,837 were covered by the answer, which included the exit-code and shell-form sections; S6: the answer covered the exit-code, timeout and `cwd` statements). Each cell says read, ran or unverified.
+
+| Question | Claude Code | VS Code Copilot Chat (Local) | Copilot CLI |
+|---|---|---|---|
+| What an exit code other than 2 does for `PreToolUse` | Read [S1]: exit 0 lets the action go ahead unless JSON denies it; exit 2 blocks; "any other code, or fails in some other way, such as not starting or printing invalid JSON. The action goes ahead", with a `hook error` notice in the transcript; the page warns that exit 1 is a non-blocking error and says to use exit 2 to enforce a policy. So the pre-CP2a "exits 1" for unreadable input was a silent allow | unverified: confirm with S3 (external event reference) | Read [S6]: `preToolUse` is fail-closed, a non-zero exit other than 2 denies; exit 2 is a deny; timeouts are fail-open |
+| What the guard does on its own failure | Exit 2 with "Manifold guard failed: ..." for any exception or unreadable input (T14b, ran: tests) | Prints the deny JSON and exits 0 (the form S3 documents); exit-code handling unverified: confirm with S3 | Same deny JSON, exit 0 (ran: tests) |
+| Missing guard script, python3 missing, or the guard dying with another code | The agent's hook command (`build.GUARD_COMMAND`) prints the missing-script sentence or "Manifold guard failed (exit code N)" and exits 2 (ran under `sh`, `bash`, `zsh`, `dash` on macOS). Shell form is `sh -c` on macOS and Linux, Git Bash or PowerShell on Windows [S1, read]; the command is written for `sh` and is unverified on Windows | unverified: confirm with S3 | `hooks/copilot-guard.json` prints the deny JSON with the same sentence when `.manifold/hooks/guard.py` is missing or the guard exits non-zero (ran under `sh`, `bash`, `zsh`, `dash`) |
+| Working directory | The command uses `${CLAUDE_PROJECT_DIR}`; handlers run in the current directory, with a fallback order if it was deleted [S1, read] | unverified: confirm with S3 | The Copilot command uses the relative path `.manifold/hooks/guard.py`; `cwd` is "relative to repository root or absolute" when set [S6, read]; the default working directory of a hook is unverified: confirm with S6 or Task 37b. A wrong directory shows as the missing-script deny, not as a pass |
+| Path exceptions | `.manifold/guard-allow.json` entries with `"scope": "path"` and a required `"expires": "YYYY-MM-DD"` (UTC, through that date); never for the three `.manifold` files and never for the shell (ran: tests) | same | same |
+| Uninstall | Keeps `.manifold/guard-log.jsonl`: the log is evidence the coordinator reads (`docs/process/BREACH_PROCEDURE.md`), so it is not deleted | same | same |
+
+Residual gaps, in the guard's own words (the module docstring of `bundles/base/hooks/guard.py` is the source):
+
+- a script that writes when it is run from a file (`bash s.sh`, `bash < s.sh`, `source s.sh`, and the scratch-script route that is prescribed) is not read;
+- a command built from a variable (`eval $CMD`, `sh -c "$CMD"`);
+- command substitution inside double quotes;
+- `sed` with a `w` command (it cannot be told from text without parsing sed);
+- other languages, editors and tools than the ones named in the shell rule;
+- a `cd` in an earlier call followed by a bare file name;
+- tools the guard does not look at;
+- clients and sessions the hook does not cover: the main session under per-agent hooks, plugin agents, and Copilot, where enforcement is unverified;
+- Copilot agent identity is unverified, so the reviewer and coordinator allowlists may not apply there, while the protected files apply to every identity;
+- root `AGENTS.md` and `CLAUDE.md` are not protected: the installer writes the managed rules block there, but the same files carry "Project commands" and the "Review process" section that agents edit routinely; a change to rule text stays visible in review and in the "Rule exceptions" comparison (owner decision, 2026-11-07).
+
+Rejected, with reason (CP2a): `bash < s.sh` is treated like `bash s.sh`, the scratch-script route, so the script is not inspected; `if [ $x > 1 ]` stays refused because in `sh` and `bash` it is a real redirect.
+
 ## Consequences for later tasks
 
 - T6 (Claude hook): per-agent frontmatter hooks are supported in subagents and under `--agent` (S2). Use `${CLAUDE_PROJECT_DIR}` in the command. The main session without `--agent` is not covered.

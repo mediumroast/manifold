@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Mediumroast, Inc.
 """Tests for hooks/guard.py: the tool-boundary guard (shell-write rule and per-agent write allowlist)."""
+import datetime
 import importlib.util
+import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +17,11 @@ _spec = importlib.util.spec_from_file_location("manifold_guard", ROOT / "hooks" 
 guard = importlib.util.module_from_spec(_spec)
 sys.modules["manifold_guard"] = guard
 _spec.loader.exec_module(guard)
+
+_bspec = importlib.util.spec_from_file_location("manifold_build_for_guard", ROOT / "tools" / "build.py")
+build = importlib.util.module_from_spec(_bspec)
+sys.modules["manifold_build_for_guard"] = build
+_bspec.loader.exec_module(build)
 
 
 # ------------------------------------------------------------------ classify_bash
@@ -304,9 +312,12 @@ def test_other_tools_are_not_the_guards_business(tmp_path):
     assert run_hook(tmp_path, {"tool_name": "Read", "tool_input": {"file_path": "x"}}).returncode == 0
 
 
-def test_unreadable_input_fails_loudly_without_blocking(tmp_path):
+def test_unreadable_input_fails_loudly_and_blocks(tmp_path):
+    # CP2a T14a: replaces test_unreadable_input_fails_loudly_without_blocking, which pinned exit 1.
+    # Exit 1 is a non-blocking error in Claude Code (a silent allow); the owner's decision (b) of 2026-11-07
+    # reverses it: input the guard cannot read blocks (exit 2) with a message.
     p = run_hook(tmp_path, None, raw="not json")
-    assert p.returncode == 1
+    assert p.returncode == 2
     assert "guard" in p.stderr
 
 
@@ -326,3 +337,403 @@ def test_copilot_camel_case_fields_are_normalised(tmp_path):
     assert out["permissionDecision"] == "deny"
     ok = {"toolName": "bash", "toolArgs": json.dumps({"command": "ls"})}
     assert run_hook(tmp_path, ok, client="copilot").stdout == ""
+
+
+# =====================================================================================
+# CP2a (T14a): failing-first cases for the findings F1 to F5 and F9 of the CP2 review.
+# Each case is a failure scenario from the reviewer's probes (docs/plans/PHASE_2_PLAN.md, CP2a).
+# =====================================================================================
+
+# ---- F1: shell commands that write the protected files (T14d). Message: protected_message.
+
+REFUSED_PROTECTED = [
+    "cp a .manifold/guard-allow.json",
+    "mv a .manifold/hooks/guard.py",
+    "touch .manifold/guard-log.jsonl",
+    "dd if=a of=.manifold/guard-allow.json",
+    "truncate -s 0 .manifold/guard-log.jsonl",
+    "rm .manifold/guard-allow.json",
+    "rm -rf .claude/agents",
+    "mv .claude/agents /x",
+    "cp a .claude/agents/coder.md",
+    "rm .claude/settings.json",
+    "cp a .github/hooks/manifold-guard.json",
+    "cd .manifold && rm guard-allow.json",
+    "rm .manifold/*.json",
+    "git checkout -- .claude/settings.json",
+    "find .claude -delete",
+]
+
+# ---- F2: trivial variations of the shell rule (T14e). Message: shell_message.
+
+REFUSED_VARIATIONS = [
+    "python3 -Ic \"open('f','w')\"",
+    "echo \"open('f','w')\" | python3",
+    "python3 - <<< \"open('f','w')\"",
+    "bash <<< 'echo x > f'",
+    "cat s | bash",
+    "python3 -c \"import shutil; shutil.copy('a','b')\"",
+    "python3 -c \"import os; os.system('x')\"",
+    "python3 -c \"import os; os.rename('a','b')\"",
+    "python3 -c \"from pathlib import Path; Path('f').touch()\"",
+    "python3 -c \"import subprocess; subprocess.run('x', shell=True)\"",
+    "python3 -c \"import zipfile; zipfile.ZipFile('a').extractall()\"",
+    "python3 -c \"import sqlite3; sqlite3.connect('f')\"",
+    "node -e \"require('fs').writeFile('f','x',()=>0)\"",
+    "node --eval \"fs.writeFileSync('f','x')\"",
+    "node -p \"fs.writeFileSync('f','x')\"",
+    "ruby -e \"File.write('f','x')\"",
+    "perl -e 'open(F,\">f\")'",
+    "php -r \"file_put_contents('f','x');\"",
+    "deno eval \"Deno.writeTextFileSync('f','x')\"",
+    "uv run python -c \"open('f','w')\"",
+    "awk -i inplace '{print}' f",
+    "awk '{print > \"f\"}' g",
+    "ed f",
+    "patch < p",
+    "git apply p",
+    "sponge f",
+    "find . -exec sed -i s/a/b/ {} +",
+    "env -u FOO sed -i s/a/b/ f",
+    "env -C /tmp sed -i s/a/b/ f",
+    "sudo -u root tee f",
+    "nice -n 5 tee f",
+    "cp -t /tmp a",
+    "mv -t /private/tmp a",
+    "cp --target-directory=/tmp a",
+    "[ $x > 1 ]",  # F5, rejected as a false positive: in sh and bash this is a real redirect that creates a file named 1
+]
+
+ALLOWED_AFTER_REPAIR = [
+    # read-only use of the protected files and directories (INT-20: no regression)
+    "cat .manifold/guard-log.jsonl",
+    "tail -n 5 .manifold/guard-log.jsonl",
+    "grep x .claude/agents/coder.md",
+    "ls .claude/agents",
+    "diff -u a .claude/agents/coder.md",
+    "git diff -- .claude/agents",
+    "git log -- .claude/settings.json",
+    # read-only forms of commands that otherwise write
+    "python3 -m json.tool < a",
+    "git apply --check p",
+    "find . -name '*.py'",
+    "env -u FOO ls",
+    "nice -n 5 ls",
+    "cp -t dir a",
+    # arithmetic and tests are not redirects (F5)
+    "[[ a > b ]]",
+    "echo $((1>0))",
+    "(( 2 > 1 ))",
+    "if [[ $x > 1 ]]; then echo y; fi",
+    # Stated residual gap (T14f): a script that writes when it is run from a file is not inspected.
+    # `bash s.sh` and `bash < s.sh` are the scratch-script route that T8 prescribes, so they stay allowed.
+    "bash s.sh",
+    "bash < s.sh",
+]
+
+
+@pytest.mark.parametrize("command", REFUSED_PROTECTED)
+def test_f1_a_shell_command_on_a_protected_file_is_refused(command):
+    allowed, message = guard.classify_bash(command)
+    assert allowed is False, command
+    assert "human" in message, message
+
+
+@pytest.mark.parametrize("command", REFUSED_VARIATIONS)
+def test_f2_trivial_variations_of_the_shell_rule_are_refused(command):
+    allowed, message = guard.classify_bash(command)
+    assert allowed is False, command
+    assert "Write" in message and "Edit" in message and ".manifold/scratch/" in message, message
+
+
+@pytest.mark.parametrize("command", ALLOWED_AFTER_REPAIR)
+def test_f1_f5_read_only_use_and_arithmetic_stay_allowed(command):
+    allowed, message = guard.classify_bash(command)
+    assert allowed is True, (command, message)
+
+
+def test_a_pipe_into_an_interpreter_says_to_write_the_program_to_the_scratch_folder():
+    allowed, message = guard.classify_bash("cat s | bash")
+    assert allowed is False
+    assert "pipe" in message and ".manifold/scratch/" in message
+
+
+def test_a_path_exception_never_lifts_a_shell_command():
+    entry = path_entry(r"\.claude/agents/coder\.md", TODAY.isoformat())
+    assert guard.classify_bash("cp a .claude/agents/coder.md", allow=[entry])[0] is False
+    # only a command entry excepts a shell command on a definition, as before
+    command_entry = dict(ENTRY, pattern="cp a .claude/agents/coder.md")
+    assert guard.classify_bash("cp a .claude/agents/coder.md", allow=[command_entry])[0] is True
+
+
+# ---- F3: protected paths, identity, expiry for path exceptions (T14c)
+
+TODAY = datetime.datetime.now(datetime.timezone.utc).date()
+YESTERDAY = TODAY - datetime.timedelta(days=1)
+TOMORROW = TODAY + datetime.timedelta(days=1)
+
+
+def path_entry(pattern, expires, **extra):
+    entry = {"scope": "path", "pattern": pattern, "reason": "Phase 2 T38", "granted_by": "Michael Hay",
+             "date": "2026-11-07"}
+    if expires is not None:
+        entry["expires"] = expires
+    entry.update(extra)
+    return entry
+
+
+AGENTS_ALL = [None, "", "planner", "coder", "bug-coder", "test-planner", "test-coder", "scenario-writer",
+              "reviewer", "coordinator", "general-purpose"]
+MANIFOLD_FILES = [".manifold/guard-allow.json", ".manifold/guard-log.jsonl", ".manifold/hooks/guard.py"]
+DEFINITIONS = [".claude/agents/coder.md", ".claude/agents/some-new-agent.md", ".claude/settings.json",
+               ".claude/settings.local.json", ".github/agents/coder.agent.md", ".github/hooks/manifold-guard.json"]
+SKILLS = [".claude/skills/%s/SKILL.md" % name for name in sorted(build.SKILL_NAMES.values())]
+
+
+def variants(path):
+    return [path, "./" + path, "docs/../" + path, path.upper(), "./" + path.upper()]
+
+
+@pytest.mark.parametrize("agent", AGENTS_ALL)
+@pytest.mark.parametrize("path", [v for p in MANIFOLD_FILES + DEFINITIONS + SKILLS for v in variants(p)])
+def test_f3_every_protected_path_is_refused_for_every_agent_including_no_identity(agent, path):
+    allowed, message = guard.classify_write(agent, path, True)
+    assert allowed is False, (agent, path)
+    assert "human" in message, message
+
+
+@pytest.mark.parametrize("path", DEFINITIONS + SKILLS)
+def test_f3_the_message_for_a_definition_names_the_path_exception_route(path):
+    allowed, message = guard.classify_write("coder", path, True)
+    assert allowed is False
+    assert "path exception" in message and ".manifold/guard-allow.json" in message
+    assert "expires" in message and "Do not work around" in message
+
+
+def test_f3_the_guards_skill_list_equals_the_builds_skill_names():
+    # a new role must not be forgotten: the guard cannot import build.py, so this test compares the two lists
+    assert set(guard.SKILL_DIRS) == set(build.SKILL_NAMES.values())
+
+
+@pytest.mark.parametrize("agent", [a for a in AGENTS_ALL if a not in ("reviewer", "coordinator")])
+@pytest.mark.parametrize("path", DEFINITIONS + SKILLS)
+def test_f3_a_current_path_exception_allows_a_definition(agent, path):
+    # a pattern is a regular expression that must match the whole normalised project-relative path
+    exact = path_entry(path.replace(".", r"\."), TOMORROW.isoformat())
+    assert guard.classify_write(agent, path, True, allow=[exact]) == (True, "")
+    assert guard.classify_write(agent, path, True, allow=[path_entry(".*", TODAY.isoformat())]) == (True, "")
+
+
+@pytest.mark.parametrize("agent", AGENTS_ALL)
+@pytest.mark.parametrize("path", MANIFOLD_FILES)
+def test_f3_no_exception_ever_allows_the_three_manifold_files(agent, path):
+    for entry in (path_entry(".*", TODAY.isoformat()), path_entry(path.replace(".", r"\."), TOMORROW.isoformat()),
+                  dict(ENTRY, pattern=".*")):
+        assert guard.classify_write(agent, path, True, allow=[entry])[0] is False, (agent, path, entry)
+
+
+def test_f3_a_path_exception_lasts_through_its_expiry_date_and_not_past_it():
+    path = ".claude/agents/coder.md"
+    assert guard.classify_write("coder", path, True, allow=[path_entry(r"\.claude/agents/coder\.md", TODAY.isoformat())])[0] is True
+    allowed, message = guard.classify_write(
+        "coder", path, True, allow=[path_entry(r"\.claude/agents/coder\.md", YESTERDAY.isoformat())])
+    assert allowed is False
+    assert "expired on %s" % YESTERDAY.isoformat() in message
+
+
+@pytest.mark.parametrize("expires", [None, "2026-13-01", "soon", "", "2026-1-1", 20261107])
+def test_f3_a_path_exception_without_a_valid_expiry_grants_nothing_and_says_so(expires):
+    path = ".claude/agents/coder.md"
+    allowed, message = guard.classify_write("coder", path, True, allow=[path_entry(r"\.claude/agents/coder\.md", expires)])
+    assert allowed is False
+    assert "no valid expires date" in message
+
+
+def test_f3_a_path_exception_must_match_the_whole_path():
+    entry = path_entry(r"\.claude/agents/coder", TODAY.isoformat())
+    assert guard.classify_write("coder", ".claude/agents/coder.md", True, allow=[entry])[0] is False
+
+
+def test_f3_a_command_entry_without_expires_keeps_working_unchanged():
+    assert "expires" not in ENTRY and "scope" not in ENTRY
+    assert guard.classify_bash("sed -i s/a/b/ notes.txt", allow=[ENTRY])[0] is True
+    assert guard.classify_bash("sed -i s/a/b/ notes.txt", allow=[dict(ENTRY, scope="command")])[0] is True
+
+
+def test_f3_a_command_entry_does_not_lift_a_write_to_a_definition():
+    entry = dict(ENTRY, pattern=".*")
+    assert guard.classify_write("coder", ".claude/agents/coder.md", True, allow=[entry])[0] is False
+
+
+@pytest.mark.parametrize("path", [".claude/settings.json", ".claude/settings.local.json"])
+def test_f3_settings_and_local_settings_are_protected_alike(path):
+    assert guard.classify_write("coder", path, False)[0] is False
+    assert guard.classify_write("coder", path, False, allow=[path_entry(".*", TODAY.isoformat())])[0] is True
+
+
+@pytest.mark.parametrize("spelling", ["Reviewer", "reviewer ", "manifold:reviewer", "plugin/reviewer", " REVIEWER"])
+def test_f3_a_reviewer_is_restricted_however_its_identity_is_spelled(spelling):
+    assert guard.classify_write(spelling, "server/app.py", True)[0] is False
+    assert guard.classify_write(spelling, "docs/plans/REVIEW_PLAN_1.md", True)[0] is True
+
+
+@pytest.mark.parametrize("spelling", ["Coordinator", "coordinator ", "manifold:coordinator"])
+def test_f3_a_coordinator_is_restricted_however_its_identity_is_spelled(spelling):
+    assert guard.classify_write(spelling, "server/app.py", True)[0] is False
+    assert guard.classify_write(spelling, "docs/agents/claude-desktop-failures.md", True)[0] is True
+
+
+def test_f3_an_empty_identity_is_not_restricted_by_the_allowlist_but_by_the_protected_files():
+    assert guard.classify_write("", "server/app.py", True)[0] is True
+    assert guard.classify_write(None, "server/app.py", True)[0] is True
+    assert guard.classify_write("", ".claude/agents/coder.md", True)[0] is False
+
+
+def test_f3_an_unrelated_path_exception_does_not_lift_a_reviewer_refusal():
+    unrelated = path_entry(r"\.claude/agents/coder\.md", TODAY.isoformat())
+    assert guard.classify_write("reviewer", "server/app.py", True, allow=[unrelated])[0] is False
+    assert guard.classify_write("reviewer", "docs/plans/REVIEW_PLAN_1.md", True, allow=[unrelated])[0] is True
+    related = path_entry(r"server/app\.py", TODAY.isoformat())
+    assert guard.classify_write("reviewer", "server/app.py", True, allow=[related])[0] is True
+
+
+def test_f3_a_path_exception_lifts_a_coordinator_allowlist_refusal():
+    entry = path_entry(r"intent/INT-1-old\.md", TODAY.isoformat())
+    assert guard.classify_write("coordinator", "intent/INT-1-old.md", True)[0] is False
+    assert guard.classify_write("coordinator", "intent/INT-1-old.md", True, allow=[entry])[0] is True
+
+
+# ---- F3, F4, F9 through main (T14b, T14c)
+
+def hook_env(tmp_path, project_dir=True):
+    env = {"PATH": "/usr/bin:/bin"}
+    if project_dir:
+        env["CLAUDE_PROJECT_DIR"] = str(tmp_path)
+    return env
+
+
+def run_main(tmp_path, payload, client="claude", project_dir=True, cwd=None):
+    return subprocess.run([sys.executable, str(ROOT / "hooks" / "guard.py"), "--client", client],
+                          input=json.dumps(payload), capture_output=True, text=True,
+                          env=hook_env(tmp_path, project_dir), cwd=str(cwd or tmp_path))
+
+
+def test_f3_a_write_through_a_symlinked_directory_to_a_definition_is_refused(tmp_path):
+    (tmp_path / ".claude" / "agents").mkdir(parents=True)
+    (tmp_path / "docs").symlink_to(tmp_path / ".claude" / "agents", target_is_directory=True)
+    for given in (str(tmp_path / "docs" / "x.md"), "docs/x.md"):
+        p = run_main(tmp_path, {"tool_name": "Write", "tool_input": {"file_path": given}, "agent_type": "coder"})
+        assert p.returncode == 2, given
+        assert "human" in p.stderr
+    assert log_lines(tmp_path)[-1]["rule"] == "protected-file"
+
+
+def test_f3_a_write_through_a_symlinked_directory_to_a_manifold_file_is_refused(tmp_path):
+    (tmp_path / ".manifold" / "hooks").mkdir(parents=True)
+    (tmp_path / "link").symlink_to(tmp_path / ".manifold" / "hooks", target_is_directory=True)
+    p = run_main(tmp_path, {"tool_name": "Edit", "tool_input": {"file_path": str(tmp_path / "link" / "guard.py")}})
+    assert p.returncode == 2
+
+
+def test_f3_without_a_project_dir_variable_the_input_cwd_decides_the_log_and_the_exception_file(tmp_path):
+    project = tmp_path / "project"
+    elsewhere = tmp_path / "elsewhere"
+    (project / ".manifold").mkdir(parents=True)
+    elsewhere.mkdir()
+    refused = {"tool_name": "Bash", "tool_input": {"command": "echo x > f"}, "cwd": str(project)}
+    p = run_main(project, refused, project_dir=False, cwd=elsewhere)
+    assert p.returncode == 2
+    assert len(log_lines(project)) == 1 and not (elsewhere / ".manifold").exists()
+    (project / ".manifold" / "guard-allow.json").write_text(json.dumps([dict(ENTRY, pattern="echo x > f")]))
+    assert run_main(project, refused, project_dir=False, cwd=elsewhere).returncode == 0
+
+
+def test_f9_an_unwritable_log_still_refuses_and_warns(tmp_path):
+    (tmp_path / ".manifold" / "guard-log.jsonl").mkdir(parents=True)  # a directory: appending to it fails
+    p = run_main(tmp_path, {"tool_name": "Bash", "tool_input": {"command": "echo x > f"}})
+    assert p.returncode == 2
+    assert "Write" in p.stderr and "could not append" in p.stderr
+
+
+def test_f9_a_refusal_and_an_allowed_exception_use_each_append_one_log_line(tmp_path):
+    payload = {"tool_name": "Edit", "tool_input": {"file_path": str(tmp_path / ".claude" / "agents" / "coder.md")},
+               "agent_type": "planner"}
+    assert run_main(tmp_path, payload).returncode == 2
+    (entry,) = log_lines(tmp_path)
+    assert entry["rule"] == "protected-file"
+    (tmp_path / ".manifold" / "guard-allow.json").write_text(
+        json.dumps([path_entry(r"\.claude/agents/coder\.md", TODAY.isoformat())]))
+    assert run_main(tmp_path, payload).returncode == 0
+    lines = log_lines(tmp_path)
+    assert len(lines) == 2 and lines[1]["rule"] == "exception-used"
+    assert lines[1]["tool"] == "Edit" and lines[1]["agent_type"] == "planner"
+
+
+def test_f9_a_command_exception_use_is_logged_too(tmp_path):
+    (tmp_path / ".manifold").mkdir()
+    (tmp_path / ".manifold" / "guard-allow.json").write_text(json.dumps([ENTRY]))
+    ok = {"tool_name": "Bash", "tool_input": {"command": "sed -i s/a/b/ notes.txt"}}
+    assert run_main(tmp_path, ok).returncode == 0
+    (entry,) = log_lines(tmp_path)
+    assert entry["rule"] == "exception-used"
+
+
+def test_f9_an_expired_path_exception_refuses_through_main_and_the_message_says_when(tmp_path):
+    (tmp_path / ".manifold").mkdir()
+    (tmp_path / ".manifold" / "guard-allow.json").write_text(
+        json.dumps([path_entry(r"\.claude/agents/coder\.md", YESTERDAY.isoformat())]))
+    payload = {"tool_name": "Write", "tool_input": {"file_path": str(tmp_path / ".claude" / "agents" / "coder.md")}}
+    p = run_main(tmp_path, payload)
+    assert p.returncode == 2
+    assert "expired on %s" % YESTERDAY.isoformat() in p.stderr
+
+
+def test_f9_a_reviewer_allowlist_refusal_can_be_excepted_through_main(tmp_path):
+    (tmp_path / ".manifold").mkdir()
+    (tmp_path / ".manifold" / "guard-allow.json").write_text(
+        json.dumps([path_entry(r"server/app\.py", TODAY.isoformat())]))
+    payload = {"tool_name": "Write", "tool_input": {"file_path": str(tmp_path / "server" / "app.py")}, "agent_type": "reviewer"}
+    assert run_main(tmp_path, payload).returncode == 0
+
+
+def _call_main_in_process(monkeypatch, tmp_path, client, payload=None, raw=None):
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+    monkeypatch.setattr(sys, "stdin", io.StringIO(raw if raw is not None else json.dumps(payload)))
+    return guard.main(["--client", client])
+
+
+def test_f4_a_guard_that_raises_blocks_with_exit_2_and_names_the_guard_and_the_exception(monkeypatch, tmp_path, capsys):
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(guard, "classify_bash", boom)
+    rc = _call_main_in_process(monkeypatch, tmp_path, "claude", {"tool_name": "Bash", "tool_input": {"command": "ls"}})
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "Manifold guard failed" in err and "RuntimeError" in err and "boom" in err and "blocked" in err
+    assert log_lines(tmp_path)[-1]["rule"] == "guard-error"
+
+
+def test_f4_a_guard_that_raises_prints_the_deny_json_for_copilot(monkeypatch, tmp_path, capsys):
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(guard, "classify_bash", boom)
+    rc = _call_main_in_process(monkeypatch, tmp_path, "copilot", {"tool_name": "Bash", "tool_input": {"command": "ls"}})
+    out = json.loads(capsys.readouterr().out)
+    assert rc == 0
+    assert out["permissionDecision"] == "deny"
+    assert "Manifold guard failed" in out["permissionDecisionReason"] and "boom" in out["permissionDecisionReason"]
+
+
+def test_f4_a_guard_that_raises_in_a_write_check_blocks_too(monkeypatch, tmp_path, capsys):
+    def boom(*a, **k):
+        raise ValueError("bad path")
+    monkeypatch.setattr(guard, "classify_write", boom)
+    rc = _call_main_in_process(monkeypatch, tmp_path, "claude",
+                               {"tool_name": "Write", "tool_input": {"file_path": str(tmp_path / "x.md")}})
+    assert rc == 2 and "ValueError" in capsys.readouterr().err
+
+
+def test_f4_unreadable_input_blocks_for_copilot_with_the_deny_json(monkeypatch, tmp_path, capsys):
+    rc = _call_main_in_process(monkeypatch, tmp_path, "copilot", raw="not json")
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out)["permissionDecision"] == "deny"

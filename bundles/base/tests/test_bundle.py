@@ -318,8 +318,104 @@ def test_copilot_hook_file_has_the_verified_schema_and_calls_the_guard():
     assert data["version"] == 1
     (entry,) = data["hooks"]["preToolUse"]
     assert entry["type"] == "command"
-    assert entry["command"] == "python3 .manifold/hooks/guard.py --client copilot"
+    # CP2a T14a (named in the plan): the exact-command assertion changes with the fail-closed command (T14b);
+    # the old expectation was "python3 .manifold/hooks/guard.py --client copilot" alone.
+    command = entry["command"]
+    assert "python3 .manifold/hooks/guard.py --client copilot" in command
+    assert "test -f .manifold/hooks/guard.py" in command and build.GUARD_MISSING_MESSAGE in command
     assert isinstance(entry["timeoutSec"], int)
+
+
+# ---- CP2a T14a, F4: the hook commands fail closed (run with `sh -c`, the shell form the plan records)
+
+def _sh(command, cwd, project_dir=None, stdin="{}"):
+    env = {"PATH": "/usr/bin:/bin"}
+    if project_dir is not None:
+        env["CLAUDE_PROJECT_DIR"] = str(project_dir)
+    return subprocess.run(["sh", "-c", command], input=stdin, capture_output=True, text=True, env=env, cwd=str(cwd))
+
+
+def _stub(project, code, message=""):
+    script = project / ".manifold" / "hooks" / "guard.py"
+    script.parent.mkdir(parents=True, exist_ok=True)
+    script.write_text("import sys\nsys.stderr.write(%r)\nsys.exit(%d)\n" % (message, code))
+
+
+def test_the_claude_command_blocks_with_a_plain_message_when_the_guard_script_is_missing(tmp_path):
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path)
+    assert p.returncode == 2
+    assert build.GUARD_MISSING_MESSAGE in p.stderr
+    assert "re-running the installer" in build.GUARD_MISSING_MESSAGE and ".manifold/hooks/guard.py" in build.GUARD_MISSING_MESSAGE
+
+
+def test_the_claude_command_blocks_when_the_project_dir_variable_is_not_set(tmp_path):
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=None)
+    assert p.returncode == 2 and p.stderr.strip()
+
+
+def test_the_claude_command_maps_an_unexpected_exit_code_to_a_block_with_a_message(tmp_path):
+    _stub(tmp_path, 1)
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path)
+    assert p.returncode == 2
+    assert "guard" in p.stderr.lower() and "blocked" in p.stderr.lower()
+
+
+def test_the_claude_command_maps_a_script_that_cannot_run_to_a_block(tmp_path):
+    script = tmp_path / ".manifold" / "hooks" / "guard.py"
+    script.parent.mkdir(parents=True)
+    script.write_text("def broken(:\n")  # a syntax error fails before main runs
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path)
+    assert p.returncode == 2 and "blocked" in p.stderr.lower()
+
+
+def test_the_claude_command_passes_through_exit_0_and_exit_2(tmp_path):
+    _stub(tmp_path, 0)
+    assert _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path).returncode == 0
+    _stub(tmp_path, 2, "Refused by stub")
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path)
+    assert p.returncode == 2 and "Refused by stub" in p.stderr
+
+
+def test_the_claude_command_runs_the_real_guard_and_passes_its_refusal_through(tmp_path):
+    script = tmp_path / ".manifold" / "hooks" / "guard.py"
+    script.parent.mkdir(parents=True)
+    script.write_bytes((ROOT / "hooks" / "guard.py").read_bytes())
+    hook = json.dumps({"tool_name": "Bash", "tool_input": {"command": "echo x > f"}})
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path, stdin=hook)
+    assert p.returncode == 2 and "Refused by the Manifold guard" in p.stderr
+    ok = json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls"}})
+    assert _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path, stdin=ok).returncode == 0
+
+
+def _copilot_command():
+    return json.loads((ROOT / "hooks" / "copilot-guard.json").read_text())["hooks"]["preToolUse"][0]["command"]
+
+
+def test_the_copilot_command_prints_a_deny_json_naming_the_missing_script(tmp_path):
+    p = _sh(_copilot_command(), tmp_path)
+    assert p.returncode == 0
+    out = json.loads(p.stdout)
+    assert out["permissionDecision"] == "deny"
+    assert build.GUARD_MISSING_MESSAGE in out["permissionDecisionReason"]  # the same text as the Claude command
+
+
+def test_the_copilot_command_denies_when_the_guard_exits_with_an_error_and_passes_a_clean_run(tmp_path):
+    _stub(tmp_path, 1)
+    p = _sh(_copilot_command(), tmp_path)
+    assert p.returncode == 0 and json.loads(p.stdout)["permissionDecision"] == "deny"
+    _stub(tmp_path, 0)
+    p = _sh(_copilot_command(), tmp_path)
+    assert (p.returncode, p.stdout) == (0, "")
+
+
+def test_the_copilot_command_runs_the_real_guard_from_the_project_root(tmp_path):
+    script = tmp_path / ".manifold" / "hooks" / "guard.py"
+    script.parent.mkdir(parents=True)
+    script.write_bytes((ROOT / "hooks" / "guard.py").read_bytes())
+    hook = json.dumps({"tool_name": "Bash", "tool_input": {"command": "echo x > f"}})
+    p = _sh(_copilot_command(), tmp_path, stdin=hook)
+    assert p.returncode == 0 and json.loads(p.stdout)["permissionDecision"] == "deny"
+    assert "Refused by the Manifold guard" in json.loads(p.stdout)["permissionDecisionReason"]
 
 
 @pytest.mark.parametrize("fmt,expected", [("copilot", True), ("both", True), ("all", True),

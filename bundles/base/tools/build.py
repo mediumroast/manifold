@@ -259,7 +259,24 @@ CLAUDE_DENY = (("edit", ("Edit", "Write", "NotebookEdit")),
 # and `|`, so Claude Code reads it as an exact list of tool names. The command uses ${CLAUDE_PROJECT_DIR}
 # in double quotes (shell form) because the hook's working directory is not stated by the source.
 GUARD_MATCHER = "Bash|Edit|Write|MultiEdit|NotebookEdit"
-GUARD_COMMAND = 'python3 "${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py" --client claude'
+#
+# The command fails closed (CP2a T14b, owner decision of 2026-11-07): Claude Code treats every exit code
+# except 2 as a non-blocking error, which is a silent allow, so a missing script, a missing python3, or a
+# guard that dies with any other code must end in exit 2 with a plain message. The EXIT trap does the
+# mapping so that the command still ends with the guard call itself. Whether the shell Claude Code runs
+# the string through accepts this form is unverified: confirm with the hooks page (shell form) and T37c.
+# The Copilot hook file (hooks/copilot-guard.json) carries the same sentence; a test compares the two.
+GUARD_MISSING_MESSAGE = ("The Manifold guard script .manifold/hooks/guard.py is missing, so this tool call is blocked. "
+                         "Restore it by re-running the installer from the Manifold bundle "
+                         "(install.py --apply; see INSTALL.md), or ask a human to.")
+GUARD_COMMAND = (
+    'g="${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py"; '
+    "test -f \"$g\" || { echo '%s' >&2; exit 2; }; "
+    "command -v python3 >/dev/null 2>&1 || { echo '%s' >&2; exit 2; }; "
+    "trap 'c=$?; if [ $c -ne 0 ] && [ $c -ne 2 ]; then "
+    "echo \"Manifold guard failed (exit code $c), so this tool call is blocked; tell a human.\" >&2; exit 2; fi' EXIT; "
+    'python3 "${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py" --client claude'
+) % (GUARD_MISSING_MESSAGE, GUARD_MISSING_MESSAGE)
 GUARD_HOOKS_CLAUDE = (
     "hooks:",
     "  PreToolUse:",
