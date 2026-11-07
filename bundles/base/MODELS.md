@@ -91,5 +91,6 @@ If a Sonnet quota is the limit, move the roles that do the least damage when the
 - These are single runs by hand, not statistics. A model that passed once can fail the next time; one that failed is a stronger signal.
 - Results are for the versions listed. A newer model may do better; run the protocol before changing your recommendation.
 - The Copilot SDK target ("Copilot" in the session target list) was looked at only briefly; the results above are for the Local target.
+- Phase 2 content (guard, coordinator, loop) is not run on any model; every result above predates it.
 - Not run: Sonnet on the test-edit and mode probes in the product repository, MAI on the spot probes other than hold-out, and every model on the hardened bundle.
 - The Sonnet versions are 5.5 (Claude Code) and 4.6 (Copilot). Nothing newer was tested, so "Sonnet" here means those.

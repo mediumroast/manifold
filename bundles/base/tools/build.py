@@ -70,6 +70,8 @@ TEMPLATE_PATHS = {
 PROCESS_PATHS = {
     "process/REVIEW_CYCLE.md": ("docs/process/REVIEW_CYCLE.md", ALL_PROFILES),
     "process/BREACH_PROCEDURE.md": ("docs/process/BREACH_PROCEDURE.md", ALL_PROFILES),
+    # The guide lives at the bundle root (it is also copied to the zip root, like the README) and installs next to the procedures.
+    "HOWTO.md": ("docs/process/HOWTO.md", ALL_PROFILES),
 }
 # config file (in config/) -> (installed path, profiles). User-editable after install.
 SETTINGS_FILES = {
@@ -425,7 +427,7 @@ def render_instructions_block(agents: dict, rules, style: str = "agents", profil
                  "- Review: the passes and severity defaults are built into the `reviewer`; `REVIEW.md` (from `docs/templates/REVIEW_TEMPLATE.md`) is optional and adds repository-specific passes or exclusions; who approves is stated in the `Review process` section below.",
                  "- Each review leaves `docs/plans/REVIEW_PLAN_<N>.md`, written from `docs/templates/REVIEW_PLAN_TEMPLATE.md`.",
                  "- Pull requests follow `docs/templates/PULL_REQUEST_TEMPLATE.md`; only a human moves a pull request out of draft."]
-    docs += ["- The review-to-repair loop (who does each step, how it ends, the ready check) is written in `docs/process/REVIEW_CYCLE.md`.",
+    docs += ["- The review-to-repair loop (who does each step, how it ends, the ready check) is written in `docs/process/REVIEW_CYCLE.md`; `docs/process/HOWTO.md` is the guide to the whole cycle.",
              "- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
              "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`.",
              "- Rule breaches by agents are recorded from `docs/templates/AGENT_FAILURES_TEMPLATE.md` by the procedure in `docs/process/BREACH_PROCEDURE.md`."]
@@ -574,7 +576,9 @@ def lint(root: Path = ROOT):
                     problems.append("%s: missing setting %s" % (name, key))
     for path in list((root / "agents").glob("*.md")) + list((root / "rules").rglob("*.md")) + \
             list((root / "templates").glob("*.md")) + list((root / "fragments").glob("*.md")) + \
-            list((root / "process").glob("*.md")):
+            list((root / "process").glob("*.md")) + [root / "HOWTO.md"]:
+        if not path.exists():
+            continue  # a missing HOWTO.md is reported above, with the other process documents
         text = path.read_text(encoding="utf-8").lower()
         for term in FORBIDDEN_TERMS:
             if term in text:
@@ -676,7 +680,7 @@ def build_zip(root: Path = ROOT, out_dir: Path = None) -> Path:
     zip_path = out_dir / ("%s.zip" % top)
     entries = dict(files)
     entries["bundle.json"] = (json.dumps(bundle, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    for fname in ("README.md", "INSTALL.md", "MODELS.md", "LICENSE", "NOTICE", "install.py", "install.sh"):
+    for fname in ("README.md", "INSTALL.md", "MODELS.md", "HOWTO.md", "LICENSE", "NOTICE", "install.py", "install.sh"):
         entries[fname] = (root / fname).read_bytes()
     executable = {"install.py", "install.sh"}
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:

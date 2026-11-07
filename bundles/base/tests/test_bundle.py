@@ -1845,7 +1845,7 @@ DOC_PATH_ALLOWLIST = set()
 # templates and process documents are not here: those must be named exactly, as build.py installs them.
 DOC_PATH_PREFIXES = ("docs/plans/", "docs/agents/", "docs/walkthroughs/")
 SHIPPED_MARKDOWN = ("agents/*.md", "templates/*.md", "process/*.md", "rules/**/*.md", "fragments/*.md",
-                    "README.md", "INSTALL.md", "MODELS.md", "CONTRIBUTING.md")
+                    "README.md", "INSTALL.md", "MODELS.md", "CONTRIBUTING.md", "HOWTO.md")
 
 
 def _broken_references(root):
@@ -1864,7 +1864,7 @@ def _broken_references(root):
                     continue
                 if not (path.parent / target).resolve().exists():
                     problems.append("%s: link %s does not resolve" % (rel, target))
-            if rel.parts[0] in ("agents", "templates", "process"):
+            if rel.parts[0] in ("agents", "templates", "process") or rel.name == "HOWTO.md":
                 for doc in re.findall(r"`(docs/[A-Za-z0-9_./-]+)`", text):
                     if doc in installed or doc in DOC_PATH_ALLOWLIST or doc.endswith("/") or doc.startswith(DOC_PATH_PREFIXES):
                         continue
@@ -2052,3 +2052,228 @@ def test_t33_coordinator_leaves_no_step_of_the_pull_request_to_an_agent():
     out = _coordinator("claude")
     for forbidden in ("mark the pull request ready", "gh pr ready", "gh pr merge", "git push"):
         assert forbidden not in out.replace("never " + forbidden, ""), forbidden
+
+
+# ------------------------------------------------------------- HOWTO (T34; INT-21, INT-22)
+
+def _doc(name):
+    return (ROOT / name).read_text(encoding="utf-8")
+
+
+def _howto():
+    return _doc("HOWTO.md")
+
+
+def _headings(text, prefix):
+    return [x[len(prefix):].strip() for x in text.splitlines() if x.startswith(prefix) and not x.startswith(prefix + "#")]
+
+
+def _cycle_step_names():
+    """The first column of the table under '## The sequence' in REVIEW_CYCLE.md (header and rule rows skipped)."""
+    section = _review_cycle().split("## The sequence\n")[1].split("\n## ")[0]
+    names = []
+    for line in section.splitlines():
+        if line.startswith("|"):
+            cell = line.split("|")[1].strip()
+            if cell and cell != "Step" and set(cell) != {"-"}:
+                names.append(cell)
+    return names
+
+
+def test_t34_howto_is_a_process_path_for_every_profile_and_ships_at_the_zip_root(built):
+    """Open question 9: installed to docs/process/HOWTO.md in every profile, and at the zip root like the README."""
+    target, profiles = build.PROCESS_PATHS["HOWTO.md"]
+    assert target == "docs/process/HOWTO.md" and tuple(profiles) == build.ALL_PROFILES
+    with zipfile.ZipFile(built) as zf:
+        (root_copy,) = [n for n in zf.namelist() if n.endswith("/HOWTO.md") and n.count("/") == 1]
+        assert zf.read(root_copy) == (ROOT / "HOWTO.md").read_bytes()
+        assert zf.read([n for n in zf.namelist() if n.endswith("payload/common/docs/process/HOWTO.md")][0]) == \
+            (ROOT / "HOWTO.md").read_bytes()
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_t34_howto_is_installed_in_every_profile_and_uninstalls_cleanly(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    assert (repo / "docs/process/HOWTO.md").read_bytes() == (ROOT / "HOWTO.md").read_bytes()
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_t34_lint_requires_the_howto(tmp_path):
+    src = copy_source(tmp_path / "src")
+    assert build.lint(src) == []
+    (src / "HOWTO.md").unlink()
+    assert any("missing process document: HOWTO.md" in x for x in build.lint(src))
+    src = copy_source(tmp_path / "src2")
+    path = src / "HOWTO.md"
+    path.write_text(path.read_text() + "\nSee the " + build.FORBIDDEN_TERMS[0] + " site.\n")
+    assert any("HOWTO.md contains forbidden term" in x for x in build.lint(src))
+
+
+def test_t34_howto_names_every_role_and_every_step_of_the_review_cycle():
+    """K2: every role in build.ROLES, and every step name of the table in REVIEW_CYCLE.md, in order as headings."""
+    t = _howto()
+    for role in build.ROLES:
+        assert "`%s`" % role in t, role
+    steps = _cycle_step_names()
+    assert steps == ["Review", "Amendment", "Approval", "Repair", "Re-review", "Close"], steps
+    cycle = t.split("\n## The cycle in order\n")[1].split("\n## ")[0]
+    headings = _headings(cycle, "### ")
+    position = 0
+    for step in steps:
+        found = [i for i, h in enumerate(headings) if i >= position and step in h]
+        assert found, (step, headings)
+        position = found[0] + 1
+    for word in ("Intent", "Plan", "Build", "ready check", "Merge"):
+        assert any(word.lower() in h.lower() for h in headings), (word, headings)
+
+
+def test_t34_howto_has_its_sections_and_three_labels_for_every_step():
+    t = _howto()
+    sections = _headings(t, "## ")
+    expected = ["When to use each agent", "The cycle in order", "The human gates", "Breaches",
+                "Solo or team", "What differs by client", "How to start"]
+    positions = [sections.index(h) for h in expected]
+    assert positions == sorted(positions), sections
+    cycle = t.split("\n## The cycle in order\n")[1].split("\n## ")[0]
+    for block in cycle.split("\n### ")[1:]:
+        for label in ("**What usually happens.**", "**What you do.**", "**What the agents will not do.**"):
+            assert label in block, (block.splitlines()[0], label)
+    agents = t.split("\n## When to use each agent\n")[1].split("\n## ")[0]
+    assert "| Use it when | Do not use it when |" in agents
+
+
+def test_t34_howto_links_the_procedures_and_does_not_contradict_them():
+    t = _howto()
+    for path in ("docs/process/REVIEW_CYCLE.md", "docs/process/BREACH_PROCEDURE.md", "docs/templates/REVIEW_PLAN_TEMPLATE.md",
+                 "docs/templates/PULL_REQUEST_TEMPLATE.md", ".claude/agents/", ".github/agents/"):
+        assert path in t, path
+    assert "three runs" in t and "three runs" in _review_cycle()
+    assert "never moves a PR out of draft" in t or "never moves a pull request out of draft" in t
+    assert "fills in **Approved by**" in t and "**Amendment approved by**" in t
+
+
+def test_t34_howto_lists_the_human_gates_and_states_enforcement_per_client_as_far_as_verified():
+    t = _howto()
+    gates = t.split("\n## The human gates\n")[1].split("\n## ")[0]
+    for needle in ("status: accepted", "**Approved by**", "**Amendment approved by**", "out of draft", "merge",
+                   "guard-allow.json", "CI", "Pending human confirmation", "go-ahead"):
+        assert needle in gates, needle
+    client = t.split("\n## What differs by client\n")[1].split("\n## ")[0]
+    for needle in ("Claude Code", "Copilot", "unverified", "instruction only", "docs/agents/harness-capabilities.md",
+                   "main session", "skills"):
+        assert needle in client, needle
+    breach = t.split("\n## Breaches\n")[1].split("\n## ")[0]
+    for needle in (".manifold/guard-log.jsonl", "Rule exceptions", "docs/agents/", "docs/process/BREACH_PROCEDURE.md",
+                   ".manifold/guard-allow.json"):
+        assert needle in breach, needle
+    team = t.split("\n## Solo or team\n")[1].split("\n## ")[0]
+    assert "Review process" in team and "second approver" in team.lower()
+
+
+def test_t34_rendered_instructions_point_to_the_howto_in_every_profile_and_style():
+    """Owner's answer: the AGENTS.md block names docs/process/HOWTO.md; it is shipped in every profile, so no unshipped path."""
+    agents, rules = build.load_agents(ROOT), build.load_rules(ROOT)
+    for style in ("agents", "skills", "both"):
+        for profile in build.PROFILES:
+            block = build.render_instructions_block(agents, rules, style, profile)
+            assert len([x for x in block.splitlines() if "docs/process/HOWTO.md" in x]) == 1, (style, profile)
+            assert _unshipped_paths(block, profile) == [], (style, profile)
+
+
+def test_t34_howto_has_no_forbidden_term_and_no_bundle_version():
+    t = _howto().lower()
+    for term in build.FORBIDDEN_TERMS:
+        assert term not in t
+    assert (ROOT / "VERSION").read_text().strip() not in t
+
+
+# -------------------------------------------- README, INSTALL, MODELS, live protocol, CONTRIBUTING (T35)
+
+def test_t35_readme_has_eight_roles_one_install_table_and_the_whole_loop():
+    t = _doc("README.md")
+    assert "Seven" not in t and "seven" not in t.lower().replace("seventh", "")
+    assert t.startswith("# Manifold: base bundle\n\nEight focused agents")
+    roles = t.split("\n## The roles\n")[1].split("\n## ")[0]
+    for role in build.ROLES:
+        assert "| **%s** |" % role in roles, role
+    assert t.count("## What gets installed") == 1
+    loop = t.split("\n## How the roles fit the loop\n")[1].split("\n### ")[0]
+    for needle in ("REVIEW_PLAN_", "Amendment approved by", "Re-review", "Ready check", "Repair", "Amendment"):
+        assert needle in loop, needle
+    installed = t.split("\n## What gets installed\n")[1].split("\n## ")[0]
+    assert "| Path in your repo | Profiles | What |" in installed
+    for needle in (".manifold/hooks/guard.py", ".github/hooks/manifold-guard.json", ".manifold/scratch/", ".manifold/.gitignore",
+                   "docs/process/", "HOWTO.md", "REVIEW_PLAN_TEMPLATE", "PULL_REQUEST_TEMPLATE", "AGENT_FAILURES_TEMPLATE",
+                   "Review process", "coordinator"):
+        assert needle in installed, needle
+    skills = t.split("\n## Agent Skills (experimental)\n")[1].split("\n## ")[0]
+    for skill in build.SKILL_NAMES.values():
+        assert "`%s`" % skill in skills, skill
+    profiles = t.split("\n## Install profiles\n")[1].split("\n## ")[0]
+    assert "| planner, coder, bug-coder, reviewer, test-planner, test-coder, coordinator |" in profiles
+    assert "| scenario-writer, test-planner, test-coder, coordinator |" in profiles
+    assert "all eight" in profiles and "HOWTO.md" in t
+
+
+def test_t35_readme_describes_the_guard_and_its_residual_gap_and_drops_the_old_claims():
+    t = _doc("README.md")
+    section = t.split("\n### Rules are advice, not enforcement\n")[1].split("\n## ")[0].split("\n### ")[0]
+    for needle in ("guard", "Claude Code", "Copilot", "unverified", "main session", "script", "instruction", "INSTALL.md"):
+        assert needle in section, needle
+    assert "Nothing in this bundle stops an agent" not in t
+    assert "Optional hooks are on the" not in t
+    assert "the reviewer cannot edit files" not in t and "reviewer cannot edit" not in t
+    assert "writes exactly one file" in t or "one file" in t.split("| **reviewer** |")[1].split("\n")[0]
+
+
+def test_t35_user_documents_link_nothing_outside_the_zip_and_name_no_bundle_version():
+    """Open links into the source repository do not resolve in the zip; the version is read from VERSION, not typed."""
+    import re
+    version = (ROOT / "VERSION").read_text().strip()
+    for name in ("README.md", "INSTALL.md", "MODELS.md", "HOWTO.md", "CONTRIBUTING.md"):
+        text = _doc(name)
+        for target in re.findall(r"\]\(([^)\s]+)\)", text):
+            assert not target.startswith("../"), (name, target)
+        assert version not in text, name
+    assert "manifold-base-<version>" in _doc("INSTALL.md") and "manifold-base-<version>" in _doc("README.md")
+
+
+def test_t35_install_states_the_guard_per_client_and_how_a_human_grants_an_exception():
+    t = _doc("INSTALL.md")
+    for needle in ("Claude Code", "Copilot", "unverified", ".manifold/hooks/guard.py", ".github/hooks/manifold-guard.json",
+                   ".manifold/guard-allow.json", '"scope": "path"', "expires", ".manifold/guard-log.jsonl",
+                   ".manifold/scratch/", "instruction only", "docs/process/", "HOWTO.md", "docs/agents/harness-capabilities.md"):
+        assert needle in t, needle
+    manual = t.split("\n## Without Python\n")[1].split("\n## ")[0]
+    assert "payload/common/.manifold/" in manual and "guard" in manual
+    assert "git add" in t and "docs/process" in t.split("git add", 1)[1].split("\n")[0]
+
+
+def test_t35_models_says_phase_2_content_is_not_run_on_any_model():
+    t = _doc("MODELS.md")
+    assert "Phase 2 content (guard, coordinator, loop) is not run on any model" in t
+
+
+def test_t35_live_protocol_has_rows_for_the_guard_the_route_the_review_file_a_stop_and_the_coordinator():
+    t = (ROOT / "tests" / "live-protocol.md").read_text()
+    assert "six roles" not in t and "all seven" not in t and "**edits nothing**" not in t
+    rows = {}
+    for line in t.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if line.startswith("| ") and cells[0].isdigit():
+            assert len(cells) == 5, line
+            rows[int(cells[0])] = line.lower()
+    assert sorted(rows) == list(range(1, 14)), sorted(rows)
+    for number, needles in {9: ("guard", "refus"), 10: (".manifold/scratch/", "write"), 11: ("review_plan_", "one file"),
+                            12: ("checkpoint", "stop"), 13: ("coordinator", "draft")}.items():
+        for needle in needles:
+            assert needle in rows[number], (number, needle)
+    header = [x for x in t.splitlines() if x.startswith("| # |")][0]
+    assert "Claude Code" in header and "Copilot" in header
+
+
+def test_t35_contributing_says_how_the_hook_is_tested_and_lists_the_coordinator_role():
+    t = _doc("CONTRIBUTING.md")
+    for needle in ("tests/test_guard.py", "hooks/guard.py", "standard library", "exit code", "coordinator"):
+        assert needle in t, needle
