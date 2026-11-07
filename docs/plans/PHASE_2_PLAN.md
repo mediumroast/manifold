@@ -67,7 +67,7 @@ Each needs a decision by the owner; the plan follows the stated recommendation a
 | `templates/REVIEW_STARTER.md` | DELETE (Open question 6) | T22 |
 | `agents/coordinator.agent.md` | CREATE | T33 |
 | `agents/{planner,coder,bug-coder,reviewer,test-planner,test-coder,scenario-writer}.agent.md` | MODIFY | T10, T15, T17, T21, T25, T26, T27 |
-| `rules/core/no-heredocs.md`, `report-rule-exceptions.md` (CREATE), `dont-edit-the-test-to-pass.md`, `approved-plan-before-execution.md` | MODIFY / CREATE | T8, T9, T25 |
+| `rules/core/no-heredocs.md`, `rule-exceptions-line.md` (CREATE), `dont-edit-the-test-to-pass.md`, `approved-plan-before-execution.md` | MODIFY / CREATE | T8, T9, T25 |
 | `tools/build.py`, `install.py` | MODIFY | roles, hook and doc payload, stubs (T5, T6, T11, T12, T16, T18, T19, T22, T29, T30, T32) |
 | `tests/test_bundle.py`, `tests/test_guard.py` (CREATE), `tests/live-protocol.md` | MODIFY / CREATE | tests beside each change |
 | `README.md`, `INSTALL.md`, `MODELS.md` | MODIFY | T35 |
@@ -111,7 +111,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** CREATE
 **Change:** Load `hooks/guard.py` with `importlib` the way `test_bundle.py` loads `build.py`. Table-driven cases for `classify_bash(command)`: refused with a message naming `Write`/`Edit`: `cat > f <<'EOF'`, `cat >> f <<EOF`, `python - <<'EOF'`, `python3 -c "open('f','w').write('x')"`, `printf x >> f`, `echo x > f`, `sed -i s/a/b/ f`, `sed -i.bak s/a/b/ f`, `tee f`, `perl -pi -e s/a/b/ f`, any write to a `/tmp` or `/private/tmp` path, and each of these after `&&`, `;` or inside `bash -c "..."`. Allowed: `git diff > /dev/null`, `pytest -q 2>&1`, `echo "a > b"`, `grep -n '>' f`, `git commit -m "x"`, `python3 .manifold/scratch/probe.py`, `ls`, a command whose only `>` is inside quotes. Cases for `classify_write(agent_type, path, exists)`: reviewer allowed only `docs/plans/REVIEW_PLAN_<n>.md`; coordinator allowed `docs/agents/*-failures.md` and a new (not yet existing) `intent/INT-*.md`; refused `.manifold/guard-allow.json` for every agent; other agents unrestricted.
 **Acceptance:** `pytest bundles/base/tests/test_guard.py -q` fails before T4 (record the output: module missing).
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): created `bundles/base/tests/test_guard.py` (209 cases: 45 refused and 35 allowed shell commands, the human-exception cases, the reviewer and coordinator allowlists, the protected guard files, and `main` through a subprocess for both clients). Failing run before T4, `python3 -m pytest bundles/base/tests/test_guard.py -q`: `ERROR collecting ... FileNotFoundError: [Errno 2] No such file or directory: '.../bundles/base/hooks/guard.py'`, `1 error during collection` (module missing). Command is the system `python3` (3.11.3, pytest 9.0.2) because no `.venv` exists in this worktree or the main checkout (not created). The coordinator-cannot-write-plans-source-tests case is left to T31, as the plan has it.
 
 ---
 
@@ -120,7 +121,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** CREATE
 **Change:** Standard library only, Python 3.8 syntax. Functions `classify_bash(command)` and `classify_write(agent_type, path, exists)` returning `(allowed, message)`; `main(argv)` reads the hook JSON on stdin, takes `--client claude|copilot` to normalise field names (per T1), exits 2 with the message on stderr to refuse (Claude) or prints the deny JSON (Copilot, per T1). The message names the sanctioned route: write the snippet with `Write` to `.manifold/scratch/` and run the file; use `Edit` with `replace_all` for renames. Tokenise with `shlex` and track quotes so `>` inside quotes and `2>&1` pass. A human exception is an entry in `.manifold/guard-allow.json` (`pattern`, `reason`, `granted_by`, `date`); the guard refuses every agent write to that file and to `guard.py` itself. Every refusal appends `{time, rule, tool, agent_type, command first 80 characters}` to `.manifold/guard-log.jsonl` (the coordinator's observable, T33; the file is local and git-ignored by T5; the 80-character cap keeps secrets out).
 **Acceptance:** `pytest bundles/base/tests/test_guard.py -q` passes; the failing run from T3 is quoted in the note. Residual gap stated in the file docstring: a script that writes files when run from a file is not inspected.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): created `bundles/base/hooks/guard.py` (stdlib only; `ast.parse(feature_version=(3, 8))` ok). `python3 -m pytest bundles/base/tests/test_guard.py -q`: 209 passed (the T3 run above was the failing one: module missing). Deviations: (1) it tokenises with its own quote-aware scanner, not `shlex`, because `shlex` with punctuation cannot tell a quoted `>` from a real one; (2) `classify_bash(command, allow=None)` takes the human-exception list as an optional second argument, `pattern` is a regular expression that must match the whole command; (3) it also refuses agent writes to `.manifold/guard-log.jsonl` (not in the plan: an agent editing the log would defeat the review); (4) `classify_write` is default-deny for the coordinator, so T31's "coordinator cannot write plans, source or tests" case will pass at once and has no failing-first run. Docstring states the residual gaps (script run from a file; command substitution inside double quotes; tools the guard does not look at; Copilot field and tool names unverified).
 
 ---
 
@@ -129,7 +131,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** MODIFY
 **Change:** Add `HOOK_FILES = {"hooks/guard.py": (".manifold/hooks/guard.py", ALL_PROFILES)}` and `.manifold/scratch/.gitignore` (content `*` then `!.gitignore`, from `config/scratch.gitignore`, CREATE) to the `common` list in `build_payload`; make `lint` fail when `hooks/guard.py` does not compile or imports outside the standard library. Add tests: the files are in the zip and `bundle.json`; install and uninstall to an empty repo still leave it empty (extend `test_every_profile_and_format_uninstalls_to_an_empty_repo`); two builds are identical.
 **Acceptance:** `pytest bundles/base/tests -q` passes; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): `build.py` gains `HOOK_FILES`, `SUPPORT_FILES` (`config/scratch.gitignore` -> `.manifold/scratch/.gitignore`, content `*` then `!.gitignore`), a payload loop, and `lint_hook` (must compile; imports only the standard library; no relative imports). `python3 -m pytest bundles/base/tests -q`: 371 passed, 1 skipped at this step; `build.py --check`: `lint ok`. Tests added: files in the zip and `bundle.json` for all profiles, installed byte-identical, lint rejects a broken hook, a third-party or relative import, a missing file; `test_every_profile_and_format_uninstalls_to_an_empty_repo` now also asserts the hook and scratch file were installed (it still ends empty). "Two builds are identical" is covered by the existing `test_build_is_deterministic`, left unchanged. Deviation: a second support file, `config/manifold.gitignore` -> `.manifold/.gitignore` (content `guard-log.jsonl`), because T4 says the log is git-ignored by T5 and the scratch `.gitignore` does not cover `.manifold/guard-log.jsonl`; strike it if the owner prefers another way.
 
 ---
 
@@ -138,7 +141,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** MODIFY
 **Change:** In `render_agent` for `claude`, emit a `hooks:` block (a `PreToolUse` entry with the matcher and command from T1, the command uses `${CLAUDE_PROJECT_DIR}` because T1 leaves the hook's working directory unverified, e.g. `python3 "${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py" --client claude`; owner accepted this on 2026-11-06) after `disallowedTools`, built from a constant `GUARD_HOOKS_CLAUDE`, so no canonical agent file repeats it. Test: every rendered `.claude/agents/*.md` carries the block; the frontmatter still starts on line 1; copilot and skills outputs do not carry the Claude block. Decision per [INT-20 Open questions][i20-oq] ("Hook in the bundle for consistent install"): per-agent frontmatter needs no merge into a user-owned `.claude/settings.json`; the cost is that the main session and plugin-run agents are not covered, which T39 states (see Open question 4).
 **Acceptance:** `pytest bundles/base/tests -q -k hook` passes (new tests named with `hook`); K3 for the matcher and command form against T1.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): `build.py` emits `GUARD_HOOKS_CLAUDE` after `disallowedTools` for every Claude agent: `matcher: "Bash|Edit|Write|MultiEdit|NotebookEdit"` (letters and `|` only, so an exact name list per harness-capabilities.md, "Matcher syntax"), command `python3 "${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py" --client claude` (shell form, placeholder in double quotes, per the `$CLAUDE_PROJECT_DIR` row; read, not run in a client). `python3 -m pytest bundles/base/tests -q -k hook`: 23 passed at this step (33 at the end of CP2). Two existing tests pinned the exact Claude frontmatter and were adjusted for the new `hooks` key only (`test_claude_format_keeps_only_name_description_and_denied_tools` now expects `hooks` among the top-level keys; `test_claude_format_denies_the_tools_an_agent_does_not_declare` reads the frontmatter up to `hooks:`); their other assertions are unchanged, and T21 still has to change the reviewer assertions it names. Verified-claims list: matcher and command form read in harness-capabilities.md rows S1/S2; whether the hook fires in a real Claude Code session: not run.
 
 ---
 
@@ -147,7 +151,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** CREATE / MODIFY
 **Change:** Owner decision (2026-11-06): ship the file even though T1 leaves enforcement in VS Code Local unverified ("that is what testing is for"); T39 states the gap and T37b observes it. Where T1 marks the Copilot `preToolUse` file schema verified (it does for `.github/hooks/*.json`, `version: 1`), create `hooks/copilot-guard.json` with that schema calling `python3 .manifold/hooks/guard.py --client copilot`, and ship it as `.github/hooks/manifold-guard.json` for the `copilot` format only. If T1 leaves it unverified, change nothing, mark this task `[~] unverified: confirm with the VS Code hooks page` and let T39 state that the Copilot flavor is instructions-only.
 **Acceptance:** `json.load` of the file passes in `pytest`; `--format copilot` installs it and `--format claude` does not; or the `[~]` note names the missing source.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): created `bundles/base/hooks/copilot-guard.json` (`version: 1`, `hooks.preToolUse` with `type: command`, `command: python3 .manifold/hooks/guard.py --client copilot`, `timeoutSec: 10`), shipped as `.github/hooks/manifold-guard.json` in the `copilot` format only (also with `both` and `all`). Per the owner's decision it ships although VS Code Local enforcement is unverified (harness-capabilities.md: file schema read in S3 and S6; Local use of `.github/hooks/*.json`, deny exit codes, agent identity and tool names unverified; nothing run). `install.py` `selected_entries` needed one change (a format entry with no `role` is chosen by profile, not skipped), outside the task's Files. Lint checks the file is JSON with `version` 1 and a `preToolUse` list. `python3 -m pytest bundles/base/tests -q`: 385 passed, 1 skipped at this step; tests cover the schema, install for copilot/both/all and not claude/skills, every profile, and uninstall to an empty repo.
 
 ---
 
@@ -156,16 +161,18 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** MODIFY
 **Change:** Keep the id (rule ids equal file names); set `title: Shell writes to files`, `applies_to: all`. Rule: no shell command writes or changes file contents (heredocs, `python - <<`, `sed -i`, `perl -i`, `tee`, `>`/`>>` into a file, `printf >>`), and no writing to `/tmp`. Instead: create or edit with `Write`/`Edit`; rename with `Edit` and `replace_all: true`; for a throwaway snippet write it with `Write` to `.manifold/scratch/` (or the scratchpad the session names) and run the file; if blocked, do not work around it, ask a human for an exception and say what you already tried. Enforce: `hook: .manifold/hooks/guard.py` and `review: compare "Rule exceptions" with .manifold/guard-log.jsonl`.
 **Acceptance:** K1; K2: `test_rules_reach_only_the_roles_they_apply_to` and a new test that the rule text names `replace_all`, `.manifold/scratch/` and `/tmp` pass; the rendered `AGENTS.md` block line shows it (K3 by reading the rendered block).
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): rewrote `rules/core/no-heredocs.md` (id kept, `title: Shell writes to files`, `applies_to: all`, severity unchanged at medium, source `incident`; Rule, Why, Instead name `replace_all`, `.manifold/scratch/`, `/tmp`, the ask-a-human route; Enforce lists the hook and the "Rule exceptions" comparison). New tests `test_shell_write_rule_applies_to_every_role_and_names_the_sanctioned_routes` and `test_rendered_instructions_block_carries_the_shell_write_rule_for_every_profile`; `test_rules_reach_only_the_roles_they_apply_to` unchanged and passing. `python3 -m pytest bundles/base/tests -q`: 387 passed, 1 skipped at this step. Rendered block read: `- **Shell writes to files.** Do not write or change file contents from a shell command: ...` for the `build` profile (printed with `python3 -I -c`).
 
 ---
 
 ### Task 9 — Add the rule that a breach is reported as a breach
-**Files:** `bundles/base/rules/core/report-rule-exceptions.md`
+**Files:** `bundles/base/rules/core/rule-exceptions-line.md` (renamed from `report-rule-exceptions.md` by the owner, Michael Hay, 2026-11-07, because the old file name tripped the Write block; rule id is `rule-exceptions-line`)
 **Action:** CREATE
 **Change:** `applies_to: all`, severity high. Rule: every report from an agent that changed files or ran commands has a "Rule exceptions" line: `none`, or each exception with command, file and reason; never folded into notes or interpretations; never omitted when empty. Instead: if unsure whether something was an exception, list it. The `reviewer` and `coordinator` compare the line with the diff, the commit log and `.manifold/guard-log.jsonl`.
 **Acceptance:** K1; K2: the rule appears in every role's rendered output (extend `test_every_rule_is_rendered_somewhere`).
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-07): the first attempt at `report-rule-exceptions.md` was refused by the Write tool ("Subagents should return findings as text, not write report files") and was not retried; the rename to `rule-exceptions-line` is the owner's decision (Michael Hay, 2026-11-07). Created `rules/core/rule-exceptions-line.md` (title "Rule exceptions", high, `applies_to: all`, source incident). New test `test_rule_exceptions_line_rule_reaches_every_role_in_every_rendering` (7 roles x claude, copilot, skills = 21 cases, checks the rendered rule line). Failing first: `python3 -m pytest bundles/base/tests -q -k rule_exceptions_line_rule` = 21 failed (rule missing). After: `python3 -m pytest bundles/base/tests -q` = 435 passed, 1 skipped; `python3 bundles/base/tools/build.py --check` = `lint ok`. `test_every_rule_is_rendered_somewhere` unchanged and passing.
 
 ---
 
@@ -174,7 +181,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** MODIFY
 **Change:** In each agent's closing report section ("When you finish", "When all tasks are done", "Report"), add the bullet "**Rule exceptions:** `none` or each exception (command, file, reason)." The `reviewer` reports the comparison it made instead.
 **Acceptance:** K2: new `test_every_agent_ends_with_a_rule_exceptions_line` over all roles and the claude and copilot outputs passes.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): added the bullet `- **Rule exceptions:** `none` or each exception (command, file, reason).` to the closing section of planner, coder, bug-coder, test-planner, test-coder and a new short "When you finish" section in scenario-writer (it had none); the reviewer's bullet reports the comparison it made. `test_every_agent_ends_with_a_rule_exceptions_line` is parametrized over all 7 roles and the claude, copilot and skills outputs (21 cases) and checks the bullet follows the closing heading, once. `python3 -m pytest bundles/base/tests -q`: 408 passed, 1 skipped at this step.
 
 ---
 
@@ -183,7 +191,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** CREATE / MODIFY
 **Change:** Template for `docs/agents/<harness>-failures.md` (harness-named, e.g. `claude-desktop`, `vscode-copilot`; [INT-20 Open questions][i20-oq]). Header: harness, client version, how to add an entry (link to `docs/process/BREACH_PROCEDURE.md`). Entry fields, same for all: **Rule**, **What happened**, **Evidence** (transcript cited by location, no copy, no secrets), **Count**, **Agent** (planner, coder, coordinator, ...), **Disclosed by the agent** (yes / no / found by the reviewer after the fact, which the entry marks as concealed and counts separately), **Suggested change**, **Status** (open, rule changed, enforced, closed), **Intent** raised. Add to `TEMPLATE_PATHS` for all profiles at `docs/templates/AGENT_FAILURES_TEMPLATE.md`.
 **Acceptance:** K1; K2: the template has each field name; K3: the entry fields match [INT-20 Proposed outcome 4][i20-p] item by item.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): created `templates/AGENT_FAILURES_TEMPLATE.md` (header: Harness, Client version, Enforcement in this harness, How to add an entry; entry fields Rule, What happened, Evidence, Count, Agent, Disclosed by the agent, Suggested change, Status, Intent raised) and added it to `TEMPLATE_PATHS` for all profiles at `docs/templates/AGENT_FAILURES_TEMPLATE.md`. Read against INT-20 outcome 4 (rule, what happened, evidence, count, disclosed, suggested change, status): all seven present, plus Agent and Intent raised as the task says. Test `test_failures_template_has_the_header_and_every_entry_field` (fields in one fixed order). `python3 -m pytest bundles/base/tests -q`: 414 passed, 1 skipped (after T12); `build.py --check`: `lint ok`.
 
 ---
 
@@ -192,7 +201,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** CREATE / MODIFY
 **Change:** Who (the coordinator; the owner when there is none), when (after every run of an agent that changes files, and when the reviewer finds an undisclosed breach), how (create `docs/agents/<harness>-failures.md` from the template if missing; append, never rewrite an earlier entry; compare the agent's "Rule exceptions" with the diff, the commit log, `.manifold/guard-log.jsonl` and, where the client allows, the transcript; count per agent; a coordinator breach is recorded the same way), the rule for exceptions (only a human grants one in `.manifold/guard-allow.json`; the agent asks and shows what it tried; the exception is also recorded), how a repeat or a missed breach becomes a rule or hook change (a draft intent, not a chat message), and how the result goes back to Manifold: the coordinator drafts a GitHub issue body (entry ids, counts, harness, no transcripts) for the owner to post to `mediumroast/manifold` (from `git remote -v` in this repository; confirm, Open question 8). Ship to `docs/process/BREACH_PROCEDURE.md` for all profiles (add `PROCESS_PATHS` next to `TEMPLATE_PATHS` in `build.py`, same shape).
 **Acceptance:** K1; K2: the installed path exists in every profile; K3 for the remote and the template path.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): created `process/BREACH_PROCEDURE.md` (who and when, how to record, exceptions, from a record to a rule change, returning the result) and `PROCESS_PATHS` in `build.py` (this file only; T29 adds the other two) with a lint check and a payload loop; installed at `docs/process/BREACH_PROCEDURE.md` for all profiles. `test_failures_template_and_breach_procedure_are_installed_in_every_profile` installs and uninstalls each profile to an empty repo; `python3 -m pytest bundles/base/tests -q`: 414 passed, 1 skipped; `lint ok`. K3: the template path `docs/templates/AGENT_FAILURES_TEMPLATE.md` read in `TEMPLATE_PATHS`; the guard log and exception file paths and fields read in `hooks/guard.py` and covered by its tests; the Claude subagent transcript path read in harness-capabilities.md (access by the coordinator unverified, and the text says "not compared" then). Deviation: the procedure does not name the issue target `mediumroast/manifold`; "mediumroast" is in `FORBIDDEN_TERMS` for shipped text (T29 will scan process documents), so it says the owner names the repository. For this repository the target is `mediumroast/manifold` (Open question 8); `git remote -v` was not run here.
 
 ---
 
@@ -201,7 +211,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** none
 **Change:** For the `coder` runs of tasks T37 to T52 and the `planner` amendment runs of `docs/plans/PHASE_1_PLAN.md`, count shell commands that wrote files (`<<`, `sed -i`, `tee`, `>` into a file, `/tmp`) in the subagent transcripts (`~/.claude/projects/.../subagents/agent-<id>.jsonl`, [INT-20 Problem][i20]). Write the counting script with `Write` into the scratchpad, run the file, read only. If the transcripts cannot be found or read, stop and ask the owner for the locations or the counts (a refused read is not retried another way).
 **Acceptance:** per agent: transcript location (not copied), number of commands, which disclosed. Numbers recorded in the task note.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): read-only script `<scratchpad>/count_shell_writes.py` (run as `python3 -I`, with `list_subagents.py` and `show_commands.py` beside it) counted `Bash` tool calls once each by tool-use id and counted those `guard.classify_bash` refuses. Transcripts under `~/.claude/projects/-Users-mihay42-dev-manifold--claude-worktrees-hungry-kowalevski-9065dd/8baca43b-c11d-4b74-96e5-03b833764fd4/subagents/`: coder T37 to T52 `agent-a312f4646f33695d2.jsonl`: 83 commands, 11 flagged (5 heredoc-form, 5 `sed -i.bak`, 1 scratch redirect), 8 on tracked files; coder T52/T53 `agent-a90996579573e306b.jsonl`: 13, 0; coder T53 to T58 `agent-aa16acb99fd023aad.jsonl`: 23, 1 (no-op heredoc); planner amendments `agent-a3a9df028cd508eff.jsonl` 14, 1; `agent-a65d7d1008f830100.jsonl` 4, 1; `agent-a0f4737d86adb7298.jsonl` 9, 1; `agent-a026be49a3bf318c4.jsonl` 15, 0. Earlier planner run `.../sub-agents-access-e9e255/acd6e9f9-7b65-4f1f-9110-385f287fa8ec/subagents/agent-ae67e729d0a06a41d.jsonl`: 35, 7 (3 heredoc edits of the plan). Disclosed: from the plan notes, 1 of the 11 (Task 44 names its `scopes.py` heredoc); the hand-back messages are not in the subagent transcripts, so the rest is "not determined". The same method over F1's run gives 6, agreeing with F1 (4 heredocs plus the `printf`; a `sed -i.bak` on `.gitignore` is also found). Phase 2 runs: coder CP1 1, planner amend 1; this coder run 0 refused as of the count (38 commands).
 
 ---
 
@@ -210,7 +221,8 @@ Note (2026-11-06): created `bundles/base/process/REVIEW_CYCLE.md` with the secti
 **Action:** MODIFY (append only)
 **Change:** After F3, append F4 (planner heredocs), F5 (coder heredocs in T37 to T52, with T13's count), F6 (no written coordinator procedure; fact: the role had no definition) and a closing "Pattern across checkpoints" row for the later checkpoints. Use the template's fields. Do not alter F1 to F3.
 **Acceptance:** `git diff --numstat docs/agents/claude-desktop-failures.md` shows 0 deleted lines; K5: owner reads F4 to F6 (S5 of [INT-20][i20]).
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-06): appended F4 (planner), F5 (coder T37 to T52, with T13's count), F6 (no coordinator procedure), a counting-method paragraph and a "Pattern across checkpoints, later runs" table, in the template's fields, using Edit on the last line (F1 to F3 untouched). `git diff --numstat docs/agents/claude-desktop-failures.md`: `58	0` (58 added, 0 deleted). Where the data did not support the plan's wording it says so: F4's planner heredocs are 3 edits of the plan in the first planner run (the four amendment runs had a `sed -i.bak`, a scratch redirect and a no-op heredoc), and the old rule did not apply to the planner's own definition (inference). Awaiting K5 (owner reads F4 to F6).
 
 ---
 

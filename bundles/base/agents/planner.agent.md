@@ -84,4 +84,6 @@ When the input is an intent (or a handoff or issue carrying the same fields), yo
 
 Report: the plan's path; the number of tasks; anything you asked the user to decide; the main risks; and the suggested next step (ask the {{ref:coder}} to execute it, once the human approves).
 
+- **Rule exceptions:** `none` or each exception (command, file, reason).
+
 <!-- include: rules -->

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "command": "python3 .manifold/hooks/guard.py --client copilot",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

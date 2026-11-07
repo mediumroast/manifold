@@ -134,8 +134,11 @@ def selected_entries(bundle: dict, formats, skills_dir=None, profiles=(DEFAULT_P
     entries = []
     for fmt in formats:
         for e in bundle["formats"][fmt]:
-            if e.get("role") not in roles:
-                continue
+            if "role" in e:
+                if e["role"] not in roles:
+                    continue
+            elif not set(e.get("profiles", PROFILE_NAMES)) & set(profiles):
+                continue  # a format file that belongs to no role (the Copilot hook file) is chosen by profile
             if fmt == "skills" and skills_dir:
                 e = dict(e, path="%s/%s" % (skills_dir, e["rel"]))
             entries.append(e)

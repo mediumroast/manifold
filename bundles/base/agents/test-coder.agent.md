@@ -50,6 +50,7 @@ Mark the case `[~]` with a note on what is missing (a fixture, an unclear respon
 - Tell the user to run the full suite themselves, with the project's test command.
 - Remind them that manual cases (`M<N>`) still need a human tester.
 - Add an automation summary under the test plan's quality gates, where the template leaves the marker comment.
+- **Rule exceptions:** `none` or each exception (command, file, reason).
 
 ## Test writing rules
 

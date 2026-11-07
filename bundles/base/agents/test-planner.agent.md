@@ -90,4 +90,6 @@ When in doubt, prefer automated.
 
 Report: the test plan's path; the number of manual and automated cases; any task excluded and why; any acceptance line you had to ask about; and the next step (the {{ref:test-coder}} implements the automated cases, a human runs the manual ones).
 
+- **Rule exceptions:** `none` or each exception (command, file, reason).
+
 <!-- include: rules -->

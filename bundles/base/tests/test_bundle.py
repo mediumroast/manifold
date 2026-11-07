@@ -142,8 +142,9 @@ def test_claude_format_keeps_only_name_description_and_denied_tools(built):
     with zipfile.ZipFile(built) as zf:
         name = [n for n in zf.namelist() if n.endswith("payload/claude/.claude/agents/reviewer.md")][0]
         head = zf.read(name).decode().split("---")[1]
-    keys = {line.split(":")[0] for line in head.strip().splitlines()}
-    assert keys == {"name", "description", "disallowedTools"}
+    # top-level keys only: the guard hook block (T6) adds "hooks" and its nested lines are indented
+    keys = {line.split(":")[0] for line in head.strip().splitlines() if not line.startswith((" ", "-"))}
+    assert keys == {"name", "description", "disallowedTools", "hooks"}
 
 
 def test_copilot_format_keeps_tools_hint_and_handoffs(built):
@@ -218,6 +219,145 @@ def test_installers_are_executable_in_the_zip(built):
         for info in zf.infolist():
             if info.filename.endswith(("install.py", "install.sh")):
                 assert (info.external_attr >> 16) & 0o111
+
+
+HOOK_INSTALLED = ".manifold/hooks/guard.py"
+SCRATCH_INSTALLED = ".manifold/scratch/.gitignore"
+LOG_IGNORE_INSTALLED = ".manifold/.gitignore"
+
+
+def test_hook_scratch_and_log_ignore_files_are_in_the_zip_and_bundle_json(built, bundle_dir):
+    with zipfile.ZipFile(built) as zf:
+        names = zf.namelist()
+    for path in (HOOK_INSTALLED, SCRATCH_INSTALLED, LOG_IGNORE_INSTALLED):
+        assert any(n.endswith("payload/common/" + path) for n in names), path
+    bundle = json.loads((bundle_dir / "bundle.json").read_text())
+    by_path = {e["path"]: e for e in bundle["common"]}
+    for path in (HOOK_INSTALLED, SCRATCH_INSTALLED, LOG_IGNORE_INSTALLED):
+        assert set(by_path[path]["profiles"]) == {"build", "quality", "single"}, path
+
+
+def test_scratch_gitignore_ignores_everything_but_itself_and_the_log_is_ignored():
+    assert (ROOT / "config" / "scratch.gitignore").read_text() == "*\n!.gitignore\n"
+    assert "guard-log.jsonl" in (ROOT / "config" / "manifold.gitignore").read_text().split()
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_hook_script_scratch_folder_and_log_ignore_are_installed_in_every_profile(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    assert (repo / HOOK_INSTALLED).read_bytes() == (ROOT / "hooks" / "guard.py").read_bytes()
+    assert (repo / SCRATCH_INSTALLED).read_text() == "*\n!.gitignore\n"
+    assert "guard-log.jsonl" in (repo / LOG_IGNORE_INSTALLED).read_text()
+
+
+def test_lint_rejects_a_hook_that_does_not_compile(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "hooks" / "guard.py"
+    p.write_text(p.read_text() + "\ndef broken(:\n")
+    assert any("hooks/guard.py does not compile" in x for x in build.lint(src))
+
+
+@pytest.mark.parametrize("line", ["import requests", "from yaml import safe_load", "from . import sibling"])
+def test_lint_rejects_a_hook_that_imports_outside_the_standard_library(tmp_path, line):
+    src = copy_source(tmp_path / "src")
+    p = src / "hooks" / "guard.py"
+    p.write_text(p.read_text() + "\n" + line + "\n")
+    assert any("hooks/guard.py" in x and ("standard library" in x or "relative import" in x) for x in build.lint(src))
+
+
+def _frontmatter_lines(text):
+    assert text.startswith("---\n")
+    return text.split("\n---\n", 1)[0].split("\n")[1:]
+
+
+def test_every_claude_agent_carries_the_guard_hook_block_after_disallowed_tools(bundle_dir):
+    folder = bundle_dir / "payload" / "claude" / ".claude" / "agents"
+    files = sorted(folder.glob("*.md"))
+    assert [p.stem for p in files] == sorted(build.ROLES)
+    for p in files:
+        fm = _frontmatter_lines(p.read_text())
+        assert fm[0] == "name: " + p.stem, p.name
+        start = fm.index("hooks:")
+        assert fm[start:] == list(build.GUARD_HOOKS_CLAUDE), p.name
+        assert all(not line.startswith("disallowedTools") for line in fm[start:])
+        assert start == len(fm) - len(build.GUARD_HOOKS_CLAUDE)
+
+
+def test_the_claude_guard_hook_uses_the_project_dir_and_an_exact_name_matcher():
+    lines = list(build.GUARD_HOOKS_CLAUDE)
+    matcher = json.loads([x for x in lines if "matcher:" in x][0].split(": ", 1)[1])
+    command = json.loads([x for x in lines if "command:" in x][0].split(": ", 1)[1])
+    # only letters and | make Claude Code read the matcher as a list of exact tool names (harness-capabilities.md)
+    assert all(c.isalpha() or c == "|" for c in matcher)
+    assert {"Bash", "Write", "Edit"} <= set(matcher.split("|"))
+    assert '"${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py"' in command and command.endswith("--client claude")
+    assert "PreToolUse" in lines[1]
+
+
+def test_rendered_claude_frontmatter_still_starts_on_line_one_for_every_role():
+    fragments, rules = build.load_fragments(ROOT), build.load_rules(ROOT)
+    for role, text in build.load_agents(ROOT).items():
+        out = build.render_agent(role, text, "claude", fragments, rules)
+        assert out.startswith("---\nname: %s\n" % role), role
+        assert "hooks:" in out.split("\n---\n", 1)[0], role
+
+
+def test_copilot_and_skills_outputs_do_not_carry_the_claude_hook_block(bundle_dir):
+    for folder in ("copilot", "skills"):
+        for p in (bundle_dir / "payload" / folder).rglob("*.md"):
+            text = p.read_text()
+            assert "PreToolUse" not in text and "CLAUDE_PROJECT_DIR" not in text, p
+            assert "hooks:" not in text.split("\n---\n", 1)[0], p
+
+
+COPILOT_HOOK_INSTALLED = ".github/hooks/manifold-guard.json"
+
+
+def test_copilot_hook_file_has_the_verified_schema_and_calls_the_guard():
+    data = json.loads((ROOT / "hooks" / "copilot-guard.json").read_text())
+    assert data["version"] == 1
+    (entry,) = data["hooks"]["preToolUse"]
+    assert entry["type"] == "command"
+    assert entry["command"] == "python3 .manifold/hooks/guard.py --client copilot"
+    assert isinstance(entry["timeoutSec"], int)
+
+
+@pytest.mark.parametrize("fmt,expected", [("copilot", True), ("both", True), ("all", True),
+                                          ("claude", False), ("skills", False)])
+def test_copilot_hook_file_is_installed_for_the_copilot_format_only(bundle_dir, repo, fmt, expected):
+    args = ["--format", fmt] + (["--allow-overlap"] if fmt == "all" else [])
+    assert run(bundle_dir, repo, "--apply", *args)[0] == 0
+    assert (COPILOT_HOOK_INSTALLED in tree(repo)) is expected
+    if expected:
+        installed = json.loads((repo / COPILOT_HOOK_INSTALLED).read_text())
+        assert installed == json.loads((ROOT / "hooks" / "copilot-guard.json").read_text())
+    assert HOOK_INSTALLED in tree(repo)  # the guard script itself comes with every format
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_copilot_hook_file_is_installed_in_every_profile_and_uninstalls_cleanly(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--format", "copilot", "--apply")[0] == 0
+    assert COPILOT_HOOK_INSTALLED in tree(repo)
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_lint_rejects_a_copilot_hook_file_that_is_not_the_verified_shape(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "hooks" / "copilot-guard.json"
+    p.write_text('{"hooks": {}}')
+    assert any("version 1" in x for x in build.lint(src))
+    p.write_text("{not json")
+    assert any("not valid JSON" in x for x in build.lint(src))
+
+
+def test_lint_rejects_a_missing_hook_or_support_file(tmp_path):
+    src = copy_source(tmp_path / "src")
+    (src / "hooks" / "guard.py").unlink()
+    (src / "config" / "scratch.gitignore").unlink()
+    problems = build.lint(src)
+    assert any("missing file: hooks/guard.py" in x for x in problems)
+    assert any("missing file: config/scratch.gitignore" in x for x in problems)
 
 
 # ----------------------------------------------------------------- installer
@@ -788,6 +928,7 @@ def test_installing_build_then_quality_becomes_single_with_warning(bundle_dir, r
 def test_every_profile_and_format_uninstalls_to_an_empty_repo(bundle_dir, repo, profile, fmt):
     assert run(bundle_dir, repo, "--profile", profile, "--format", fmt, "--apply")[0] == 0
     assert tree(repo)
+    assert HOOK_INSTALLED in tree(repo) and SCRATCH_INSTALLED in tree(repo)
     assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
     assert tree(repo) == []
 
@@ -849,6 +990,107 @@ def test_rules_reach_only_the_roles_they_apply_to(tmp_path):
     assert "human-confirms-closure" in ids("bug-coder") and "human-confirms-closure" not in ids("reviewer")
 
 
+def test_shell_write_rule_applies_to_every_role_and_names_the_sanctioned_routes():
+    rules = {r["id"]: r for r in build.load_rules(ROOT)}
+    rule = rules["no-heredocs"]  # the id equals the file name and stays
+    assert rule["title"] == "Shell writes to files" and rule["applies_to"] == ["all"]
+    text = " ".join((rule["rule"], rule["instead"]))
+    for needle in ("replace_all", ".manifold/scratch/", "/tmp", "Write", "Edit", "sed -i", "tee", "heredoc", "ask a human"):
+        assert needle in text, needle
+    assert ".manifold/hooks/guard.py" in rule["enforce"] and "Rule exceptions" in rule["enforce"]
+    for role in build.ROLES:
+        assert "no-heredocs" in {r["id"] for r in build.rules_for(build.load_rules(ROOT), role)}, role
+
+
+@pytest.mark.parametrize("fmt", ["claude", "copilot", "skills"])
+@pytest.mark.parametrize("role", build.ROLES)
+def test_rule_exceptions_line_rule_reaches_every_role_in_every_rendering(role, fmt):
+    rules = build.load_rules(ROOT)
+    rule = {r["id"]: r for r in rules}["rule-exceptions-line"]
+    assert rule["applies_to"] == ["all"] and rule["severity"] == "high" and rule["title"] == "Rule exceptions"
+    text = build.load_agents(ROOT)[role]
+    fragments = build.load_fragments(ROOT)
+    out = (build.render_skill(role, text, fragments, rules, "0") if fmt == "skills"
+           else build.render_agent(role, text, fmt, fragments, rules))
+    assert "- **Rule exceptions.** Every report from an agent that changed files or ran commands" in out
+
+
+CLOSING_HEADINGS = {"planner": "## When you finish", "coder": "### When all tasks are done",
+                    "bug-coder": "## When you finish", "test-planner": "## When you finish",
+                    "test-coder": "### When all automated cases are done",
+                    "scenario-writer": "## When you finish", "reviewer": "## Report"}
+
+
+@pytest.mark.parametrize("fmt", ["claude", "copilot", "skills"])
+@pytest.mark.parametrize("role", build.ROLES)
+def test_every_agent_ends_with_a_rule_exceptions_line(role, fmt):
+    assert set(CLOSING_HEADINGS) == set(build.ROLES)
+    fragments, rules = build.load_fragments(ROOT), build.load_rules(ROOT)
+    text = build.load_agents(ROOT)[role]
+    out = (build.render_skill(role, text, fragments, rules, "0") if fmt == "skills"
+           else build.render_agent(role, text, fmt, fragments, rules))
+    body = out.split("## Rules from experience")[0]
+    heading = body.index(CLOSING_HEADINGS[role])
+    marker = "- **Rule exceptions:** " + ("the comparison" if role == "reviewer" else "`none` or each exception (command, file, reason).")
+    assert body.index(marker, heading) > heading, role
+    assert body.count("**Rule exceptions:**") == 1, role
+
+
+FAILURE_ENTRY_FIELDS = ("Rule", "What happened", "Evidence", "Count", "Agent", "Disclosed by the agent",
+                        "Suggested change", "Status", "Intent raised")
+
+
+def test_failures_template_has_the_header_and_every_entry_field():
+    t = (ROOT / "templates" / "AGENT_FAILURES_TEMPLATE.md").read_text()
+    for field in ("Harness", "Client version", "Enforcement in this harness", "How to add an entry"):
+        assert "**%s:**" % field in t, field
+    assert "docs/process/BREACH_PROCEDURE.md" in t and "docs/agents/<harness>-failures.md" in t
+    entry = t.split("## F<N>", 1)[1]
+    positions = [entry.index("**%s:**" % f) for f in FAILURE_ENTRY_FIELDS]
+    assert positions == sorted(positions)  # fields appear in one fixed order
+    for word in ("concealed", "inference", "never copy"):
+        assert word in t, word
+
+
+def test_breach_procedure_names_who_when_how_exceptions_and_the_return_path():
+    t = (ROOT / "process" / "BREACH_PROCEDURE.md").read_text()
+    for needle in ("## Who and when", "## How to record", "## Exceptions", "## From a record to a rule change",
+                   "## Returning the result to Manifold", "`coordinator`", ".manifold/guard-log.jsonl",
+                   ".manifold/guard-allow.json", "docs/agents/<harness>-failures.md",
+                   "docs/templates/AGENT_FAILURES_TEMPLATE.md", "Append only", "concealed", "status `draft`",
+                   "does not post it"):
+        assert needle in t, needle
+    for field in FAILURE_ENTRY_FIELDS:
+        assert field in t, field
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_failures_template_and_breach_procedure_are_installed_in_every_profile(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    assert (repo / "docs/templates/AGENT_FAILURES_TEMPLATE.md").read_bytes() == (ROOT / "templates" / "AGENT_FAILURES_TEMPLATE.md").read_bytes()
+    assert (repo / "docs/process/BREACH_PROCEDURE.md").read_bytes() == (ROOT / "process" / "BREACH_PROCEDURE.md").read_bytes()
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_lint_rejects_a_missing_process_document_or_template(tmp_path):
+    src = copy_source(tmp_path / "src")
+    (src / "process" / "BREACH_PROCEDURE.md").unlink()
+    (src / "templates" / "AGENT_FAILURES_TEMPLATE.md").unlink()
+    problems = build.lint(src)
+    assert any("missing process document: process/BREACH_PROCEDURE.md" in x for x in problems)
+    assert any("missing template: AGENT_FAILURES_TEMPLATE.md" in x for x in problems)
+
+
+def test_rendered_instructions_block_carries_the_shell_write_rule_for_every_profile():
+    agents, rules = build.load_agents(ROOT), build.load_rules(ROOT)
+    for profile in build.PROFILES:
+        block = build.render_instructions_block(agents, rules, "agents", profile)
+        (line,) = [x for x in block.splitlines() if x.startswith("- **Shell writes to files.**")]
+        assert "Do not write or change file contents from a shell command" in line
+        assert "`Write`" in line and ".manifold/scratch/" in line and "replace_all" in line
+
+
 # ----------------------------------------------------- intent, review, scenarios
 
 def _agent_text(role):
@@ -894,7 +1136,8 @@ def test_claude_format_denies_the_tools_an_agent_does_not_declare():
     and black-box roles must carry a denylist (an allowlist would also hide MCP tools)."""
     def fm(role):
         out = build.render_agent(role, _agent_text(role), "claude", build.load_fragments(), build.load_rules())
-        return out.split("---")[1]
+        # up to the guard hook block (T6), whose matcher names Bash, Edit and Write on purpose
+        return out.split("---")[1].split("\nhooks:")[0]
     reviewer = fm("reviewer")
     assert "disallowedTools: Edit, Write, NotebookEdit, WebFetch, WebSearch" in reviewer
     assert "Bash" not in reviewer

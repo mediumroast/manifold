@@ -13,10 +13,13 @@ deterministic: building twice produces identical bytes.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
+import importlib.util
 import json
 import re
 import sys
+import sysconfig
 import zipfile
 from pathlib import Path
 
@@ -57,12 +60,34 @@ TEMPLATE_PATHS = {
     "WT_TEMPLATE.md": ("docs/templates/WT_TEMPLATE.md", ALL_PROFILES),
     "REVIEW_TEMPLATE.md": ("docs/templates/REVIEW_TEMPLATE.md", ("build", "single")),
     "REVIEW_STARTER.md": ("REVIEW.md", ("build", "single")),
+    "AGENT_FAILURES_TEMPLATE.md": ("docs/templates/AGENT_FAILURES_TEMPLATE.md", ALL_PROFILES),
     "SCENARIO_TEMPLATE.md": ("docs/templates/SCENARIO_TEMPLATE.md", ("quality", "single")),
     "SATISFACTION_REPORT_TEMPLATE.md": ("docs/templates/SATISFACTION_REPORT_TEMPLATE.md", ("quality", "single")),
+}
+# process document (in process/) -> (installed path, profiles)
+PROCESS_PATHS = {
+    "process/BREACH_PROCEDURE.md": ("docs/process/BREACH_PROCEDURE.md", ALL_PROFILES),
 }
 # config file (in config/) -> (installed path, profiles). User-editable after install.
 SETTINGS_FILES = {
     "quality-settings.json": (".manifold/quality-settings.json", ("quality", "single")),
+}
+# Hook scripts, path relative to the bundle root -> (installed path, profiles). Standard library only.
+HOOK_FILES = {
+    "hooks/guard.py": (".manifold/hooks/guard.py", ALL_PROFILES),
+}
+# Copilot hook file (shape per docs/agents/harness-capabilities.md: `version: 1`, `hooks.preToolUse`),
+# path relative to the bundle root -> (installed path, profiles). Shipped for the copilot format only.
+# Whether VS Code Local enforces it is unverified (the owner chose to ship it and observe, plan task 7).
+COPILOT_HOOK_FILES = {
+    "hooks/copilot-guard.json": (".github/hooks/manifold-guard.json", ALL_PROFILES),
+}
+# Small support files, path relative to the bundle root -> (installed path, profiles).
+# scratch.gitignore keeps the scratch folder out of git without touching the repository's own .gitignore;
+# manifold.gitignore keeps the guard's local refusal log out of git (hooks/guard.py writes it).
+SUPPORT_FILES = {
+    "config/scratch.gitignore": (".manifold/scratch/.gitignore", ALL_PROFILES),
+    "config/manifold.gitignore": (".manifold/.gitignore", ALL_PROFILES),
 }
 QUALITY_SETTINGS_KEYS = (
     "satisfaction.minimum_overall", "satisfaction.minimum_per_seed", "failures.critical_max_rate",
@@ -229,6 +254,22 @@ CLAUDE_DENY = (("edit", ("Edit", "Write", "NotebookEdit")),
                ("web", ("WebFetch", "WebSearch")))
 
 
+# The guard hook every Claude Code agent gets in its frontmatter (docs/agents/harness-capabilities.md,
+# rows "Frontmatter hooks per agent" and the `$CLAUDE_PROJECT_DIR` item). The matcher has only letters
+# and `|`, so Claude Code reads it as an exact list of tool names. The command uses ${CLAUDE_PROJECT_DIR}
+# in double quotes (shell form) because the hook's working directory is not stated by the source.
+GUARD_MATCHER = "Bash|Edit|Write|MultiEdit|NotebookEdit"
+GUARD_COMMAND = 'python3 "${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py" --client claude'
+GUARD_HOOKS_CLAUDE = (
+    "hooks:",
+    "  PreToolUse:",
+    "    - matcher: %s" % yaml_str(GUARD_MATCHER),
+    "      hooks:",
+    "        - type: command",
+    "          command: %s" % yaml_str(GUARD_COMMAND),
+)
+
+
 def claude_disallowed(blocks) -> list:
     declared = scalar_value(blocks, "tools")
     if declared is None:
@@ -254,6 +295,7 @@ def render_agent(role: str, text: str, fmt: str, fragments: dict, rules) -> str:
         denied = claude_disallowed(blocks)
         if denied:
             fm.append("disallowedTools: %s" % ", ".join(denied))
+        fm.extend(GUARD_HOOKS_CLAUDE)
     elif fmt == "copilot":
         fm = []
         for key, raw in blocks:
@@ -387,6 +429,44 @@ def flatten_settings(data, prefix=""):
     return out
 
 
+def is_stdlib(name: str) -> bool:
+    names = getattr(sys, "stdlib_module_names", None)  # Python 3.10 and later
+    if names is not None:
+        return name in names
+    try:
+        spec = importlib.util.find_spec(name)
+    except (ImportError, ValueError):
+        return False
+    if spec is None:
+        return False
+    origin = spec.origin or ""
+    return origin in ("built-in", "frozen") or (origin.startswith(sysconfig.get_paths()["stdlib"])
+                                                 and "site-packages" not in origin)
+
+
+def lint_hook(path: Path, rel: str) -> list:
+    """A hook script must compile and import only the standard library (it runs on a machine with nothing installed)."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+        compile(tree, rel, "exec")
+    except (SyntaxError, ValueError) as exc:
+        return ["%s does not compile: %s" % (rel, exc)]
+    problems = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [a.name.split(".")[0] for a in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                problems.append("%s: relative import; a hook script must stand alone" % rel)
+                continue
+            names = [(node.module or "").split(".")[0]]
+        else:
+            continue
+        problems.extend("%s imports %r, which is not in the standard library" % (rel, n)
+                        for n in names if n and not is_stdlib(n))
+    return problems
+
+
 def lint(root: Path = ROOT):
     """Return a list of problem strings (empty means clean)."""
     problems = []
@@ -437,6 +517,22 @@ def lint(root: Path = ROOT):
     for name in TEMPLATE_PATHS:
         if not (root / "templates" / name).exists():
             problems.append("missing template: %s" % name)
+    for name in PROCESS_PATHS:
+        if not (root / name).exists():
+            problems.append("missing process document: %s" % name)
+    for rel in list(HOOK_FILES) + list(COPILOT_HOOK_FILES) + list(SUPPORT_FILES):
+        if not (root / rel).exists():
+            problems.append("missing file: %s" % rel)
+        elif rel in HOOK_FILES and rel.endswith(".py"):
+            problems.extend(lint_hook(root / rel, rel))
+        elif rel in COPILOT_HOOK_FILES:
+            try:
+                data = json.loads((root / rel).read_text(encoding="utf-8"))
+            except ValueError as exc:
+                problems.append("%s is not valid JSON: %s" % (rel, exc))
+                continue
+            if data.get("version") != 1 or not isinstance(data.get("hooks", {}).get("preToolUse"), list):
+                problems.append("%s must have version 1 and a hooks.preToolUse list" % rel)
     for name in SETTINGS_FILES:
         path = root / "config" / name
         if not path.exists():
@@ -489,6 +585,11 @@ def build_payload(root: Path = ROOT):
             src = "payload/%s/%s" % (fmt, target)
             files[src] = data
             bucket.append({"path": target, "src": src, "sha256": sha256(data), "role": role})
+    for fname, (target, profiles) in COPILOT_HOOK_FILES.items():
+        data = (root / fname).read_bytes()
+        src = "payload/copilot/%s" % target
+        files[src] = data
+        copilot.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
     for role in ROLES:
         name = SKILL_NAMES[role]
         data = render_skill(role, agents[role], fragments, rules, version).encode("utf-8")
@@ -501,8 +602,18 @@ def build_payload(root: Path = ROOT):
         src = "payload/common/%s" % target
         files[src] = data
         common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
+    for fname, (target, profiles) in PROCESS_PATHS.items():
+        data = (root / fname).read_bytes()
+        src = "payload/common/%s" % target
+        files[src] = data
+        common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
     for fname, (target, profiles) in SETTINGS_FILES.items():
         data = (root / "config" / fname).read_bytes()
+        src = "payload/common/%s" % target
+        files[src] = data
+        common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
+    for fname, (target, profiles) in list(HOOK_FILES.items()) + list(SUPPORT_FILES.items()):
+        data = (root / fname).read_bytes()
         src = "payload/common/%s" % target
         files[src] = data
         common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})

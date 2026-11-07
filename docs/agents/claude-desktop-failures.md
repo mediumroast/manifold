@@ -99,3 +99,61 @@ Checkpoints CP1, CP2 and CP4 had a breach; CP3 did not. Between CP1 and CP2 the 
 - Add to the rule a sanctioned way to run a one-off snippet: write it to the scratchpad with `Write`, then run the file.
 - Name the scratchpad directory in the agent's instructions, so temporary files do not go to `/tmp`.
 - Have the `reviewer` agent read the agent's "Rule exceptions" section and compare it with the tool-call log.
+
+---
+
+Entries F4 to F6 were added on 2026-11-06 (Phase 2, task 14) in the fields of `docs/templates/AGENT_FAILURES_TEMPLATE.md`. F1 to F3 above are unchanged.
+
+**How the counts below were made.** A script (kept in the session scratchpad, not in the repository) read the subagent transcripts, took every `Bash` tool call once by its tool-use id (the transcripts repeat some requests), and counted a command when `bundles/base/hooks/guard.py` (`classify_bash`, Phase 2 task 4) would refuse it: a heredoc, a redirect into a file, `sed -i`, `tee`, a `python -c` that opens a file for writing, or a write to `/tmp`. Some counted commands are no-ops or write to the session scratchpad, so each entry says which. The script reads only; nothing was copied out of the transcripts. A check against F1's run gives 6 commands (4 heredoc-form commands, one `printf >>`, one `sed -i.bak` on `.gitignore`), which agrees with F1's four heredocs and its `printf` note; the `sed -i.bak` is not in F1. The agents' hand-back messages are not in their subagent transcripts, so "disclosed" is taken from the plan notes only and is marked "not determined" where the plan is silent.
+
+## F4 — The `planner` wrote plan edits through heredocs and shell scripts (2026-11-01 and 2026-11-02)
+
+**Rule:** `no-heredocs` ("Do not write multi-line text or code through shell heredocs"). At that time the rule's `applies_to` was `coder, bug-coder, test-coder` in `bundles/base/rules/core/no-heredocs.md`, so the rule was in the project instructions (`AGENTS.md`, Working rules) but not in the `planner`'s own agent definition (inference: this is why it was not held).
+**What happened:** The `planner` run "Planner review of INT-1, 6, 7" (2026-11-01 12:44 to 15:07 UTC, 35 shell commands) edited `docs/plans/PHASE_1_PLAN.md` three times with `python3 - <<'EOF'` (14:58:35, 15:07:39, 15:07:43), wrote three scratch scripts with `cat > <session scratchpad>/<name>.py` (14:42:35, 14:57:59, 14:58:28) and made the scratchpad folder with `mkdir -p` (14:38:07, a path under `/private/tmp`, the session's own scratchpad, so not a breach of the written rule). The four `planner` amendment runs of the review cycle (2026-11-02) had three more: `sed -i.bak` on `docs/plans/PHASE_1_PLAN.md` (04:51:39), a `cat >` of a scratch file (04:42:39) and a no-op `cat > /dev/null <<'EOF'` (12:39:09).
+**Evidence:** `~/.claude/projects/-Users-mihay42-dev-manifold--claude-worktrees-sub-agents-access-e9e255/acd6e9f9-7b65-4f1f-9110-385f287fa8ec/subagents/agent-ae67e729d0a06a41d.jsonl`; amendment runs in `~/.claude/projects/-Users-mihay42-dev-manifold--claude-worktrees-hungry-kowalevski-9065dd/8baca43b-c11d-4b74-96e5-03b833764fd4/subagents/` as `agent-a3a9df028cd508eff.jsonl`, `agent-a65d7d1008f830100.jsonl`, `agent-a0f4737d86adb7298.jsonl` (a fourth, `agent-a026be49a3bf318c4.jsonl`, had none). Transcripts cited by location, not copied.
+**Count:** First planner run: 7 flagged commands (3 heredoc edits of a tracked plan file, 3 scratch-script writes, 1 `mkdir` in the scratchpad). Amendment runs: 3 flagged (1 `sed -i.bak` on the tracked plan, 1 scratch redirect, 1 no-op heredoc). Planner total: 10 flagged; 4 changed a tracked file (3 heredocs, 1 `sed -i.bak`).
+**Agent:** planner
+**Disclosed by the agent:** Not determined (the plan carries no planner note about it and the hand-back messages were not read).
+**Suggested change:** The widened shell-write rule applies to every role (`applies_to: all`, Phase 2 task 8), the guard hook refuses the commands, and the planner edits plans with `Edit` (Phase 2 task 26).
+**Status:** open
+**Intent raised:** INT-20
+
+## F5 — The `coder` used heredocs and `sed -i.bak` in the review amendment, T37 to T52 (2026-11-02)
+
+**Rule:** `no-heredocs`, and the F2 suggestion (use `Edit` with `replace_all` for renames).
+**What happened:** The `coder` run "Implement review amendment T37-T52" (2026-11-02 04:54 to 12:22 UTC, 83 shell commands) ran 11 flagged commands: 5 with a heredoc (`python3 - <<'EOF'` at 04:55:36 on `wiki_backend/handoff.py` and at 12:14:25 on `manifold_security/scopes.py` for T44, `cat >> tests/test_onboarding.py <<'EOF'` at 12:16:22 for T46, an inline probe script at 12:16:30, and a no-op `cat >> /dev/null <<'EOF'` at 04:56:07), 5 `sed -i.bak` edits (04:55:29, 12:11:42, 12:13:32, 12:16:47, 12:16:55; two were temporary debug prints in a test) and 1 redirect (`git diff > <scratchpad>/t41_git.patch`, 05:00:01). Eight of the 11 changed tracked files. The intent said "about four more times"; the count by this method is 5 heredoc-form commands (one a no-op) and 5 `sed -i.bak`. The two later `coder` runs for T52 to T58 had one flagged command between them (a no-op `cat >> /dev/null <<'EOF'`, 12:55:16). The same no-op `cat >> /dev/null <<'EOF'` also appears in F3 item 1 and in the CP2 to CP4 run (inference: a habit of putting a heredoc in front of a command it then does not use).
+**Evidence:** `~/.claude/projects/-Users-mihay42-dev-manifold--claude-worktrees-hungry-kowalevski-9065dd/8baca43b-c11d-4b74-96e5-03b833764fd4/subagents/agent-a312f4646f33695d2.jsonl` (T37 to T52), `agent-a90996579573e306b.jsonl` (T52 and T53, none flagged), `agent-aa16acb99fd023aad.jsonl` (T53 to T58, one no-op). Plan note: `docs/plans/PHASE_1_PLAN.md`, Task 44, "I edited `scopes.py` with a small python heredoc script, against the no-heredoc rule".
+**Count:** 11 flagged commands in the T37 to T52 run (5 heredoc-form, 5 `sed -i.bak`, 1 scratch redirect), 8 on tracked files; 1 more in T53 to T58. The `coder` total across F1 to F5 is not summed here because F2 and F3 were counted by their authors (the same method flags 6 in the CP2 to CP4 run, `agent-ac2733f30f7271548.jsonl`, where F2 and F3 record 4; the difference was not analysed).
+**Agent:** coder
+**Disclosed by the agent:** 1 of 11 in the plan notes (the T44 heredoc); not determined for the rest, because the hand-back reports are not in the subagent transcript.
+**Suggested change:** As F4, plus the guard's message names `Edit` with `replace_all` and the scratch route (Phase 2 tasks 4 and 8), and the coder report carries a "Rule exceptions" line (task 10).
+**Status:** open
+**Intent raised:** INT-20
+
+## F6 — The coordinating session had no written procedure (Phase 1 cycle, 2026-11-01 to 2026-11-02)
+
+**Rule:** None. The gap is the finding: no document said what the session that relayed work between the `planner`, `coder` and `reviewer` may do, must check or must record.
+**What happened:** The first real cycle was coordinated by a session with no role definition. At the base of this change (`c5f1440`) `bundles/base/agents/` held seven agents and none was a coordinator, and a search of the bundle's agents and rules for "coordinator" found no match; no installed document described the session's duties (running the review-to-repair loop, checking the ready conditions, recording breaches). Consequence seen in the cycle: breaches F1 to F5 were found and written down by hand, afterwards, and the session that coordinated is the main session, which the per-agent guard hook of Phase 2 task 6 does not cover (stated in the install guide, task 39).
+**Evidence:** `ls bundles/base/agents` and `grep -ril coordinator bundles/base/agents bundles/base/rules` on commit `c5f1440` (read in Phase 2, task 14); the intent `intent/INT-22-coordinator-agent.md` (problem statement).
+**Count:** Not applicable (an absence, not a repeated act). Breaches by the coordinating session itself are not counted here: its transcript was not read.
+**Agent:** coordinator (the main session)
+**Disclosed by the agent:** Not applicable.
+**Suggested change:** The `coordinator` agent, `docs/process/REVIEW_CYCLE.md` and `docs/process/BREACH_PROCEDURE.md` (INT-22; Phase 2 tasks 12, 28, 33); the main session's own breaches are recorded by the owner or the `reviewer` (BREACH_PROCEDURE.md).
+**Status:** open (closes when the coordinator ships and is used on real work)
+**Intent raised:** INT-22
+
+## Pattern across checkpoints, later runs
+
+Continues the table in F3. One row per run, same method as above. "Tracked" means a file in the repository was changed from the shell.
+
+| Run | Flagged commands | Tracked | Scratch or no-op | Disclosed |
+|---|---|---|---|---|
+| Planner, INT-1/6/7 review (2026-11-01) | 7 | 3 (heredocs) | 4 (3 scratch scripts, 1 `mkdir`) | not determined |
+| Coder, T37 to T52 (2026-11-02) | 11 | 8 | 3 (1 redirect, 2 no-op or probe heredocs) | 1 of 11 (T44 note) |
+| Coder, T52 and T53 | 0 | 0 | 0 | not applicable |
+| Coder, T53 to T58 | 1 | 0 | 1 (no-op heredoc) | not determined |
+| Planner, four amendment runs (2026-11-02) | 3 | 1 (`sed -i.bak`) | 2 | not determined |
+| Phase 2: planner, amend task 37 (2026-11-06) | 1 | 0 | 1 (redirect into the scratchpad) | not determined |
+| Phase 2: coder, checkpoint 1 (2026-11-06) | 1 | 0 | 1 (`python3 - <<'X'` with an empty body, then an inline `python3 -c`) | not determined |
+
+What the rows show (inference): the shell writes continued through the whole cycle and into Phase 2 after the rule was restated, and most of the later ones were small ("run this snippet") rather than edits of tracked files. Eight of the eleven coder commands in T37 to T52 were edits of existing files, as in F1. The Phase 2 rows were found in the same transcript pass; the Phase 2 runs came before the guard was installed here. This record has no row for the Phase 2 coordinating session. Later checkpoints add rows below.

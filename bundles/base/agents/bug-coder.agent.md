@@ -58,6 +58,8 @@ When a report is really a missing feature: confirm with the user that it is out 
 
 Report: the final status of every bug (Fixed, Deferred, Pending confirmation); the files you changed; the tests you added; and any feature gaps recorded.
 
+- **Rule exceptions:** `none` or each exception (command, file, reason).
+
 ## What you do not do
 
 - Build new features.

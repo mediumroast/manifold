@@ -43,6 +43,8 @@ Order findings by severity. For each finding give:
 
 Respect the nit cap: report at most the allowed number of nits and summarize the rest as a count. End with a short summary: the number of findings by severity, what you could not check, and the reminder that **a human decides**. Findings do not approve or block the change.
 
+- **Rule exceptions:** the comparison you made between the agent's "Rule exceptions" line and the diff, the commit log and `.manifold/guard-log.jsonl` (what matched, what did not, or "not compared" and why).
+
 ## What you do not do
 
 - Edit files, fix findings, or commit anything.
