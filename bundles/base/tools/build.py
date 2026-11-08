@@ -51,7 +51,9 @@ SKILL_ROOT = ".claude/skills"
 SKILL_PATH = SKILL_ROOT + "/{name}/SKILL.md"
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SKILL_ALLOWED_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
-REF_RE = re.compile(r"\{\{(ref|name):([a-z-]+)\}\}")
+# {{name?:role}} is like {{name:role}} but names a role some profile may not install (lint skips
+# the "profile does not install it" check for this kind only; an unknown role still fails).
+REF_RE = re.compile(r"\{\{(ref|name\??):([a-z-]+)\}\}")
 ALL_PROFILES = tuple(PROFILES)
 # template file -> (installed path, profiles that receive it)
 TEMPLATE_PATHS = {
@@ -248,7 +250,7 @@ def expand_refs(text: str, fmt: str, who: str) -> str:
         if role not in ROLES:
             raise BuildError("%s: unknown role %r in a reference" % (who, role))
         name, noun = (SKILL_NAMES[role], "skill") if fmt == "skills" else (role, "agent")
-        return "`%s`" % name if kind == "name" else "`%s` %s" % (name, noun)
+        return "`%s`" % name if kind in ("name", "name?") else "`%s` %s" % (name, noun)
     return REF_RE.sub(sub, text)
 
 
@@ -529,7 +531,9 @@ def lint(root: Path = ROOT):
             for style in INSTRUCTION_STYLES:
                 guard(render_instructions_block, agents, rules, style, profile)
         for role, text in agents.items():
-            for _kind, ref in REF_RE.findall(text):
+            for kind, ref in REF_RE.findall(text):
+                if kind == "name?":
+                    continue  # optional: may name a role the profile lacks; an unknown role fails in expand_refs
                 for profile, roles in PROFILES.items():
                     if role in roles and ref not in roles:
                         problems.append("%s refers to %r, which the %s profile does not install" % (role, ref, profile))

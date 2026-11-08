@@ -2277,3 +2277,137 @@ def test_t35_contributing_says_how_the_hook_is_tested_and_lists_the_coordinator_
     t = _doc("CONTRIBUTING.md")
     for needle in ("tests/test_guard.py", "hooks/guard.py", "standard library", "exit code", "coordinator"):
         assert needle in t, needle
+
+
+# ------------------------------------------------ INT-25: a skeptical test planner (T44 to T52)
+
+def _rule_text(rule_id):
+    """One rule source on one line, the way render_rules joins it."""
+    return " ".join((ROOT / "rules" / "core" / ("%s.md" % rule_id)).read_text().split())
+
+
+def test_int25_test_planner_reads_the_intent_judges_existing_tests_asks_and_never_approves():
+    """INT-25 S2, S3, S4, S6, S7 (T50): the planner is skeptical of the builders' tests and asks before it pads."""
+    for out in _both_flavors("test-planner"):
+        assert "so you do not duplicate coverage" not in out
+        for needle in ("originating intent", "adequate, thin or absent", "no gap found",
+                       "Questions for the human", "Unconfirmed: owner to confirm", "no quality repository",
+                       "never fill in **Approved by**"):
+            assert needle in out, needle
+
+
+def test_int25_test_coder_stops_on_approval_and_blocking_questions_and_keeps_a_failing_check_red():
+    """INT-25 S5 (T51): approval first, a blocking question stops the work, a failing check is a defect and stays red."""
+    for out in _both_flavors("test-coder"):
+        for needle in ("Approved by", "blocking question", "stays red", "call shape", "bug-coder"):
+            assert needle in out, needle
+
+
+def test_int25_test_plan_template_has_the_skeptical_sections_and_fields():
+    """INT-25 S2, S3, S4, S6 (T49)."""
+    t = (ROOT / "templates" / "PHASE_TEST_PLAN_TEMPLATE.md").read_text()
+    for heading in ("## Source intents", "## Coverage judgement", "## Gaps found", "## Questions for the human"):
+        assert heading in t, heading
+    for field in ("**Approved by:**", "**Derived from:**", "**Existing or new:**", "**Blocking:**", "**Answer:**"):
+        assert field in t, field
+
+
+def test_int25_rule_derive_tests_names_the_intent_and_asks_for_a_source_per_case():
+    """INT-25 S2 (T47): the old sentence that made the plan the only source is gone."""
+    t = _rule_text("derive-tests-from-plan")
+    assert "Test cases come from the phase plan's objective, file inventory and acceptance lines" not in t
+    for needle in ("originating intent", "gap check", "cites a source"):
+        assert needle in t, needle
+    for role in ("test-planner", "test-coder"):
+        for out in _both_flavors(role):
+            assert "Test cases come from the phase plan's objective, file inventory and acceptance lines" not in out
+            assert "cites a source" in out, role
+
+
+def test_int25_rule_black_box_limits_the_pseudo_holdout_to_repositories_without_a_quality_repository():
+    """INT-25 S7 (T48)."""
+    assert "no quality repository" in _rule_text("quality-side-is-black-box")
+
+
+def test_int25_test_planner_modes_say_who_is_held_out_from_what():
+    """INT-25 S7 (T50 follow-up, owner 2026-11-08): the scenario-mode planner is the quality side and reads
+    its own scenarios by design; the local-check planner never reads held-out scenarios and has no pseudo
+    hold-out where a quality repository exists."""
+    for out in _both_flavors("test-planner"):
+        local = out.split("- **Local-check mode**")[1].split("- **Scenario mode**")[0]
+        scenario = out.split("- **Scenario mode**")[1].split("\n\n")[0]
+        assert "you never read them" in local and "only where there is no quality repository" in local
+        assert "you are the quality side" in scenario
+        assert "read this repository's scenarios by design" in scenario
+        assert "the pseudo hold-out is not used" in scenario
+        assert "held-out scenarios are never read" not in scenario
+
+
+def test_int25_rule_builders_say_what_a_gap_check_is():
+    """INT-25 S2 (T48): a gap check is a local integration check the builders do not write."""
+    assert "gap check" in _rule_text("builders-dont-write-acceptance-tests")
+
+
+def test_int25_reviewer_checks_a_test_plan_for_reflection_inside_the_tests_pass_and_never_approves_it():
+    """INT-25 S1, S8 (T52, Open question 18 option A): a named section under the existing Tests pass, no new pass."""
+    for out in _both_flavors("reviewer"):
+        assert "## When the change includes a test plan" in out
+        section = out.split("## When the change includes a test plan")[1].split("\n## ")[0]
+        for sign in ("no intent cited", "every automated case pre-ticked", "no gaps", "no questions", "a case with no source"):
+            assert sign in section, sign
+        assert "**Tests**" in section and "PHASE_<N>_TEST_PLAN.md" in section
+        assert "never approve the test plan" in section
+        assert "no new pass" in section
+
+
+@pytest.mark.parametrize("role", ["test-planner", "test-coder"])
+def test_int25_both_flavors_carry_the_same_body(role):
+    """INT-25 S8 (T44): one source, so the two rendered bodies are identical."""
+    bodies = [out.split("\n---\n", 1)[1] for out in _both_flavors(role)]
+    assert bodies[0] == bodies[1]
+
+
+# The optional marker {{name?:role}} (owner's decision, 2026-11-08): names a role that some profile
+# may not install. Patterned on test_unknown_role_in_a_reference_is_rejected and
+# test_lint_rejects_a_reference_to_a_role_the_profile_lacks.
+
+@pytest.mark.parametrize("fmt,expected", [("claude", "`bug-coder`"), ("copilot", "`bug-coder`"), ("skills", "`fix-bug`")])
+def test_optional_name_marker_expands_like_name_per_flavor(fmt, expected):
+    assert build.expand_refs("see {{name?:bug-coder}}.", fmt, "x") == "see %s." % expected
+
+
+def test_optional_marker_with_an_unknown_role_is_rejected_when_expanded():
+    with pytest.raises(build.BuildError):
+        build.expand_refs("see {{name?:wizard}}", "skills", "x")
+
+
+def test_lint_passes_a_quality_role_that_names_the_optional_bug_coder(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "agents" / "scenario-writer.agent.md"
+    p.write_text(p.read_text().replace("## What you do not do", "Hand a defect to the {{name?:bug-coder}} where installed.\n\n## What you do not do", 1))
+    assert build.lint(src) == []
+
+
+def test_lint_still_rejects_an_optional_marker_naming_a_nonexistent_role(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "agents" / "scenario-writer.agent.md"
+    p.write_text(p.read_text().replace("## What you do not do", "Ask the {{name?:bug-coderr}}.\n\n## What you do not do", 1))
+    assert build.lint(src) != []
+
+
+def test_lint_still_rejects_the_plain_ref_to_bug_coder_from_test_coder(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "agents" / "test-coder.agent.md"
+    p.write_text(p.read_text().replace("## What you do not do", "See the {{ref:bug-coder}}.\n\n## What you do not do", 1))
+    assert any("test-coder refers to 'bug-coder'" in x and "quality" in x for x in build.lint(src))
+
+
+def test_test_coder_names_bug_coder_per_flavor():
+    fragments, rules = build.load_fragments(), build.load_rules()
+    text = _agent_text("test-coder")
+    assert "{{name?:bug-coder}}" in text
+    for fmt in ("claude", "copilot"):
+        out = build.render_agent("test-coder", text, fmt, fragments, rules)
+        assert "`bug-coder`" in out and "fix-bug" not in out and "{{" not in out
+    out = build.render_skill("test-coder", text, fragments, rules, build.read_version(ROOT))
+    assert "`fix-bug`" in out and "bug-coder" not in out and "{{" not in out

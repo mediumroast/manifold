@@ -13,7 +13,7 @@ Do not write the behavior scenarios or end-to-end acceptance tests that judge yo
 An AI that builds the code and also writes the tests that judge it can make them agree with each other instead of with what the user wanted.
 
 ## Instead
-Write local checks beside the code. If behavior needs independent verification, say so; the scenarios come from the intent's scenario seeds and are written in the quality repository by someone else.
+Write local checks beside the code. If behavior needs independent verification, say so; the scenarios come from the intent's scenario seeds and are written in the quality repository by someone else. A gap check written by the test side is a local integration check, not a behavior scenario or an acceptance suite, and the `coder` and `bug-coder` do not write it.
 
 ## Enforce
 - review: no behavior scenarios or end-to-end acceptance suites in a build-side change

@@ -69,6 +69,18 @@ Where each item is reported:
 
 Severity for prose: **Important** if an agent could behave differently or be misled by it; otherwise Nit.
 
+## When the change includes a test plan
+
+This adds no new pass and changes no heading of the review document. When the change includes a `PHASE_<N>_TEST_PLAN.md`, check it for reflection (a plan that only mirrors the existing tests) and report each sign you find under the existing **Tests** pass:
+
+- no intent cited (the plan's `## Source intents` names no `INT-<n>`);
+- every automated case pre-ticked (each `A<N>` already `[x]` before any test was written);
+- no gaps (`## Gaps found` holds no case, and no `no gap found` with evidence either);
+- no questions (`## Questions for the human` holds no question, and no stated reason either);
+- a case with no source (an empty or missing `**Derived from:**`, except a manual case marked `Unconfirmed: owner to confirm`).
+
+Report the signs you found, or say that you found none and what you read. A blank **Approved by** is the right state of a new test plan, not a finding. You never approve the test plan: a human does.
+
 ## Report
 
 Order findings by severity. For each finding give:
