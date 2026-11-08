@@ -3,10 +3,10 @@ id: INT-25
 title: A skeptical test planner: independent gap checks where there is no quality repository
 author: Michael Hay
 created: 2026-11-08
-status: draft
+status: accepted
 affects: [bundle, agents]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay on November 8, 2026
 ---
 
 # Intent: A skeptical test planner: independent gap checks where there is no quality repository
@@ -120,7 +120,7 @@ By the owner's decision of 2026-11-08, INT-25 is planned inside Phase 2 (`docs/p
 
 ## Open questions
 - Which model or effort is recommended for the `test-planner`? (the owner, after the "after" run)
-- How does the reflection check fit the reviewer's four passes, given that INT-21 says "no new pass"? (the owner)
+- How does the reflection check fit the reviewer's four passes, given that INT-21 says "no new pass"? (the owner) Answer: I need more details place them in the plan for review. This doesn't make sense to me as worded.
 
 ## Concerns flagged
 None.
