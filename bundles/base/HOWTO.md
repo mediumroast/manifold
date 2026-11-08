@@ -10,8 +10,8 @@ This guide is for the people in a repository that has the base bundle installed.
 | `coder` | A plan has **Approved by** filled in by a person; it works one checkpoint at a time | The plan is unapproved, or the work is large or unclear (plan it first); it is the agent that wrote the change and you want a review |
 | `bug-coder` | A defect, a regression, a failing test or walkthrough notes: it finds the root cause, writes the failing test first, then fixes | The report is really a new feature |
 | `reviewer` | A change or checkpoint is finished and you want it judged against the plan, the intent and the review policy, in a session of its own | The same session wrote the change; you expect it to fix, approve or block anything: it writes one file, the review document |
-| `test-planner` | You want the repository's own unit and integration checks planned from a phase plan (or, in a quality repository, the automation of scenarios) | You want test code |
-| `test-coder` | A test plan exists and its automated cases need writing | You want production code or scenarios changed, or the full suite run for you |
+| `test-planner` | You want the repository's own unit and integration checks planned from a phase plan and the intent it came from (or, in a quality repository, the automation of scenarios); it looks for gaps before it reads the existing tests and asks you what it cannot decide | You want test code |
+| `test-coder` | A test plan exists, a person has approved it and its automated cases need writing; it stops on a blocking question | You want production code or scenarios changed, or the full suite run for you |
 | `scenario-writer` | In the quality repository, an accepted intent has scenario seeds to expand into behavior scenarios | You are in the product repository (the `build` profile does not install it), or you want it to read the product's code |
 | `coordinator` | You want the review-to-repair cycle run for a change, a pull request's ready check written, or the last run's breaches recorded | You expect it to do an agent's work, approve, move a pull request out of draft or merge |
 
@@ -37,7 +37,7 @@ The sequence is the one in `docs/process/REVIEW_CYCLE.md`: review, `docs/plans/R
 **What the agents will not do.** Execute a plan that is not approved, even when told to execute it.
 
 ### 4. Build, by checkpoint
-**What usually happens.** The `coder` works through one checkpoint, runs each task's check, ticks the task off with a note (command and result) and reports the project's gates with real counts. It then stops. The `test-planner` and `test-coder` write the repository's own checks from the plan.
+**What usually happens.** The `coder` works through one checkpoint, runs each task's check, ticks the task off with a note (command and result) and reports the project's gates with real counts. It then stops. The `test-planner` and `test-coder` write the repository's own checks from the plan and the intent. The test plan is approved by a person (you write **Approved by**), you answer its questions before the `test-coder` starts, and a check that stays red is a defect for the `bug-coder`, not a test to edit.
 **What you do.** Read the checkpoint report, then tell the `coder` to continue. If a fix would change a test that pinned the old behavior, it stops and asks you; a yes, in your words, is recorded in the plan before the test is edited.
 **What the agents will not do.** Start the next checkpoint unasked, edit a test to make a run pass, work outside the plan's file inventory, or commit unless you ask.
 

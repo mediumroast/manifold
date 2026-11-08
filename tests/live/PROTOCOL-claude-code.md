@@ -26,7 +26,7 @@ Nothing here can push anywhere: none of the test repositories has a remote.
 
 Set two variables in Terminal B and keep using that terminal: `export MANIFOLD_REPO=<your clone of this repository, on the branch under test>` and `export PRODUCT_SRC=<the product repository to copy>`.
 
-You need: a Mac with a terminal, Python 3.8 or newer, git, internet access, about 1 GB free space, and a Claude account on a plan that includes Claude Code (Pro, Max, Team or Enterprise), or a Console account with credits.
+You need: a Mac with a terminal, Python 3.10 or newer, git, internet access, about 1 GB free space, and a Claude account on a plan that includes Claude Code (Pro, Max, Team or Enterprise), or a Console account with credits.
 
 Check each in Terminal B. Every command should print a version, not an error:
 
@@ -136,7 +136,7 @@ python3 ../bundle/install.py --target . --status
 ls -la .claude/agents
 ```
 
-Apply ends with `Installed manifold 0.1.0 into ...`. Every line of `--status` says `ok`. The listing shows six files. (Finder hides folders that start with a dot; Terminal does not.)
+Apply ends with `Installed manifold 0.2.0 into ...`. Every line of `--status` says `ok`. The listing shows six files. (Finder hides folders that start with a dot; Terminal does not.)
 
 - **[1.1]** The dry run wrote nothing (the count was `0`) and said so.
 - **[1.2]** Apply created six agents in `.claude/agents`, and `--status` showed only `ok`.
@@ -187,7 +187,7 @@ python3 bundle/install.py --target quality  --profile quality --format claude --
 python3 bundle/install.py --target manifold --profile build   --format claude --apply
 ```
 
-Each ends with `Installed manifold 0.1.0 into ...`. If the third prints an overlap message instead, add `--allow-overlap` to that one command and record that you had to.
+Each ends with `Installed manifold 0.2.0 into ...`. If the third prints an overlap message instead, add `--allow-overlap` to that one command and record that you had to.
 
 Then lock the baseline. This commits the installed files in each scratch repository and tags it, so that `reset` can come back here:
 
@@ -511,7 +511,17 @@ ls -t ~/manifold-live/claude/product/docs/plans | head -3
 git -C ~/manifold-live/claude/product status --short
 ```
 
+It also names the intent the plan came from, says what it found missing in the existing tests (or `no gap found`, with the evidence), asks you a question where it cannot decide, and leaves **Approved by** blank. Answer its questions, but do not fill in **Approved by** for the test-planner: save the evidence first (labels `testplan` and `task5` below; `testplan` judges the plan before any approval).
+
 **End the session:** type `/exit`.
+
+**Save the evidence** (Terminal B). One command snapshots the repositories, reads every agent session since the previous task and the Claude Code transcripts, and judges the checks it can:
+
+```bash
+$MANIFOLD_REPO/tests/live/lp.sh claude evidence testplan
+```
+
+It prints one line per check: **PASS** and **FAIL** are decided by the script, **CHECK** means I will look at it. You do not fill in any sheet. In the chat, tell me **"testplan done"** and add one line for anything that surprised you or that you did differently from this document. I read the evidence, the saved sessions and your line, and write the results myself.
 
 **Start the `test-coder` agent** (Terminal A):
 
@@ -616,7 +626,7 @@ It prints one line per check: **PASS** and **FAIL** are decided by the script, *
 
 ### Task 7. Behavior scenarios in a separate repository (scenario-writer, test-planner, test-coder) - quality - 40 minutes
 
-The quality repository holds behavior scenarios, written without looking at the product's code. The agents work only from the accepted intent and its scenario seeds. All of Task 7 happens in the window for `quality` (Copilot: `code ~/manifold-live/claude/quality`), not the product window. Start a **New Chat** for each step and check the Agent chip each time. In v0.1.0 there is no tool that carries an intent between repositories, so you copy it by hand: **tell me in the chat that you had to** (it is a known gap).
+The quality repository holds behavior scenarios, written without looking at the product's code. The agents work only from the accepted intent and its scenario seeds. All of Task 7 happens in the window for `quality` (Copilot: `code ~/manifold-live/claude/quality`), not the product window. Start a **New Chat** for each step and check the Agent chip each time. In v0.2.0 there is no tool that carries an intent between repositories, so you copy it by hand: **tell me in the chat that you had to** (it is a known gap).
 
 **Reset** (Terminal B):
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Mediumroast, Inc.
-"""Manifold tool-boundary guard. Standard library only; written for Python 3.8.
+"""Manifold tool-boundary guard. Standard library only; written for Python 3.10 or newer.
 
 A client runs this file before a tool call (a pre-tool hook) and passes the call as JSON on
 standard input. The guard enforces three rules and refuses the call when one is broken:

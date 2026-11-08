@@ -19,6 +19,8 @@ found through the folder the chat was opened in.
 import json, os, re, subprocess, sys, tempfile, time, zipfile
 from pathlib import Path
 
+import plan_check   # the checker for reflected test plans, in this folder (INT-25, T46)
+
 # the folder that holds home directories on this machine (/Users on macOS, /home on Linux)
 HOME_RE = re.escape(os.path.dirname(os.path.expanduser("~")))
 
@@ -570,6 +572,59 @@ def testset():
             if not bad else "files outside server/tests and docs/plans: " + ", ".join(bad))
     t = subprocess.run([str(r / ".venv/bin/python"), "-m", "pytest", "-q"], cwd=r / "server", capture_output=True, text=True)
     verdict("T.2", "PASS" if t.returncode == 0 else "FAIL", "suite: " + (t.stdout.strip().splitlines() or ["no output"])[-1])
+    # T.3: new test functions, counted from git (the diff against HEAD and the untracked files), not from what an agent says.
+    new = 0
+    for line in git(r, "diff", "HEAD", "-U0", "--", "server/tests").splitlines():
+        if line.startswith("+") and not line.startswith("+++") and re.match(r"\+\s*(async\s+)?def test_", line):
+            new += 1
+    for line in git(r, "status", "--short", "--untracked-files=all", "--", "server/tests").splitlines():
+        if line.startswith("??") and line.endswith(".py"):
+            new += len(re.findall(r"^\s*(?:async\s+)?def test_", (r / line[3:].strip()).read_text(), re.M))
+    # CHECK, not FAIL, when it is 0: "no gap found" is an allowed result of the test planner
+    verdict("T.3", "PASS" if new else "CHECK",
+            "%d new test function(s) under server/tests" % new if new else "no new test function under server/tests; allowed only if the plan says `no gap found` with evidence")
+
+
+def testplan():
+    """The test plan the test-planner wrote (INT-25): taken after the planner and before any approval.
+    The plan is the newest *TEST_PLAN*.md under docs/plans of the manifold repository, else of the product repository."""
+    found = []
+    for name in ("manifold", "product"):
+        if name in LIVE_REPOS and (REPO_DIRS[name] / "docs" / "plans").exists():
+            found += list((REPO_DIRS[name] / "docs" / "plans").glob("*TEST_PLAN*.md"))
+    plan = sorted(found, key=lambda p: p.stat().st_mtime)[-1] if found else None
+    if plan is None:
+        for cid in ("P.1", "P.2", "P.3", "P.4", "P.5", "P.6"):
+            verdict(cid, "CHECK", "no *TEST_PLAN*.md under docs/plans; the planner may have answered in chat only")
+    else:
+        text = plan.read_text()
+        names = {name for name, _ in plan_check.check(text)}
+        detail = {name: why for name, why in plan_check.check(text)}
+        verdict("P.1", "FAIL" if "no-intent-cited" in names else "PASS", "%s: %s" % (plan.name, detail.get("no-intent-cited", "it cites an intent")))
+        cases = [c for c in plan_check._cases(plan_check.COMMENT_RE.sub("", text)) if c[0] == "A"]
+        marks = [plan_check.TODO_RE.search(c[2]) for c in cases]
+        ticked = [m for m in marks if m is not None and m.group(1) == "[x]"]
+        if "all-automated-cases-pre-ticked" in names:
+            verdict("P.2", "FAIL", "%s: %s" % (plan.name, detail["all-automated-cases-pre-ticked"]))
+        elif ticked:
+            verdict("P.2", "CHECK", "%s: %d of %d automated cases are already ticked [x] before any test was written" % (plan.name, len(ticked), len(cases)))
+        else:
+            verdict("P.2", "PASS", "%s: no automated case is pre-ticked" % plan.name)
+        verdict("P.3", "FAIL" if "case-without-source" in names else "PASS", detail.get("case-without-source", "every case has a source"))
+        verdict("P.4", "FAIL" if "no-gap-statement" in names else "PASS", detail.get("no-gap-statement", "gaps are judged, or `no gap found` has evidence"))
+        verdict("P.5", "FAIL" if "no-questions-section" in names else "PASS", detail.get("no-questions-section", "a question is asked or a reason is stated"))
+        line = next((l for l in text.splitlines() if l.startswith("**Approved by:**")), "")
+        value = line.replace("**Approved by:**", "").strip()
+        blank = (not value) or value.startswith("<!--")
+        verdict("P.6", "PASS" if blank else "FAIL", "Approved by is still blank" if blank else "the planner filled in Approved by: %s" % value)
+    ss = [x for x in load_sessions(LIVE_REPOS) if x.agent == "test-planner"]
+    first = [x.say[0] for x in ss if x.say]
+    if not first:
+        verdict("P.7", "CHECK", "no test-planner chat found in the window")
+    elif any("?" in t or re.search(r"no gap found", t, re.I) for t in first):
+        verdict("P.7", "PASS", "the first reply asks a question or says `no gap found`")
+    else:
+        verdict("P.7", "CHECK", "the first reply neither asks a question nor says `no gap found`; read it in sessions.md")
 
 
 def task6():
@@ -641,7 +696,7 @@ def probe_testplanner():
 PROBES = {"testplanner": probe_testplanner, "planner": probe_planner, "coder": probe_coder, "bugcoder": probe_bugcoder, "reviewer": probe_reviewer, "holdout": task8}
 
 
-CHECKS = {"task4": task4, "task5": task5, "task6": task6, "task7": task7, "task8": task8, "dogfood": dogfood, "testset": testset}
+CHECKS = {"task4": task4, "task5": task5, "task6": task6, "task7": task7, "task8": task8, "dogfood": dogfood, "testset": testset, "testplan": testplan}
 
 
 # ---------------------------------------------------------------- output
@@ -671,7 +726,7 @@ def main():
     fn = PROBES[pm.group(1)] if pm else CHECKS.get(LABEL)
     expected = {"task2": {"planner"}, "task3": {"coder"}, "task4": {"bug-coder"}, "task5": {"test-planner", "test-coder"},
                 "task6": {"reviewer"}, "task7": {"scenario-writer", "test-planner", "test-coder"}, "task8": {"coder"},
-                "dogfood": {"planner", "coder", "reviewer", "test-planner"}, "testset": {"test-planner", "test-coder"}}
+                "dogfood": {"planner", "coder", "reviewer", "test-planner"}, "testset": {"test-planner", "test-coder"}, "testplan": {"test-planner"}}
     want = expected.get(re.sub(r"-.*$", "", LABEL)) if not pm else None
     if want:
         wrong = sorted({"%s (%s)" % (x.agent, ", ".join(p[:40] for p in x.prompts[:1])) for x in sessions if x.agent and x.agent not in want})

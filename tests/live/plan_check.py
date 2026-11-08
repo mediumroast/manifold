@@ -4,7 +4,7 @@
 Usage: python3 tests/live/plan_check.py <test plan file>
 Prints one line per finding ("name: detail") and exits 1 when there is any; prints nothing and exits 0 otherwise.
 
-Standard library only; syntax valid on Python 3.8 (the declared minimum).
+Standard library only; written for Python 3.10 or newer (the declared minimum).
 
 The findings (the signs of INT-25 outcome 6 and S1, plus the per-case source of S2):
   no-intent-cited                 no INT-<n> inside the "## Source intents" section

@@ -2,7 +2,7 @@
 
 ## Requirements
 
-Python 3.8 or newer (tested on 3.10 and 3.11; 3.8 compatibility is checked statically). The installer and the guard hook use only the standard library. No network access is needed. The agents' guard hook runs with `python3`, so `python3` must be on the PATH of the client that runs the agents (see "What each client enforces").
+Python 3.10 or newer (the CI matrix tests 3.10 and 3.12; 3.11 was run by hand). The installer and the guard hook use only the standard library. No network access is needed. The agents' guard hook runs with `python3`, so `python3` must be on the PATH of the client that runs the agents (see "What each client enforces").
 
 ## Install
 

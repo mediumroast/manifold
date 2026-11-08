@@ -15,7 +15,7 @@ The tooling that runs the base bundle in a real client and judges what it can fr
 
 ## What you need
 
-- A Mac or Linux machine with Python 3.8 or newer, git and internet access; the client under test (Claude Code, or VS Code with GitHub Copilot Chat).
+- A Mac or Linux machine with Python 3.10 or newer, git and internet access; the client under test (Claude Code, or VS Code with GitHub Copilot Chat).
 - `export MANIFOLD_REPO=<your clone of this repository, on the branch under test>`
 - `export PRODUCT_SRC=<a product repository to copy>` (not needed with `LIVE_REPOS=manifold`)
 
@@ -25,6 +25,7 @@ Optional settings:
 - `LIVE_SEED`: `LIVE_SEED=none` makes `lp.sh ready` leave `AGENTS.md` "Project commands" as the repository has it (default: append the protocol's test command).
 - `MANIFOLD_DIR`: `lp.sh evidence` and `lp_verify.py` read this folder (a real checkout) instead of `$LIVE_ROOT/<client>/manifold`; the evidence folder is still under `$LIVE_ROOT/<client>/evidence`. `lp.sh ready` and `lp.sh reset` refuse to run while it is set.
 - `LIVE_ROOT`: the parent of the `<client>` folders (default `~/manifold-live`); `lp_verify.py` uses it too, and `PUBLIC_SRC` (default: this repository).
+- Evidence label `testplan`: judges the test plan the test-planner wrote, before any approval (checks P.1 to P.7: intent cited, no case pre-ticked, every case sourced, gaps judged or `no gap found` with evidence, a question or a reason, **Approved by** still blank, and a first reply that asks or says `no gap found`), using `plan_check.py`. `testset` also counts the new test functions (T.3).
 - Evidence label `testset`: judges a phase test set in the `manifold` repository (changed files only under `server/tests/` and `docs/plans/`, and the result line of the server suite).
 
 ## About the sample product

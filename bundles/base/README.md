@@ -12,8 +12,8 @@ How the agents and the cycle work together is in [HOWTO.md](HOWTO.md), which is 
 | **coder** | Execute an approved plan one checkpoint at a time, task by task, verifying each step and keeping the plan truthful | refactor outside the task, write behavior scenarios |
 | **bug-coder** | Triage walkthrough notes (`WT_<NNN>_<slug>.md`), write a **failing test first**, then fix, root cause first | build new features, edit the failing test to make it pass |
 | **reviewer** | Review a change against the plan, the intent and the review policy; write the findings by pass and severity to `docs/plans/REVIEW_PLAN_<N>.md` (the one file it writes) | edit code or the plan, fix findings, approve or block anything |
-| **test-planner** | Plan tests. In a product repository: the repository's own unit and integration checks, from a phase plan. In a quality repository: automation of behavior scenarios | write test code |
-| **test-coder** | Implement the automated cases of a test plan | change production code, edit scenarios, run the full suite |
+| **test-planner** | Plan tests. In a product repository: the repository's own unit and integration checks, from a phase plan and its intent, looking for gaps before it reads the existing tests and asking the human what it cannot decide. In a quality repository: automation of behavior scenarios | write test code |
+| **test-coder** | Implement the automated cases of a human-approved test plan; it stops on a blocking question and leaves a failing check red | change production code, edit scenarios, run the full suite |
 | **scenario-writer** | Expand an accepted intent's **scenario seeds** into behavior scenarios for the quality repository, from the intent and public behavior only | read the product's source code, approve its own scenarios |
 | **coordinator** | Run the review-to-repair cycle by starting the other agents with named inputs, write the pull request's ready check, record breaches and list process gaps | do any agent's work, approve, move a pull request out of draft, merge |
 
@@ -25,7 +25,7 @@ Every step ends by writing an artifact, and a human accepts it before the next s
 |---|---|---|---|
 | 1. Intent | A person with the AI as a drafting partner | `intent/INT-<n>-<slug>.md` from `INTENT_TEMPLATE.md`, with public **scenario seeds** | A person sets `status: accepted` |
 | 2. Plan | planner | `docs/plans/PHASE_<N>_PLAN.md` (source intent, concerns flagged) | A person fills in **Approved by** |
-| 3. Build | coder, one checkpoint at a time (with test-planner and test-coder for local checks) | The change, local unit and integration tests, a completion summary in the plan | A person reads each checkpoint report |
+| 3. Build | coder, one checkpoint at a time (with test-planner and test-coder for local checks) | The change, local unit and integration tests, a completion summary in the plan | A person reads each checkpoint report, approves the test plan and answers its questions |
 | 4. Review | reviewer, in its own session | The review document `docs/plans/REVIEW_PLAN_<N>.md`: findings by pass and severity | A person decides what to repair, defer or reject |
 | 5. Amendment | planner | A `## Review amendment (round <n>)` section in the plan: a repair checkpoint, what is not repaired and why | A person fills in **Amendment approved by** |
 | 6. Repair | coder, not the agent that reviewed | The repair checkpoint's tasks, with failing tests first | A person reads the report |
@@ -40,7 +40,7 @@ The procedure for steps 4 to 8 is `docs/process/REVIEW_CYCLE.md`; [HOWTO.md](HOW
 ### Two layers of testing
 
 - **Local checks** (unit, integration) live **in the product repository**, are written alongside the code, and are maintained there.
-- **Behavior scenarios** (end-to-end user stories) live in a **separate quality repository**, are written from the intent rather than the implementation, and are never shown to the builder in full. The idea is the same as a holdout set in machine learning: the AI that builds the code must not be the AI that writes the tests that judge it, or the two can quietly agree with each other instead of with what the user wanted.
+- **Behavior scenarios** (end-to-end user stories) live in a **separate quality repository**, are written from the intent rather than the implementation, and are never shown to the builder in full. The idea is the same as a holdout set in machine learning: the AI that builds the code must not be the AI that writes the tests that judge it, or the two can quietly agree with each other instead of with what the user wanted. Where no quality repository exists, the test planner's reading of the originating intent and its questions to the human act as a pseudo hold-out; that does not replace a quality repository.
 
 Four things have to be separate for that to be real:
 
@@ -107,7 +107,7 @@ The test agents work in two modes, decided by their input: from a phase plan (lo
 
 ## Install
 
-You need Python 3.8 or newer (standard library only). It is tested on 3.10 and 3.11; 3.8 compatibility is checked statically.
+You need Python 3.10 or newer (standard library only). The CI matrix tests it on 3.10 and 3.12; 3.11 was run by hand.
 
 ```bash
 unzip manifold-base-<version>.zip

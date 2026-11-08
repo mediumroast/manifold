@@ -184,7 +184,7 @@ def part0(c):
 
 Set two variables in Terminal B and keep using that terminal: `export MANIFOLD_REPO=<your clone of this repository, on the branch under test>` and `export PRODUCT_SRC=<the product repository to copy>`.
 
-You need: a Mac with a terminal, Python 3.8 or newer, git, internet access, about 1 GB free space, and %s
+You need: a Mac with a terminal, Python 3.10 or newer, git, internet access, about 1 GB free space, and %s
 
 Check each in Terminal B. Every command should print a version, not an error:
 
@@ -535,8 +535,11 @@ def task5(c):
     out += c.reset("product") + "\n\nSwitch branch (Terminal B):\n\n```bash\ncd @ROOT@/product && git checkout review-target && git branch --show-current\n```\n\nIt prints `review-target`.\n\n"
     out += c.start("test-planner", "product") + "\n\n"
     out += c.typed("Plan local tests for docs/plans/PHASE_9_PLAN.md.") + "\n\n"
-    out += ("**What should happen:** it says which mode it is in, reads the plan and the existing tests, and writes a test plan file in `docs/plans/`. If it asks for test commands, give the same pytest command as before. Then, in Terminal B, find the file and check that nothing else changed (check 5.2):\n\n```bash\nls -t @ROOT@/product/docs/plans | head -3\ngit -C @ROOT@/product status --short\n```\n\n")
+    out += ("**What should happen:** it says which mode it is in, reads the plan and the existing tests, and writes a test plan file in `docs/plans/`. If it asks for test commands, give the same pytest command as before. Then, in Terminal B, find the file and check that nothing else changed (check 5.2):\n\n```bash\nls -t @ROOT@/product/docs/plans | head -3\ngit -C @ROOT@/product status --short\n```\n\n"
+            "It also names the intent the plan came from, says what it found missing in the existing tests (or `no gap found`, with the evidence), asks you a question where it cannot decide, and leaves **Approved by** blank. "
+            "Answer its questions, but do not fill in **Approved by** for the test-planner: save the evidence first (labels `testplan` and `task5` below; `testplan` judges the plan before any approval).\n\n")
     out += c.stop() + "\n\n"
+    out += c.evidence("testplan") + "\n\n"
     out += c.start("test-coder", "product") + "\n\n"
     out += c.typed("Implement the test plan docs/plans/<name of the test plan file>.") + "\n\n" + c.permissions() + "\n\n"
     out += "**What I will judge** (from the saved evidence; you do not need to check these yourself)\n\n" + "\n".join([
