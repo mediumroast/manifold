@@ -199,6 +199,7 @@ No new automated case for CP1, CP5 or CP7. No REGRESSION cases are planned: ever
 **Expected outcome:** Both raise `ValueError` or `FileNotFoundError`; no content is returned.
 **Test file:** `server/tests/test_path_policy.py`
 **Todo:** [x] Written (`test_A2_...`). RED, defect: `wiki_read` on `wiki/a.md -> .git/config` and `wiki/b.md -> manifold.yaml` raises nothing (content returned).
+**Fixed:** bug-coder, server/manifold_security/scopes.py: check_readable now resolves the path and refuses it unless the real location also starts with wiki/ or raw/; A2 is green; full suite 10 failed (A1, A8), 1050 passed. Owner-confirmed 2026-11-09.
 
 ---
 
