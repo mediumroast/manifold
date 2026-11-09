@@ -105,7 +105,7 @@ def test_A8_a_multi_line_value_in_a_registration_is_one_entry_or_refused(world, 
 
     registered = result.get("status") == "created"
     if not registered:
-        assert result.get("error") or result.get("refused"), result
+        assert result.get("error") or result.get("refused") or result.get("status") == "error", result
         assert _snapshot(root) == before  # refused means nothing changed
     _check(world, "fresh-one", before, slugs + (["fresh-one"] if registered else []))
 

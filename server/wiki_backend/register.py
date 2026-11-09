@@ -16,6 +16,14 @@ from .config import (
 )
 
 
+def _multi_line_field(**fields: Optional[str]) -> Optional[str]:
+    """Name of the first given field whose value contains a line break, else None (one value is one entry)."""
+    for name, value in fields.items():
+        if value is not None and ("\n" in value or "\r" in value):
+            return name
+    return None
+
+
 def wiki_update_component(wiki_root: Path, slug: str, description: Optional[str] = None,
                           repo: Optional[str] = None, owner: Optional[str] = None) -> dict:
     """
@@ -39,6 +47,9 @@ def wiki_update_component(wiki_root: Path, slug: str, description: Optional[str]
         return {"error": "The repository URL may not be empty."}
     if owner is not None and not owner.strip():
         return {"error": "The owner may not be empty."}
+    bad = _multi_line_field(description=description, repo=repo, owner=owner)
+    if bad:
+        return {"error": "The %s must be on one line (no line breaks)." % bad}
 
     changed = [name for name, value in (("description", description), ("repository", repo), ("owner", owner))
                if value is not None]
@@ -542,6 +553,15 @@ def wiki_register_component(wiki_root: Path, request: WikiRegisterRequest) -> Wi
             path="",
             status="error",
             message="Repository URL and owner are required",
+        )
+
+    bad = _multi_line_field(description=request.description, repo=request.repo, owner=request.owner)
+    if bad:
+        return WikiRegisterResponse(
+            name=slug,
+            path="",
+            status="error",
+            message=f"The {bad} must be on one line (no line breaks)",
         )
 
     component_path = f"wiki/components/{slug}.md"
