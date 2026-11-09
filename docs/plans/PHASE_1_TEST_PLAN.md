@@ -185,6 +185,7 @@ No new automated case for CP1, CP5 or CP7. No REGRESSION cases are planned: ever
 **Test file:** `server/tests/test_path_policy.py`
 **Todo:** [x] Written (`test_A1_...`, 3 links x create/update-with-etag). RED, defect: with an etag, all three links return `updated` (the write goes through the link); without an etag they return `conflict`, not `error`. Added grant on `acme-web` (needed so the second link is refused for being a link) and the etag variant.
 **Owner decisions (2026-11-09, review F2, F3):** (F2) `conflict` does NOT count as a refusal for a create through a symlink; the create variants keep asserting `status == "error"` and stay red until the code refuses before the existence check (owner-confirmed 2026-11-09). (F3) The etag in the update variants is now computed without `wiki_read`: `hashlib.sha256` of the link's bytes (the backend's `generate_etag` is sha256 of the file text), so A1 no longer depends on A2's defect. After the change the three update-with-etag variants still fail on `assert 'updated' == 'error'` (status `updated`, the write went through the link); the three create variants fail on `assert 'conflict' == 'error'`.
+**Fixed:** bug-coder, server/wiki_backend/write.py: write_page_of_kinds refuses a symbolic link at the target path with status error before the existence check; all six A1 cases green; full suite 4 failed (A8), 1056 passed. Owner-confirmed 2026-11-09.
 
 ---
 
@@ -394,5 +395,7 @@ Files: `test_path_policy.py`, `test_auth_middleware.py`, `test_startup.py`, `tes
 Deferred (owner, 2026-11-09, review F4): the green cases A3, A5, A6, A7, A9, A11, A12, A13 were not seen failing. Reason: no production change is allowed in this task, so a failing run could not be produced without one. Root cause of the gap and the value of adding a negative check for each are unknown. No new test written.
 
 Deferred (owner, 2026-11-09, review F5): A10's empty `MANIFOLD_HOST` case is checked only through `_check_auth_settings()`. What uvicorn binds when the variable is set empty is unverified. No new test written.
+
+Deferred (owner, 2026-11-09, found by the A1 bug-coder): the symlink check in write_page_of_kinds covers only the last path component. A symlinked folder inside the wiki root that points elsewhere inside the root (for example wiki/x -> .git) is not covered by A1 and not tested; whether such a write is refused is unverified. No new test written.
 
 Rule exceptions: one attempted heredoc in a Bash command, refused by the guard hook before it ran (no file written); otherwise none.
