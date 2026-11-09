@@ -5,7 +5,7 @@
 |---|---|
 | Bundle | v0.2.0 build, scratch clone at commit `f2120f4`, zip sha256 `3b2dca431c085561f3aad22fbb143678f9443a434633576908f7a811eb3dd066` |
 | Client and version | VS Code with GitHub Copilot Chat 0.73.0 (from the saved chat), Local target; VS Code version not recorded |
-| Model | Claude Sonnet 4.6 for the test-planner; the test-coder's model not recorded |
+| Model | Claude Sonnet 4.6 for the test-planner and the test-coder (read from the saved chats) |
 | Tester | the coordinating session ran the scripts; P.7 was read from the saved chat by the coordinating session |
 
 Result is **Pass**, **Fail** or **Not decided**. The scripts decided Pass and Fail from the saved evidence of the run (`testplan` and `testset` labels). Written by Claude. Findings are in `findings.md`.

@@ -4,7 +4,7 @@
 | | |
 |---|---|
 | Client | VS Code with GitHub Copilot Chat 0.73.0, Local target; VS Code version not recorded |
-| Model | Claude Sonnet 4.6 for the test-planner (read from the evidence); the test-coder's model is not recorded |
+| Model | Claude Sonnet 4.6 for the test-planner and the test-coder (read from the saved chats) |
 | Bundle | v0.2.0 build, scratch clone at commit `f2120f4`, zip sha256 `3b2dca431c085561f3aad22fbb143678f9443a434633576908f7a811eb3dd066` |
 | Scope | Local checks for `PHASE_1_PLAN.md` (task 5 of the live protocol), `testplan` and `testset` evidence only; not the 67-check protocol |
 | Result | **9 Pass, 1 Fail, of 10 (testset only)** |
@@ -15,14 +15,14 @@ One run is one sample. It is not a ranking of clients or models.
 
 1. The `test-planner` was asked: "Plan local tests for docs/plans/PHASE_1_PLAN.md." It wrote `docs/plans/PHASE_1_TEST_PLAN.md`: three manual and two automated cases (A1 import-merge tightening across a restart, A2 a scan of `docs/tls.md` for certificate-bypass advice), a coverage table (26 adequate, 5 thin, 1 absent rows) and one non-blocking question. The planner wrote its own text on the `Answer:` line of that question.
 2. The plan was approved in the scratch clone under a limited, stated authority (allowed for throw-away plans only).
-3. The `test-coder` wrote two tests (55 lines in `server/tests/test_deploy_files.py` and `server/tests/test_revocation_smoke.py`). A1 is green. A2 is **red**: `docs/tls.md` line 32 is the warning "Never turn off certificate checking (`-k`, `--insecure`, ...)", so a substring scan for those words finds the prohibition itself. The coder reported it, left it red and asked the owner whether to rephrase the warning or narrow the test. This is what INT-25 asks for.
+3. The `test-coder` wrote two tests (55 lines in `server/tests/test_deploy_files.py` and `server/tests/test_revocation_smoke.py`). A1 is green. A2 is **red**: `docs/tls.md` line 32 is the warning "Never turn off certificate checking (`-k`, `--insecure`, ...)", so a substring scan for those words finds the prohibition itself. The coder reported it, left it red and gave the owner two options (rephrase the warning, or let the test allow the string inside a "never do this" sentence). It labelled the result "defect found" and called the test correct, so it did not see that the planned check itself was flawed (F9). Before writing the test it had searched `docs/tls.md` for `-k ` only and predicted the test would pass. It also used `/docs/_sidebar.md` instead of the plan's `/health` for A1, because `/health` is an open path that returns 200 for a revoked credential (F10), and it answered the planner's Q1 itself by reading `test_startup.py` (no case missing).
 4. Decision (owner, throw-away run): the red test stays red and is recorded as a finding about the planned case. Nothing is fixed.
 
 ## What it showed
 
 - The "before" defect is gone in this sample: nothing pre-ticked, an intent cited, coverage judged, two new cases, a question asked.
 - The red A2 is a flawed planned case (a naive substring check), not a product defect.
-- The coder behaved as INT-25 asks about red tests (reported, did not weaken, asked). Whether it tried to make the checks fail first was not observed.
+- The coder behaved as INT-25 asks about red tests (reported, did not weaken, offered options) but diagnosed the wrong thing: it read a bad planned check as a product defect. It did not try to make either check fail first: the chat shows no step that breaks the code to see the test go red.
 
 ## Compared with claude-code-2
 
@@ -39,7 +39,7 @@ Held constant: the prompts and their order; the blob of `PHASE_1_PLAN.md` (`b835
 | P.7 (first reply) | pass (owner): the first reply was a mode statement | pass: the first reply opened with a mode statement, then showed its planned coverage, the gaps and a question and asked for confirmation before writing (the script saw only the opening line) |
 | Test functions added | 1, green | 2, one green, one red |
 | Server suite | 1015 passed | 1 failed, 1015 passed (the red A2 test) |
-| Coverage of each `PHASE_1_PLAN.md` task | not observed: the plans map to intent seeds, not tasks | not observed, same reason |
+| Coverage of each `PHASE_1_PLAN.md` task | not observed: the coverage table is by intent seed; each case names its related tasks (A1: Tasks 24 and 27 in this plan, M1 Task 34, M2 Task 36, M3 Task 1), but no table covers every one of the 58 tasks | not observed, same reason (A1 names Task 47, A2 Task 34) |
 | Breaches | none found in the diff; no guard log captured; the coder ran the full suite against its own text | none found in the diff; no guard log captured; the coder ran the tests unsandboxed because the VS Code sandbox blocks the git config |
 | Time and turns | not observed | not observed |
 | Other | the coder's A2 ran the full suites | the planner filled the human-only `Answer:` line and asked a question a search could answer |

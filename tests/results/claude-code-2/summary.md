@@ -21,7 +21,7 @@ One run is one sample. It is not a ranking of clients or models.
 
 - The "before" defect is gone in this sample: no case was pre-ticked, the plan cites two intents (`INT-1`, `INT-6`), judges coverage per intent seed, and found a real thin spot (grant removal checked only through CLI output, not on a live server).
 - The new test is real work, not a mapping of an existing one. It is one test, though.
-- The plan no longer maps to the `PHASE_1_PLAN.md` tasks (F2), which the "before" plans did.
+- The coverage table is by intent seed, not by `PHASE_1_PLAN.md` task (F2); each case does name its related tasks.
 
 ## Compared with copilot-2
 
