@@ -851,7 +851,9 @@ Note (2026-11-08): order deviation: T58 ran before this task (and after T54), so
 **Source:** INT-25 S8; constraint "Both flavors from one source"
 **Change:** **T38 now runs after T55**, from the T55 build, so that this repository's managed rules block and agents carry the INT-25 text. T38's steps stay as they are. `.claude/agents/*` are protected by the guard: the owner grants a dated path exception for the install (`docs/process/BREACH_PROCEDURE.md`; the form T14c prints). Add to T38's check: the rendered `AGENTS.md` no longer has the old "Test scope" sentence and has the new one, and `.claude/agents/test-planner.md` no longer has "so you do not duplicate coverage".
 **Acceptance:** after T38: `grep -n "Test cases come from the phase plan's objective" AGENTS.md` prints nothing; `grep -n "originating intent" AGENTS.md` prints the new line; `grep -c "so you do not duplicate" .claude/agents/test-planner.md` prints 0; `install.py --status` shows no MODIFIED; T38's own acceptance holds.
-**Todo:** [ ]
+**Todo:** [x]
+
+Note (2026-11-08): after T38's apply: `grep -n "Test cases come from the phase plan's objective" AGENTS.md` printed nothing (exit 1); `grep -n "originating intent" AGENTS.md` printed line 50, the new "Test scope" sentence; `grep -c "so you do not duplicate" .claude/agents/test-planner.md` printed 0; `--status` shows no MODIFIED. The path exception the task describes was not needed (see T38's note). K5: the owner reads the rendered `AGENTS.md` block.
 
 ---
 
@@ -980,7 +982,9 @@ Note (2026-11-08, T37d, T37b and T57 evidence; not ticked, the owner reviews): w
 **Change:** From the extracted build, run `install.py --target <this repository> --status`, then a dry run, then `--apply` (no `--force`); a modified file is reported, not replaced. Re-read `AGENTS.md`: the managed block changed, T23's section is untouched, "Project commands" untouched.
 **Acceptance:** `--status` reports no MODIFIED after the apply; `git status --short` lists only the paths in the inventory.
 Note (2026-11-08, INT-25 amendment): this task now runs after T55 and from the T55 build, and T56 adds its rendered-text check.
-**Todo:** [ ]
+**Todo:** [x]
+
+Note (2026-11-08): built from commit `6fcaf2005319c5f070449203b5978c9aa49e076c` into the scratchpad (`manifold-base-0.2.0.zip`, sha256 `99f8b5ca5c4771543c378a71761e87416990bbe73d8be475b68dc074b224c87d`). `--status` before: 13 files `ok`, none MODIFIED, installed 0.1.0 (`claude`, profile `build`). Dry run: 6 agents and 3 templates UPDATE, `coordinator.md`, 3 templates, 3 process documents, `.manifold/hooks/guard.py` and two `.gitignore` files CREATE, `AGENTS.md` managed block UPDATE, nothing written. `--apply` (no `--force`, `--format claude --profile build`, as the existing install): "Installed manifold 0.2.0"; nothing was refused and no path exception was needed (no hook was installed here before, and the install runs as a plain main-session command, which the guard classifies as allowed: checked by running `guard.py` on the command). `--status` after: no MODIFIED. `git status --short`: only `.claude/agents/*`, `docs/templates/*`, `docs/process/*`, `.manifold/*` and `AGENTS.md`. `AGENTS.md`: the managed block changed; "Project commands" and "Review process" are not in the diff. Nothing committed.
 
 ---
 
