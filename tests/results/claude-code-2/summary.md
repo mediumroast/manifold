@@ -7,7 +7,7 @@
 | Model | Claude Sonnet family; the exact model of this run is not recorded (`lp_verify.py` printed "Models in this window: not recorded") |
 | Bundle | v0.2.0 build, scratch clone at commit `f2120f4`, zip sha256 `3b2dca431c085561f3aad22fbb143678f9443a434633576908f7a811eb3dd066` |
 | Scope | Local checks for `PHASE_1_PLAN.md` (task 5 of the live protocol), `testplan` and `testset` evidence only; not the 67-check protocol |
-| Result | **9 Pass of 10 (testset only); 1 not decided (P.7)** |
+| Result | **10 Pass of 10 (testset only)**; P.7 passed by owner decision, the first reply being a mode statement (see `results.md`) |
 
 One run is one sample. It is not a ranking of clients or models.
 

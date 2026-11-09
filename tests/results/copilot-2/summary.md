@@ -3,11 +3,11 @@
 
 | | |
 |---|---|
-| Client | VS Code with GitHub Copilot Chat, Local target; versions not recorded |
+| Client | VS Code with GitHub Copilot Chat 0.73.0, Local target; VS Code version not recorded |
 | Model | Claude Sonnet 4.6 for the test-planner (read from the evidence); the test-coder's model is not recorded |
 | Bundle | v0.2.0 build, scratch clone at commit `f2120f4`, zip sha256 `3b2dca431c085561f3aad22fbb143678f9443a434633576908f7a811eb3dd066` |
 | Scope | Local checks for `PHASE_1_PLAN.md` (task 5 of the live protocol), `testplan` and `testset` evidence only; not the 67-check protocol |
-| Result | **8 Pass, 1 Fail, 1 not decided (P.7), of 10 (testset only)** |
+| Result | **9 Pass, 1 Fail, of 10 (testset only)** |
 
 One run is one sample. It is not a ranking of clients or models.
 
@@ -36,7 +36,7 @@ Held constant: the prompts and their order; the blob of `PHASE_1_PLAN.md` (`b835
 | Intent cited | `INT-1`, `INT-6` | cited (see its plan; not recounted) |
 | Questions asked | none, with four reasons | 1, non-blocking, answered by the planner itself |
 | Plan checks P.1 to P.6 | all pass | all pass |
-| P.7 (first reply) | not decided | not decided (first reply neither asked nor said `no gap found`) |
+| P.7 (first reply) | pass (owner): the first reply was a mode statement | pass: the first reply opened with a mode statement, then showed its planned coverage, the gaps and a question and asked for confirmation before writing (the script saw only the opening line) |
 | Test functions added | 1, green | 2, one green, one red |
 | Server suite | 1015 passed | 1 failed, 1015 passed (the red A2 test) |
 | Coverage of each `PHASE_1_PLAN.md` task | not observed: the plans map to intent seeds, not tasks | not observed, same reason |
