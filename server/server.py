@@ -928,8 +928,10 @@ async def ingest_doc(request: Request):
 async def health_check(request: Request):
     """Health check endpoint: the mounted instance is present, configured and writable."""
     # /health is open so a container health check can call it without a credential. An
-    # unauthenticated caller learns only whether the service is healthy.
-    detailed = caller_from_scope(request.scope) is not None
+    # unauthenticated caller, or one without the read capability, learns only whether the service is healthy.
+    caller = caller_from_scope(request.scope)
+    detailed = caller is not None and bool(
+        _store_access.authorize(caller.principal_id, authorizer.READ, None, caller.credential_id))
     try:
         healthy, payload = wiki_health(WIKI_ROOT)
     except Exception as e:
