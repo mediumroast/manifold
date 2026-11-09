@@ -6,6 +6,7 @@ Everything runs against the temporary ``wiki_root`` fixture; no real data is tou
 writer, ``wiki_write_handoff_page`` (owner decision on T9, "strict everywhere").
 """
 
+import hashlib
 import os
 import subprocess
 
@@ -176,6 +177,63 @@ def test_wiki_and_raw_pages_are_readable(wiki_root):
     (wiki_root / "raw" / "acme-api" / "r.md").write_text("raw\n")
     assert wiki_read(wiki_root, "wiki/CLAUDE.md").body.startswith("# Wiki Schema")
     assert wiki_read(wiki_root, "raw/acme-api/r.md").body.strip() == "raw"
+
+
+# ── PHASE_1_TEST_PLAN A1, A2: symlinks that stay inside the root ──────────────
+
+def _commit_all(root, message):
+    for args in (["add", "-A"], ["commit", "-m", message]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+
+def _link(root, link, target):
+    """Create root/link as a relative symlink to root/target (both inside the root)."""
+    full = root / link
+    full.parent.mkdir(parents=True, exist_ok=True)
+    full.symlink_to(os.path.relpath(root / target, full.parent))
+
+
+IN_ROOT_SYMLINK_WRITES = [
+    ("wiki/components/acme-api.md", "manifold.yaml"),
+    ("wiki/components/acme-web.md", "wiki/log.md"),
+    ("wiki/decisions/d.md", "wiki/components/acme-web.md"),
+]
+
+
+@pytest.mark.parametrize("with_etag", [False, True], ids=["create", "update-with-etag"])
+@pytest.mark.parametrize("link,target", IN_ROOT_SYMLINK_WRITES)
+def test_A1_a_write_through_an_in_root_symlink_is_refused(tool_world, link, target, with_etag):
+    root = tool_world.root
+    for l, t in IN_ROOT_SYMLINK_WRITES:
+        _link(root, l, t)
+    _commit_all(root, "test: plant symlinks")
+    # The plan names grants on acme-api and _shared; acme-web is added so that the
+    # second link is refused for being a link and not merely for a missing grant.
+    tool_world.who("ann", roles=["contributor"], grants=["acme-api", "acme-web", "_shared"])
+    before = _tree(root)
+    head = tool_world.git_log()
+    arguments = {"path": link, "content": CONTENT, "message": "test"}
+    if with_etag:
+        # An update names the current etag; a refusal must not depend on "file already exists".
+        # Computed as the backend defines it (generate_etag: sha256 of the file's text, utf-8),
+        # without wiki_read, so this setup does not depend on A2's defect.
+        arguments["etag"] = hashlib.sha256((root / link).read_bytes()).hexdigest()
+
+    result = tool_world.call("ann", "wiki_write_page_tool", **arguments)
+
+    assert result.get("status") == "error", result
+    assert result.get("error"), result
+    assert _tree(root) == before
+    assert tool_world.git_log() == head
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True)
+    assert status.stdout == ""
+
+
+@pytest.mark.parametrize("link,target", [("wiki/a.md", ".git/config"), ("wiki/b.md", "manifold.yaml")])
+def test_A2_a_read_through_an_in_root_symlink_is_refused(wiki_root, link, target):
+    _link(wiki_root, link, target)
+    with pytest.raises((ValueError, FileNotFoundError)):
+        wiki_read(wiki_root, link)
 
 
 def test_git_status_stays_clean_after_refusals(wiki_root):

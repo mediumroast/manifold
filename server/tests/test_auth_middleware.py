@@ -113,6 +113,35 @@ def test_health_is_open_and_marks_the_caller_only_when_the_credential_is_good(au
     assert call(auth_world, "/health", bearer("wrong"))[:2] == (200, True)
 
 
+def test_A4_health_detail_is_for_an_authenticated_reader_only(auth_world, wiki_root, monkeypatch):
+    """PHASE_1_TEST_PLAN A4: plan T10 says detail goes only to an authenticated reader (INT-1 S9)."""
+    pytest.importorskip("fastmcp")
+    from starlette.testclient import TestClient
+    import server
+
+    admin = principals.create_principal(auth_world.conn, "root-admin", "human")
+    principals.set_role(auth_world.conn, "root-admin", "admin")
+    admin_token = tokens.issue_credential(auth_world.conn, admin.id, "test").token
+    gone = principals.create_principal(auth_world.conn, "gone-reader", "human")
+    principals.set_role(auth_world.conn, "gone-reader", "reader")
+    gone_token = tokens.issue_credential(auth_world.conn, gone.id, "test").token
+    principals.disable_principal(auth_world.conn, "gone-reader")
+
+    monkeypatch.setattr(server, "WIKI_ROOT", wiki_root)
+    client = TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")
+
+    def health(token=None):
+        headers = {"Authorization": "Bearer " + token} if token else {}
+        return client.get("/health", headers=headers).json()
+
+    for label, body in (("anonymous", health()), ("wrong credential", health("mf_000000000000_" + "a" * 43)),
+                        ("admin-only", health(admin_token)), ("disabled reader", health(gone_token))):
+        assert body == {"status": "healthy"}, label
+    # The reader fixture of auth_world is the agent "build-bot" (role reader).
+    detailed = health(auth_world.agent_token)
+    assert detailed["status"] == "healthy" and "checks" in detailed
+
+
 def test_an_empty_store_refuses_everything_but_health(tmp_path):
     from manifold_security.store import open_store
     conn = open_store(tmp_path / "empty", wiki_root=tmp_path / "wiki-root")

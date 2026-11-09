@@ -126,6 +126,121 @@ def test_a_disabled_principal_is_refused_on_the_next_request_and_after_a_restart
     assert get(server, "/docs/_sidebar.md", first) == 200
 
 
+class SseSession:
+    """A raw /sse session: opens the stream, learns the message endpoint, collects the JSON-RPC replies."""
+
+    def __init__(self, server, token):
+        import queue
+        import threading
+        self.server = server
+        self.token = token
+        self.replies = queue.Queue()
+        self.endpoint = queue.Queue()
+        request = urllib.request.Request(server.base + "/sse", headers={"Authorization": "Bearer " + token})
+        self.response = urllib.request.urlopen(request, timeout=30)
+        threading.Thread(target=self._read, daemon=True).start()
+        self.path = self.endpoint.get(timeout=10)
+
+    def _read(self):
+        event = None
+        try:
+            for raw in self.response:
+                line = raw.decode().rstrip("\r\n")
+                if line.startswith("event:"):
+                    event = line.split(":", 1)[1].strip()
+                elif line.startswith("data:"):
+                    data = line.split(":", 1)[1].strip()
+                    (self.endpoint if event == "endpoint" else self.replies).put(data)
+        except (OSError, ValueError, AttributeError):  # the stream was closed under the reader
+            pass
+
+    def post(self, payload):
+        """POST one JSON-RPC message; return the HTTP status."""
+        request = urllib.request.Request(
+            self.server.base + self.path, data=json.dumps(payload).encode(), method="POST",
+            headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return response.status
+        except urllib.error.HTTPError as exc:
+            return exc.code
+
+    def call(self, ident, tool, arguments):
+        """tools/call; return (HTTP status, the reply's result or None)."""
+        status = self.post({"jsonrpc": "2.0", "id": ident, "method": "tools/call",
+                            "params": {"name": tool, "arguments": arguments}})
+        if status != 202:
+            return status, None
+        import queue
+        while True:
+            try:
+                reply = json.loads(self.replies.get(timeout=10))
+            except queue.Empty:
+                return status, None
+            if reply.get("id") == ident:
+                return status, reply
+
+    def start(self):
+        self.post({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+            "protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}}})
+        self.replies.get(timeout=10)
+        self.post({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        return self
+
+    def close(self):
+        self.response.close()
+
+
+def _reply_text(reply):
+    return json.dumps(reply)
+
+
+def test_A12_an_open_sse_session_is_cut_off_by_revocation_and_deny(world):
+    import subprocess
+    server, host = world
+    host.admin("principal", "create", "bob")
+    host.admin("role", "set", "bob", "contributor")
+    host.admin("grant", "add", "bob", "acme-web")
+    a_token, a_id = host.issue("alice", "session-a")
+    a2_token, _ = host.issue("alice", "session-a2")
+    b_token, _ = host.issue("bob", "session-b")
+    page = "wiki/components/acme-api.md"
+    original = (server.root / page).read_text()
+
+    def head():
+        return subprocess.run(["git", "log", "-1", "--format=%H"], cwd=server.root, capture_output=True,
+                              text=True, check=True).stdout
+
+    session_a = SseSession(server, a_token).start()
+    session_a2 = SseSession(server, a2_token).start()
+    session_b = SseSession(server, b_token).start()
+    try:
+        ping = session_a.call(2, "wiki_ping_tool", {})
+        assert ping[0] == 202 and "alice" in _reply_text(ping[1])
+
+        # revocation: the next POST on the open session is 401 and the tool does not run
+        host.admin("credential", "revoke", a_id)
+        before = head()
+        status, _ = session_a.call(3, "wiki_write_page_tool", {
+            "path": page, "content": original + "\nrevoked write\n", "message": "x"})
+        assert status == 401
+        assert (server.root / page).read_text() == original and head() == before
+
+        # deny: the session stays valid but the tool refuses and writes nothing
+        host.admin("deny", "add", "alice", "acme-api")
+        status, reply = session_a2.call(4, "wiki_write_page_tool", {
+            "path": page, "content": original + "\ndenied write\n", "message": "x"})
+        assert status == 202 and "refused" in _reply_text(reply).lower(), reply
+        assert (server.root / page).read_text() == original and head() == before
+
+        # the other credential is untouched
+        other = session_b.call(5, "wiki_ping_tool", {})
+        assert other[0] == 202 and "bob" in _reply_text(other[1])
+    finally:
+        for session in (session_a, session_a2, session_b):
+            session.close()
+
+
 def test_a_role_removed_on_the_host_takes_effect_on_the_next_request(world):
     server, host = world
     token, _ = host.issue("alice", "laptop")
