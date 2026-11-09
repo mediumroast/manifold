@@ -227,6 +227,7 @@ No new automated case for CP1, CP5 or CP7. No REGRESSION cases are planned: ever
 **Expected outcome:** Anonymous, wrong-credential and admin-only callers get only the brief status, with no checks or detail. The reader gets the detailed checks. Expected to fail today for the admin-only principal, because the code accepts any valid credential.
 **Test file:** `server/tests/test_auth_middleware.py`
 **Todo:** [x] Written (`test_A4_...`). RED, defect as predicted: an admin-only principal gets the detailed `checks` payload from `/health`. The reader of the fixture is the agent `build-bot`.
+**Fixed:** bug-coder, server/server.py: /health now needs the read capability for the detail (_store_access.authorize(..., authorizer.READ, ...)); A4 is green; full suite 12 failed (A1, A2, A8), 1048 passed. Side effect accepted by the owner (2026-11-09): each admin-only call to /health writes one authorizer.refusal audit row, not throttled. Owner-confirmed 2026-11-09.
 
 ---
 
