@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| Client | VS Code with GitHub Copilot Chat 0.73.0, Local target; VS Code version not recorded |
+| Client | VS Code 1.145.2 (the installed app, read after the run), GitHub Copilot Chat 0.73.0 (from the saved chat), Local target |
 | Model | Claude Sonnet 4.6 for the test-planner and the test-coder (read from the saved chats) |
 | Bundle | v0.2.0 build, scratch clone at commit `f2120f4`, zip sha256 `3b2dca431c085561f3aad22fbb143678f9443a434633576908f7a811eb3dd066` |
 | Scope | Local checks for `PHASE_1_PLAN.md` (task 5 of the live protocol), `testplan` and `testset` evidence only; not the 67-check protocol |
@@ -39,9 +39,9 @@ Held constant: the prompts and their order; the blob of `PHASE_1_PLAN.md` (`b835
 | P.7 (first reply) | pass (owner): the first reply was a mode statement | pass: the first reply opened with a mode statement, then showed its planned coverage, the gaps and a question and asked for confirmation before writing (the script saw only the opening line) |
 | Test functions added | 1, green | 2, one green, one red |
 | Server suite | 1015 passed | 1 failed, 1015 passed (the red A2 test) |
-| Coverage of each `PHASE_1_PLAN.md` task | not observed: the coverage table is by intent seed; each case names its related tasks (A1: Tasks 24 and 27 in this plan, M1 Task 34, M2 Task 36, M3 Task 1), but no table covers every one of the 58 tasks | not observed, same reason (A1 names Task 47, A2 Task 34) |
+| Coverage of each `PHASE_1_PLAN.md` task | The cases name Tasks 1, 24, 27, 34, 36 and 58: 6 of 58 (counted from "Related task" and not from the agent's claim); the coverage table is by intent seed, so the other 52 are neither claimed nor ruled out | The cases name Tasks 29, 34, 36 and 47: 4 of 58, same method and same limit |
 | Breaches | none found in the diff; no guard log captured; the coder ran the full suite against its own text | none found in the diff; no guard log captured; the coder ran the tests unsandboxed because the VS Code sandbox blocks the git config |
-| Time and turns | not observed | not observed |
+| Time and turns | planner about 6 minutes (2 user messages), coder about 3 minutes (2 user messages), from the subagent session timestamps | planner about 6 minutes of model time over 3 requests, coder about 10 minutes, from the saved chat's elapsed times |
 | Other | the coder's A2 ran the full suites | the planner filled the human-only `Answer:` line and asked a question a search could answer |
 
 The "before" runs (both clients) pre-ticked all 45 automated cases, cited no intent and asked no question; those plans are throw-away evidence and are not copied here.

@@ -81,6 +81,23 @@ Residual gaps, in the guard's own words (the module docstring of `bundles/base/h
 
 Rejected, with reason (CP2a): `bash < s.sh` is treated like `bash s.sh`, the scratch-script route, so the script is not inspected; `if [ $x > 1 ]` stays refused because in `sh` and `bash` it is a real redirect.
 
+## Enforcement by client and agent type
+
+One row per client and per kind of agent run (T39). "Hook" means the guard refuses the call; "instructions only" means nothing refuses it and the coordinator finds a breach afterwards. The same table, without the row citations, is in `bundles/base/INSTALL.md`. Each row cites the row of the matrix above it rests on. Nothing here was seen in a live client: the recorded runs of 2026-11-08 captured no guard log.
+
+| Client and where the agent runs | Enforced by | Rests on (row of the matrix, or of the table of unverified items) |
+|---|---|---|
+| Claude Code, subagent (Agent tool or @-mention) | Hook | "Frontmatter hooks per agent"; "Hooks fire for tool calls inside subagents" |
+| Claude Code, agent as the main session (`--agent`) | Hook | "Frontmatter hooks under `claude --agent`" (read, not run) |
+| Claude Code, plain main session, no agent | Instructions only | "Frontmatter hooks under `claude --agent`" (no agent set gets no per-agent hook) |
+| Claude Code, plugin agents | Instructions only | "Frontmatter hooks per agent" (plugin subagents ignore `hooks`) |
+| Claude Code, `reviewer` and `coordinator` write limits | Hook, where the rows above say so | "Agent identity in the hook input" (`agent_type`); "Agent restricted to one writable path" |
+| VS Code Copilot Chat (Local), any agent | Instructions only until verified | "Pre-tool hook that can deny"; "Hooks fire for tool calls inside subagents" (unverified); "Frontmatter hooks per agent" (YAML unverified) |
+| VS Code Copilot Chat (Local), `reviewer` and `coordinator` write limits | Instructions only | "Agent identity in the hook input" (unverified for `preToolUse`) |
+| VS Code Agents window | Unverified; instructions only | Not covered by the matrix; the window was seen on 2026-11-08 and not tested |
+| Copilot CLI | Unverified; instructions only | "Pre-tool hook that can deny"; "Frontmatter hooks per agent" (CLI only) |
+| Agent Skills format | Instructions only | No hook ships with a skill (the installer, not a matrix row) |
+
 ## Consequences for later tasks
 
 - T6 (Claude hook): per-agent frontmatter hooks are supported in subagents and under `--agent` (S2). Use `${CLAUDE_PROJECT_DIR}` in the command. The main session without `--agent` is not covered.

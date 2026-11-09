@@ -4,7 +4,7 @@
 | Run | |
 |---|---|
 | Bundle | v0.2.0 build, scratch clone at commit `f2120f4`, zip sha256 `3b2dca431c085561f3aad22fbb143678f9443a434633576908f7a811eb3dd066` |
-| Client and version | VS Code with GitHub Copilot Chat 0.73.0 (from the saved chat), Local target; VS Code version not recorded |
+| Client and version | VS Code 1.145.2 (the installed app, read after the run), GitHub Copilot Chat 0.73.0 (from the saved chat), Local target |
 | Model | Claude Sonnet 4.6 for the test-planner and the test-coder (read from the saved chats) |
 | Tester | the coordinating session ran the scripts; P.7 was read from the saved chat by the coordinating session |
 

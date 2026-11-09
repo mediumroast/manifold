@@ -73,11 +73,20 @@ Besides the agents and templates, it installs these files in every profile: the 
 
 The agents' rules say that files are created with the client's Write or Edit tool (or from a snippet written to `.manifold/scratch/` and run), not from the shell, and that each agent ends its report with a "Rule exceptions" line. The guard hook turns the shell rule, the write limits of the `reviewer` and the `coordinator`, and the protection of the guard and the agent definitions into refusals at the tool call. Whether a refusal happens depends on the client:
 
-| Client and format | Does the hook run? |
+| Client, format and where the agent runs | Enforced by the hook, or instruction only? |
 |---|---|
-| Claude Code, `claude` format | Yes, as a `PreToolUse` hook in each agent's definition. The vendor documentation says per-agent hooks run when the agent is started as a subagent and when it runs as the main session through `claude --agent <name>`. A plain main session with no agent selected is not covered, and neither are agents that come from a plugin: there the rules are instruction only. If `python3` or `.manifold/hooks/guard.py` is missing, the agent's Bash, Edit and Write calls are blocked rather than allowed. |
-| GitHub Copilot, `copilot` format | The installer adds `.github/hooks/manifold-guard.json`. The vendor documentation describes hooks that can deny a tool call, but whether VS Code Copilot Chat runs this file, how it passes the tool and the agent's name, and what exit code it honors are unverified: confirm by trying a refused command and looking for the refusal. Until then treat Copilot as **instruction only**. Because the agent's identity is unverified, the write limits for the `reviewer` and the `coordinator` may not apply there. |
-| Agent Skills, `skills` format | No hook ships with a skill. Instruction only. |
+| Claude Code, `claude` format, an agent started as a subagent (Agent tool or an @-mention) | **Enforced by hook.** A `PreToolUse` hook in each agent's definition; the vendor documentation says it runs for a subagent. If `python3` or `.manifold/hooks/guard.py` is missing, the agent's Bash, Edit and Write calls are blocked rather than allowed. Documented, not yet seen in a live run: the recorded runs captured no guard log. |
+| Claude Code, an agent run as the main session (`claude --agent <name>`) | **Enforced by hook**, same hook, documented, not run. |
+| Claude Code, a plain main session with no agent selected | **Instruction only.** The per-agent hook does not run. |
+| Claude Code, agents that come from a plugin | **Instruction only.** The vendor documentation says plugin subagents ignore `hooks`. |
+| Claude Code, the write limits of the `reviewer` and the `coordinator` | **Enforced by hook** wherever the rows above say so: the hook input carries the agent's name. |
+| GitHub Copilot in VS Code (Local), `copilot` format, any agent | **Instruction only until verified.** The installer adds `.github/hooks/manifold-guard.json` and the file shape is read from the vendor documentation, but whether VS Code Copilot Chat runs it, whether it fires for a subagent, and which exit code it honors are unverified: confirm by trying a refused command and looking for the refusal. |
+| GitHub Copilot in VS Code (Local), the write limits of the `reviewer` and the `coordinator` | **Instruction only.** The hook input is not documented to carry the agent's name, so these limits may not apply. The protected files apply to every agent if the hook runs at all. |
+| GitHub Copilot, the VS Code Agents window | **Unverified; treat as instruction only.** This window has not been tested. |
+| GitHub Copilot CLI | **Unverified; treat as instruction only.** The documentation describes a `preToolUse` hook and agent-scoped hooks for the CLI, not tried here. |
+| Agent Skills, `skills` format | **Instruction only.** No hook ships with a skill. |
+
+The source of each row is the capability record `docs/agents/harness-capabilities.md` in the Manifold source (not installed), section "Enforcement by client and agent type".
 
 **Instruction only** means: nothing refuses the breach, but the same rule, the same sanctioned route and the same "Rule exceptions" report line are in the agent's instructions in every format, and the `coordinator` (or you) compares that line with the diff afterwards (see `docs/process/BREACH_PROCEDURE.md`). The hook also has stated limits, even where it runs: it matches commands and does not read a script that writes when it is run from a file. They are listed at the top of `.manifold/hooks/guard.py`. None of this has been recorded in a live client yet; the capability record behind it is `docs/agents/harness-capabilities.md` in the Manifold source (not installed).
 

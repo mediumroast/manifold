@@ -4,8 +4,8 @@
 | Run | |
 |---|---|
 | Bundle | v0.2.0 build, scratch clone at commit `f2120f4`, zip sha256 `3b2dca431c085561f3aad22fbb143678f9443a434633576908f7a811eb3dd066` |
-| Client and version | Claude Code, version not recorded |
-| Model | Not recorded (see `summary.md`) |
+| Client and version | Claude Code 2.1.317 |
+| Model | `claude-sonnet-4-6` (planner and coder) |
 | Tester | the coordinating session ran the scripts; the owner decided P.7 |
 
 Result is **Pass**, **Fail** or **Not decided**. The scripts decided Pass and Fail from the saved evidence of the run (`testplan` and `testset` labels). Written by Claude. Findings are in `findings.md`.
