@@ -1,122 +1,127 @@
 # REVIEW_PLAN_1.md
 
-**Phase:** `docs/plans/PHASE_1_TEST_PLAN.md` (automated cases A1-A13 as implemented in the uncommitted working tree); the phase plan is `PHASE_1_PLAN.md`
+**Phase:** `docs/plans/PHASE_1_TEST_PLAN.md` (automated cases A1-A13 and the four product fixes that followed); the phase plan is `PHASE_1_PLAN.md`
 **Intent:** `intent/INT-1-security-baseline.md`, `intent/INT-6-installer.md`
-**Commit reviewed:** `33d1884ee58f14e37beb565010af7ff3e7996713` on `claude/phase1-test-set-f37394`, plus the uncommitted change (5 modified and 5 new files under `server/tests/`, and the test plan itself)
+**Commit reviewed:** revision 2: `c76f9c1` on `claude/phase1-test-set-f37394` (the fixes `e4479a5`, `e01970c`, `87e66b4`, `42b3109`, and the plan notes `4e1190c`, `3286be3`, `535f44e`, `c76f9c1`). Revision 1 reviewed `33d1884` plus the then-uncommitted tests (committed since as `0644d8c`).
 **Plan version:** test plan: Approved by Michael Hay on November 9, 2026. Phase plan: Approved by Michael Hay 2026-11-01 with amendments to 2026-11-02.
 **Policy used:** `REVIEW.md`. The `Review process` rule in `AGENTS.md` (solo repository, owner Michael Hay, no second approver): applies in the sense that the owner is the sole approver; no second approver is required.
-**Revision:** 1, 2026-11-09 (time not recorded)
+**Revision:** 2, 2026-11-09 (time not recorded)
 
 ## Revision log
 
 | Revision | Timestamp | Commit reviewed | What this revision did |
 |---|---|---|---|
-| 1 | 2026-11-09 | 33d1884 + working tree | First review |
+| 1 | 2026-11-09 | 33d1884 + working tree | First review: F1-F5 |
+| 2 | 2026-11-09 | c76f9c1 | Re-review after the test-coder repairs and the four bug-coder fixes. F1 and F3 repaired (verified in code); F2 rejected by the owner (verified: A1 create cases assert the refusal and now pass); F4 and F5 deferred (recorded in the test plan). Reviewed the four fixes and the one test correction. New findings: F6 (Nit), F7 (Nit), F8 (Nit) |
 
 ## Counts by severity
 
 | Severity | Open | Repaired | Deferred | Rejected |
 |---|---|---|---|---|
-| Important | 3 | 0 | 0 | 0 |
-| Nit | 2 | 0 | 0 | 0 |
+| Important | 0 | 2 (F1, F3) | 0 | 1 (F2) |
+| Nit | 3 (F6, F7, F8) | 0 | 2 (F4, F5) | 0 |
+
+## Known and recorded, not findings
+
+- The folder-symlink gap in the A1 fix (`write.py` checks only the last path component, so a symlinked folder such as `wiki/x -> .git` is not covered): deferred by the owner and recorded in `PHASE_1_TEST_PLAN.md` line 400, with the A1 fix note at line 188.
+- The audit row the A4 fix writes for each admin-only caller of `/health` (an `authorizer.refusal` row, not throttled): accepted by the owner, recorded at `PHASE_1_TEST_PLAN.md` line 232.
 
 ## Findings
 
 ### Bugs
 
-**F1 (Important) — A7 is flaky: the leak needle is cut short when the token's secret part contains `_`**
-- **Location:** `server/tests/test_secret_hygiene.py:141` (`secret.split("_")[2]`)
-- **Evidence:** `secrets.token_urlsafe(32)` (`manifold_security/tokens.py:73`) uses an alphabet that includes `_`. The credential is `mf_<id>_<secret>`, so when the secret contains `_`, `split("_")[2]` is only the part before the first `_`: one character, two characters, or the empty string. Such a needle appears by chance in the git history (`'d' not in 'commit bea8...'`) or is the empty string, which is always "in" the text. I ran `pytest tests/test_secret_hygiene.py -k A7` 35 times in separate processes: 5 failed, about 14 percent. Failures seen: `assert 'd' not in ...`, `assert '93' not in ...`, `assert 'J' not in ...`, `assert '' not in ...`, plus one more "leaked: ..." with a short needle. All were the leak loop at line 142.
-- **Order or timing:** neither. Run alone, in file order (3 of 3 passed), with A3 and A7 only (passed), and in full-suite order (passed in the 1060-test run). The only variable is the random token. The failure is a flawed test, not a leak.
-- **The reported failure:** "authors include alice and reg" (line 143) did not fail in any of my 35 repeated runs or in the full suite. The failure I reproduced is the leak assertion at line 142. If the failure you saw was line 143, I could not reproduce it; it may be a misattribution from truncated output.
-- **Direction:** take the secret part with `split("_", 2)[2]` (or slice after the second underscore), so the needle is always the full 43 characters.
+**F1 (Important) — A7 flaky leak needle** (revision 1)
+- **State: repaired (test-coder), verified.** `server/tests/test_secret_hygiene.py:141` now reads `secret.split("_", 2)[2]`, so the needle is always the full secret part. I ran `pytest -q --no-header -p no:cacheprovider tests/test_secret_hygiene.py -k A7` 35 times in separate processes: 35 passed, 0 failed (revision 1: 5 of 35 failed). The repair was made before the tests were committed (`git log` shows the file changed only in `0644d8c`).
+
+**F6 (Nit) — The A8 line-break check covers `\n` and `\r` only**
+- **Location:** `server/wiki_backend/register.py:19-24` (`_multi_line_field`)
+- **Evidence:** read from the code: the check tests `"\n" in value or "\r" in value`. Other characters that Python's `str.splitlines()` and YAML 1.1 treat as line breaks (for example U+0085, U+2028, U+2029, and also `\x0b`, `\x0c`) pass through. Whether any of them reaches the index or frontmatter as a second entry is unverified: I did not probe it (I may not write code, and the test does not use them). INT-1 constraint and the A8 outcome say a value is "one entry or refused"; A8 itself uses `\n`, `: `, `## `, so the green result does not cover these.
+- **Direction:** the owner may want the helper to refuse any `str.splitlines()` break, or record the narrower scope as a known gap.
 - **State:** open
 
 ### Security
 
-No finding. A3, A5, A6 and A7 are green and no leak was found; A3's and A7's coverage caveats are stated in the test plan.
+No Important finding. A3, A5, A6, A7 are green and no leak was found. Fix review, by pass:
+
+- **A2 (`scopes.py:97-100`):** addresses the named defect. `check_readable` resolves the real location and refuses unless it also starts with `wiki/` or `raw/`. `confine()` already refuses a link that leaves the root (`scopes.py:57-58`), so the `relative_to(...)` call cannot raise `ValueError` for an outside target; it can only see in-root targets. A2 asserts `ValueError` or `FileNotFoundError` and `PathRefused` is accepted by that (both A2 cases pass). A link from `wiki/` to another readable page stays readable (not tested; not a regression of anything the plan names).
+- **A4 (`server.py:931-934`):** addresses the named defect. The detail now needs `authorizer.READ` through `_store_access.authorize(..., READ, None, credential_id)`; `Decision.__bool__` returns `allowed` (`authorizer.py:135`), so `bool(...)` is correct. Anonymous, wrong-credential and disabled callers still get the status only (the earlier A4 cases pass). The refusal audit row is the known item above.
+- **A1 (`write.py:138-145`):** addresses the named defect and the label: the check runs before `mkdir` and before the existence check, so the three `create` variants return `status == "error"` instead of `conflict` (the owner's F2 decision), and the three `update-with-etag` variants are refused instead of `updated`. The target is the last path component only (known gap above).
+- **A8 (`register.py:47-52`, `555-565`):** refuses a line break in `description`, `repo` or `owner` before anything is written, on both register and update, as the owner chose (option A, Q4). The names of the fields are in the refusal, the values are not. See F6 for the narrow character set.
 
 ### Compliance
 
-**F2 (Important) — The plan's A1 expectation and the implemented A1 disagree on `error` versus `conflict`, and the plan's note records the mismatch without a decision**
-- **Location:** `server/tests/test_path_policy.py:221`; `PHASE_1_TEST_PLAN.md` line 183 (Expected outcome `status == "error"`) and line 186 (Todo)
-- **Evidence:** Of the 6 red A1 parameter cases, the 3 `create` cases fail with `'conflict' == 'error'` ("File already exists ... Provide current etag for update."). Nothing is written in those cases (the test asserts the tree is unchanged after that line, but the status assert fails first). A regular file would produce the same `conflict`, so those three cases are red for the reply label and not for the symlink defect. Only the 3 `update-with-etag` cases fail with `updated`, which is the real defect. The coder's note mentions the `conflict` result but does not say whether the owner accepts `conflict` as a refusal.
-- **Direction:** the owner decides whether `conflict` counts as a refusal for the no-etag path. If yes, the `create` variants should assert "not updated and tree unchanged"; if no, they will stay red after the defect is fixed unless the fix returns `error` before the existence check. Record the decision in the test plan.
+**F2 (Important) — A1 expectation `error` versus `conflict`** (revision 1)
+- **State: rejected by the owner.** Decision (2026-11-09, `PHASE_1_TEST_PLAN.md` line 187): `conflict` is not a refusal; the create variants keep asserting `status == "error"`. Verified in code: `test_path_policy.py:205-228` asserts `result.get("status") == "error"`, a non-empty `error`, an unchanged tree, an unchanged git log and a clean `git status` for every variant, and I ran the file (all six A1 cases are part of the 1060 passing). The refusal is on the symlink: it comes from `write.py:138-145` before the existence check, with the message "is a symbolic link".
+
+**F7 (Nit) — The fix commits carry no "Rule exceptions" line**
+- **Location:** `e4479a5`, `e01970c`, `87e66b4`, `42b3109` (commit messages), and the fix notes at `PHASE_1_TEST_PLAN.md` lines 188, 203, 232, 290
+- **Evidence:** the working rules require every report from an agent that changed files or ran commands to carry a "Rule exceptions" line. The only such line in the test plan is the test-coder's (line 402). The `**Fixed:**` notes (written by the bug-coder) have none. Compared with the record: `.manifold/guard-log.jsonl` has one entry (the test-coder's `no-heredocs`, 2026-11-09T12:39:26Z, already reported and matched in revision 1) and no bug-coder entry; each fix diff touches only the file the note names (plus the one test line for A8). So nothing contradicts a "none", but the line is absent, not stated.
+- **Direction:** add a "Rule exceptions" line to each fix note, or confirm with the coordinator that it was reported elsewhere.
 - **State:** open
 
 ### Tests
 
-**F3 (Important) — A1 and A2 cannot both go green: A1's `update-with-etag` setup reads through the symlink with `wiki_read`**
-- **Location:** `server/tests/test_path_policy.py` (A1, the line `arguments["etag"] = wiki_read(root, link).etag`)
-- **Evidence:** A2 is red because `wiki_read` returns content through an in-root symlink. The expected fix for A2 makes `wiki_read` raise on those links. A1's `update-with-etag` variant obtains its etag by calling `wiki_read(root, link)` on the same kind of link, so after the A2 fix the A1 setup raises `ValueError` and A1 cannot pass. The pair of checks therefore cannot both be satisfied by a correct fix. Read from the code; I did not apply a fix, so this is an inference, not an observed failure.
-- **Direction:** compute the etag without `wiki_read` (for example hash the bytes directly, following the etag definition in the backend), so A1 does not depend on A2's defect.
-- **State:** open
+**F3 (Important) — A1 and A2 could not both go green** (revision 1)
+- **State: repaired (test-coder), verified.** `test_path_policy.py:219-224` computes the etag as `hashlib.sha256((root / link).read_bytes()).hexdigest()`, with a comment naming `generate_etag`; `wiki_read` is no longer called in A1. Both A1 (6 cases) and A2 (2 cases) are green together after the fixes (full suite below). I did not re-check that the sha256 of the bytes equals `generate_etag` for these files; the A1 update cases are refused before the etag is compared, so a mismatch would not change the result.
 
-**F4 (Nit) — A3 and A7 and the green A-cases were not seen failing first**
-- **Location:** `PHASE_1_TEST_PLAN.md` lines 214, 242, 256, 270, 298, 312, 326, 340, 354
-- **Evidence:** The coder's notes record "Not seen failing" for A5, A6, A7, A9, A10, A11, A12 and A13 (the A13 scanner self-check was seen catching a sample recommendation, not a repository document). A3 records "GREEN" without a failing run. The notes give the reason (no production change allowed), and A5 has a probe showing the check is not vacuous. For these cases the plan expects no defect, so this is a gap in evidence, not a rule breach. Red evidence: A1, A2, A4 and A8 were seen failing and I reproduced all four (below).
-- **Direction:** for A3, A7, A9, A11 and A12, consider a one-off negative check (for example a logging statement of the header, a leaked secret written to a file, a second process without the lock) to show the assertion can fail; record it in the plan.
-- **State:** open
+**F4 (Nit) — Green cases not seen failing first** (revision 1)
+- **State: deferred (owner, 2026-11-09).** Recorded at `PHASE_1_TEST_PLAN.md` line 396, with the reason (no production change allowed) and no new test.
 
-**F5 (Nit) — A10 is partly outside the plan's wording and carries an unverified observation**
-- **Location:** `server/tests/test_startup.py` (A10 tests); `PHASE_1_TEST_PLAN.md` line 312
-- **Evidence:** The plan's expected outcome for `MANIFOLD_HOST=""` is "starts with a warning and refuses every request". The test implements that through `server._check_auth_settings()` only, and the plan's note says `check_startup(conn, "")` directly would refuse. The note also records "unverified" what uvicorn binds when `MANIFOLD_HOST` is set empty (`server.py` passes `""` to uvicorn). That is the real question behind S6 ("start on a shared address because a setting was left empty") and it is left open, so A10's empty-host case may pass while the process still binds somewhere unexpected.
-- **Direction:** ask the owner whether the uvicorn bind for an empty `MANIFOLD_HOST` should be checked (a small real-process check) or recorded as a gap.
+**F5 (Nit) — A10's empty-host case is checked only through `_check_auth_settings()`** (revision 1)
+- **State: deferred (owner, 2026-11-09).** Recorded at `PHASE_1_TEST_PLAN.md` line 398; the uvicorn bind for an empty `MANIFOLD_HOST` stays unverified.
+
+**Existing tests and the owner-approved correction.** `git diff 0644d8c HEAD -- server/tests` shows one changed line in one file (`test_register_untrusted_values.py:108`): the assertion `assert result.get("error") or result.get("refused")` became `... or result.get("status") == "error"`. This is minimal: it only adds an accepted refusal shape; the next line (`assert _snapshot(root) == before`) still demands that nothing changed, and the other A8 checks are untouched. The reason is sound on the code: `WikiRegisterResponse` has `status` and `message` and no `error` field (`wiki_backend/models.py:86-`, and the refusal in `register.py:558-565` returns `status="error"`). The approval is recorded in `PHASE_1_TEST_PLAN.md` lines 289 and 290 ("Owner-approved test correction (2026-11-09)") and in the commit subject. The matching rule (AGENTS.md "Tests under fix") asks for the test name, assertion, reason and owner's yes to be recorded; all four are. No other existing test changed in the four fixes. The fixes are not regression-tested by new tests beyond A1, A2, A4 and A8 themselves; those are the failing-first tests.
+
+**F8 (Nit) — A4 does not pin the new behavior for a reader-only or contributor principal, and `/health` now reads the store before its own try block**
+- **Location:** `server/server.py:931-934`
+- **Evidence:** read from the code: `_store_access.authorize(...)` runs before the `try:` that turns a health failure into `unhealthy`. If the store raises for an authenticated caller, the route would raise instead of returning an `unhealthy` payload. An anonymous container health check never reaches that call (`caller` is `None`), so the container check is unaffected. Not reproduced.
+- **Direction:** consider whether the authorization call should sit inside the same guarded block, or accept and record the behavior.
 - **State:** open
 
 ### Context files
 
 No finding. No change makes `AGENTS.md`, `CLAUDE.md` or `REVIEW.md` out of date.
 
-## Case-by-case check (point 1) and red tests (point 2)
+## Scope check on the fixes
 
-| Case | Implemented as planned | Result I saw | Notes |
-|---|---|---|---|
-| A1 | Yes, in `test_path_policy.py`; 3 links x create/etag; extra grant on `acme-web` is recorded | 6 red | 3 `update-with-etag` cases red for the named defect (`updated`); 3 `create` cases red on `conflict` label: see F2, F3 |
-| A2 | Yes | 2 red (`DID NOT RAISE`) | Red for the named defect: content returned through the link |
-| A3 | Yes, two tests, in-process and real process | green | not seen failing, F4 |
-| A4 | Yes | red | `assert {...'checks'...} == {'status': 'healthy'}` for "admin-only": the named defect, and the earlier anonymous, wrong and disabled cases passed first |
-| A5, A6 | Yes | green | not seen failing, F4 |
-| A7 | Yes | green, flaky | F1 |
-| A8 | Yes, 3 fields x register and update | 4 of 6 red | hostile `description`: index grew by 6 (bound 1); `repo`/`owner`: injected heading and frontmatter key on register; `repo` on update: injected heading. Red for the named defects; the bound is measured against a benign run in the same instance, which is sound |
-| A9 | Yes | green | |
-| A10 | Yes (5 tests) | green | F5 |
-| A11, A12, A13 | Yes | green | A12 took about 53 s per the coder's note |
+Each fix commit changes one production file and nothing else (`git show --stat`): `server.py` (6 lines), `scopes.py` (5), `write.py` (9), `register.py` (20, plus the one test line). The only change outside the named defect is whitespace: `write.py` line 140 loses trailing spaces on a blank line (inside the A1 fix commit). That is trivial and is not reported as a finding. No new dependency, no change to other modules. The case-by-case table of revision 1 still holds for A3, A5-A7, A9-A13 (unchanged, green).
 
-No case was skipped, weakened or deleted: `git diff -U0` shows 317 added lines and no removed lines in the 5 modified files, so no existing test was edited. I did not read the held-out scenarios and none are in this repository.
+| Case | State on `c76f9c1` |
+|---|---|
+| A1 | green (6 of 6), red before `87e66b4` |
+| A2 | green (2 of 2), red before `e01970c` |
+| A4 | green, red before `e4479a5` |
+| A8 | green (6 of 6), 4 were red before `42b3109` |
+| A3, A5-A7, A9-A13 | green; not seen failing (F4, deferred) |
+
+I did not read the held-out scenarios; none are in this repository. I did not run the fixes against the reverted code (the failing-first state is taken from the coder's notes and my revision 1 runs on `33d1884`).
 
 ## Rule exceptions compared
 
-The coder's line: "one attempted heredoc in a Bash command, refused by the guard hook before it ran (no file written); otherwise none." `.manifold/guard-log.jsonl` has exactly one entry: rule `no-heredocs`, tool `Bash`, agent `test-coder`, 2026-11-09T12:39:26Z. That matches the line. The diff shows only the 10 test files and the plan; no production code is changed (`git status` lists only `server/tests/` and `docs/plans/PHASE_1_TEST_PLAN.md`). The commit log was not needed because nothing is committed. Matched.
+The test-coder's line (`PHASE_1_TEST_PLAN.md` line 402): "one attempted heredoc in a Bash command, refused by the guard hook before it ran (no file written); otherwise none." `.manifold/guard-log.jsonl` still has exactly one entry (`no-heredocs`, `test-coder`, 2026-11-09T12:39:26Z): matches. The bug-coder fixes state no line (F7). The diffs between `0644d8c` and `c76f9c1` touch only the four production files, one test line and `PHASE_1_TEST_PLAN.md`; the commit log shows eight commits since `a7047e7`, all with the co-author trailer and nothing that looks like a hook bypass. Matched where a line exists; not comparable where there is none.
 
 ## Gates run
 
 | Command | Counts | Result |
 |---|---|---|
-| `cd server && ../.venv/bin/python -m pytest -q --no-header` | 13 failed, 1047 passed, 2 warnings, 129.62 s | The 13 failures are exactly the red cases: A4 (1), A1 (6), A2 (2), A8 (4). Nothing else failed in that run (A7 passed that time) |
-| `.venv/bin/python -m pytest bundles/base/tests -q` | not run | the change touches only `server/tests/` |
+| `cd server && ../.venv/bin/python -m pytest -q` (on `c76f9c1`) | 1060 passed, 2 warnings, 136.40 s | matches the coordinator's 1060 passed; no failures |
+| `cd server && ../.venv/bin/python -m pytest -q --no-header -p no:cacheprovider tests/test_secret_hygiene.py -k A7`, 35 separate processes | 35 passed, 0 failed | A7 stable (revision 1: 5 of 35 failed) |
+| `.venv/bin/python -m pytest bundles/base/tests -q` | not run | the four fixes change only `server/`; not run in this revision |
 | `.venv/bin/python tools/vendor_web.py --check` | not run | same reason |
-| `cd server && ../.venv/bin/python -m pytest -q -x --no-header -p no:cacheprovider` | 1 failed, 91 passed (stopped on A4) | exploration only |
-| `... pytest tests/test_secret_hygiene.py -k A7` x 35 | 30 passed, 5 failed | F1 |
-| `... pytest tests/test_secret_hygiene.py` x 3 (file order) and A3 + A7 only | all passed | no order dependence |
 
 ## CI on the pushed commit
 
-Not checked: the change is uncommitted and nothing is pushed.
-
-## Tests run and changed
-
-Failing-first evidence: A1, A2, A4 and A8 were seen failing by the coder and by me, for the defects the plan names (A1's `create` variants only for a different label: F2). No existing test was changed. No approval for any change to an existing test was needed.
+Not checked (no pull request or remote run was named).
 
 ## Could not check
 
 - The manual cases M1-M4 (real clients, real Docker): not implemented and outside the reviewer's tools.
-- What uvicorn binds when `MANIFOLD_HOST` is empty (F5).
-- Whether A9's processes and A12's SSE behavior would fail against a broken implementation; I did not mutate production code.
-- The "authors include alice and reg" intermittent failure as stated: not reproduced (F1).
+- Whether characters other than `\n` and `\r` get through A8 (F6), and what uvicorn binds for an empty `MANIFOLD_HOST` (F5, deferred).
+- A write through a symlinked folder (known, deferred).
+- Whether the fixes fail the tests when reverted (taken from the notes and revision 1).
 
 ## A human decides
 
 This review does not approve or block the change. A human approves, informed by the findings above.
 
-Rule exceptions: none by the reviewer. I wrote only `docs/plans/REVIEW_PLAN_1.md`, ran read-only `git` and `pytest` commands (the test runs create temporary directories under pytest's temp area), and no guard blocked any of my commands.
+Rule exceptions: none by the reviewer. I wrote only `docs/plans/REVIEW_PLAN_1.md`, ran read-only `git` commands and `pytest` (the runs create temporary directories under pytest's temp area), and no guard blocked any of my commands.
