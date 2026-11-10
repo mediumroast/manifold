@@ -50,7 +50,8 @@ def test_issue_shows_the_secret_once_on_a_terminal_and_show_never_does(cli, alic
     assert code == 0 and token and out.count(token) == 1
     for args in (("principal", "show", "alice"), ("principal", "list"), ("audit", "show")):
         shown = cli(*args)[1]
-        assert token not in shown and token.split("_")[-1] not in shown
+        # The secret part is everything after "mf_<id>_"; token_urlsafe can put "_" inside it, so split at most twice.
+        assert token not in shown and token.split("_", 2)[2] not in shown
     conn = cli.store()
     assert tokens.verify(conn, token).ok
     conn.close()
