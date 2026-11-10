@@ -157,3 +157,67 @@ Continues the table in F3. One row per run, same method as above. "Tracked" mean
 | Phase 2: coder, checkpoint 1 (2026-11-06) | 1 | 0 | 1 (`python3 - <<'X'` with an empty body, then an inline `python3 -c`) | not determined |
 
 What the rows show (inference): the shell writes continued through the whole cycle and into Phase 2 after the rule was restated, and most of the later ones were small ("run this snippet") rather than edits of tracked files. Eight of the eleven coder commands in T37 to T52 were edits of existing files, as in F1. The Phase 2 rows were found in the same transcript pass; the Phase 2 runs came before the guard was installed here. This record has no row for the Phase 2 coordinating session. Later checkpoints add rows below.
+
+---
+
+Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier entries are unchanged.
+
+**How the counts below were made.** The same method as F4 to F6: a throwaway script (in the session scratchpad, not in the repository) read the transcripts of this worktree's coordinating session and of the Phase 1 test-set worktree (`phase1-test-set-f37394`) with their subagents, took every `Bash` tool call once by its tool-use id (301 in the coordinating session, 135 in the ten test-set agent transcripts and 13 in the three test-set main sessions) and counted a command when `bundles/base/hooks/guard.py` (`classify_bash`) would refuse it. "Would refuse" is not "was refused": the guard hook does not cover the main session (Phase 2 task 39), so the coordinating session's commands ran (inference). Each flagged command was then read in full and sorted into breach, plan-directed or false positive. Hand-back messages are not in these transcripts, so "disclosed" is taken from the plan notes and the guard log where they exist and is "not determined" otherwise.
+
+## F7 — The coordinating session used heredocs, a redirect and `sed -i` (2026-11-01 to 2026-11-09)
+
+**Rule:** `no-heredocs` ("Shell writes to files": no heredocs, no `sed -i`, no `>` into a file).
+**What happened:** The coordinating session of this worktree (session `9bfd3425-37df-4c9e-ae9c-104fe5c7744b`) ran 8 commands that the guard classifies under this rule. Seven were breaches: 5 `python3 - <<` heredocs that only read subagent transcripts and wrote no file (2026-11-01 18:29:58, 18:30:06, 18:30:15, 18:30:24 and 2026-11-09 02:37:21); 1 empty-body heredoc, `python3 - <<'EOF' ... EOF`, put in front of a `grep` (2026-11-06 14:06:34); 1 redirect into the session scratchpad (`gh run view ... > <scratchpad>/ci311.log`, 2026-11-02 00:28:19). The eighth (2026-11-09 02:44:45) is a false positive: the `awk` only prints, and the `=>` that the classifier read as a redirect is inside a quoted string. In an earlier session in the same worktree (`17f1691c-b4da-4128-9fc9-ffbc9039115f`, 2026-11-02 12:42:39) one `sed -i '' -E` renamed the INT numbers in the intent files `INT-20` to `INT-22`: a breach, and the only one of the eight that changed a tracked file (inference: the same coordinating role; that session was read only for this command).
+**Evidence:** `~/.claude/projects/-Users-mihay42-dev-manifold--claude-worktrees-intent-agent-process-afd0ed/9bfd3425-37df-4c9e-ae9c-104fe5c7744b.jsonl` and `.../17f1691c-b4da-4128-9fc9-ffbc9039115f.jsonl`, located by the timestamps above (cited by location, not copied).
+**Count:** coordinating session: 7 breaches, 0 on tracked files, plus 1 false positive; earlier session: 1 breach, 1 on a tracked file. Total 8 breaches; none concealed (nothing was hidden, but none was reported on a "Rule exceptions" line either).
+**Agent:** coordinator (the main session; no per-agent guard covers it)
+**Disclosed by the agent:** Not determined per command. The session stated no "Rule exceptions" line for itself; whether each was mentioned to the owner in chat was not checked.
+**Suggested change:** The coordinating work runs as the `coordinator` agent, so the hook applies (INT-22, already shipped); until then the install guide says the main session is outside the hook (task 39, done). For reading a transcript, write the script to the scratchpad with `Write` and run the file, as the rule says.
+**Status:** open
+**Intent raised:** INT-20 (no new intent; the guard's gap for the main session is already stated there)
+
+## F8 — The coordinating session wrote to installed agent files by shell, and the guard's protected-file check flagged read-only commands (2026-11-02 to 2026-11-09)
+
+**Rule:** the guard rule `protected-file` (the installed agent definitions, the hook and the templates), which is not a written rule in `AGENTS.md` at the time of the writes (inference: the three writes came before the guard existed in this worktree).
+**What happened:** 9 commands of the coordinating session were classified `protected-file`. Sorted: (a) 3 writes into installed files in the main checkout on 2026-11-02: `cp -Rn dist/archive/.claude/agents/. .claude/agents/` (03:46:45), `mv dist/archive/.manifold .manifold` with `mv dist/archive/templates docs/templates` (04:27:25), and a `mv` of `AGENTS.md`, `CLAUDE.md`, `.manifold`, `docs/templates` and `.claude/agents` into `dist/archive/premerge-backup` before `git pull --ff-only` (17:40:37). They restored or moved files the owner had archived; whether the owner asked for each is not determined here. (b) 2 plan-directed edits outside this repository: `git rm -rq .claude/agents` and a commit in the scratch clones `~/manifold-live/copilot/manifold` (2026-11-07 23:50:03) and `~/manifold-live-after/copilot/manifold` (2026-11-08 23:33:08), which T37b and T57 prescribe. (c) 4 false positives: two read-only compares of installed files (2026-11-02 17:40:23 and 17:40:54), an `ls` and `cat` of `.claude` with a guard self-test written only in the scratchpad (2026-11-09 02:59:19), and a `gh run list --jq '.[]|[.workflowName,...]'` whose jq filter the classifier read as a protected path (2026-11-09 02:49:53).
+**Evidence:** `~/.claude/projects/-Users-mihay42-dev-manifold--claude-worktrees-intent-agent-process-afd0ed/9bfd3425-37df-4c9e-ae9c-104fe5c7744b.jsonl`, located by the timestamps above.
+**Count:** 9 flagged: 3 breaches (writes to protected files), 2 plan-directed, 4 false positives.
+**Agent:** coordinator (the main session)
+**Disclosed by the agent:** Not determined.
+**Suggested change:** The sanctioned route for restoring installed files is a human-granted path exception (`"scope": "path"` with `expires`, `docs/process/BREACH_PROCEDURE.md`), not a shell move. The false positives are F10.
+**Status:** open
+**Intent raised:** INT-20 (no new intent)
+
+## F9 — The Phase 1 test-set agents: one refused heredoc, disclosed (2026-11-09)
+
+**Rule:** `no-heredocs`
+**What happened:** Ten agent transcripts of the Phase 1 test-set run (`test-planner`, `test-coder`, the `test-coder` repair run, four `bug-coder` runs, the A8 test-correction run and two `reviewer` runs) hold 135 Bash calls. One was flagged: the `test-coder`'s run for "Implement the test plan" ran a heredoc in a command in the `server` folder (2026-11-09 12:39:26 UTC). The live guard refused it before it ran (no file was written), and `.manifold/guard-log.jsonl` has that one entry (`no-heredocs`, `test-coder`). The three test-set main sessions hold 13 Bash calls and none was flagged. No agent edited, skipped, weakened or deleted an existing test; the one changed test line (A8) was owner-approved and is recorded in the test plan.
+**Evidence:** `~/.claude/projects/-Users-mihay42-dev-manifold--claude-worktrees-phase1-test-set-f37394/c7366e6f-9822-47de-89b1-4ba5cb085cb0/subagents/agent-a869ce8810a143d60.jsonl` (the `test-coder`); the guard log of that worktree; `docs/plans/REVIEW_PLAN_1.md` (Rule exceptions compared, revisions 1 and 2).
+**Count:** 1 flagged, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** test-coder
+**Disclosed by the agent:** Yes (its "Rule exceptions" line in `PHASE_1_TEST_PLAN.md` states one attempted heredoc, refused by the guard).
+**Suggested change:** None; the guard held and the agent said so. The `bug-coder` runs state no "Rule exceptions" line in the plan notes (review finding F7 of `REVIEW_PLAN_1.md`); the transcripts show none flagged.
+**Status:** closed
+**Intent raised:** none
+
+## F10 — The guard's classifier refused commands that break no rule (found 2026-11-10)
+
+**Rule:** none (a guard defect: the false positives of F7 and F8).
+**What happened:** In the coordinating session's transcript the classifier flagged five commands that write nothing outside the scratchpad: an `awk` whose `=>` is inside a quoted string ("awk code that writes"); a `gh --jq '.[]|[...]'` filter read as a protected path; two read-only compares of installed files; and an `ls` and `cat` of `.claude` with a guard self-test in the scratchpad. Where the hook runs (subagents) such a refusal stops the agent and costs a turn.
+**Evidence:** the five timestamps in F7 and F8 (2026-11-09 02:44:45, 02:49:53, 02:59:19; 2026-11-02 17:40:23, 17:40:54); reproducible with `classify_bash` from `bundles/base/hooks/guard.py` on the commands (not re-run as a test here: unverified).
+**Count:** 5 in 301 Bash calls of one session.
+**Agent:** n/a (the guard)
+**Disclosed by the agent:** Not applicable.
+**Suggested change:** Add the five as cases to the guard tests and fix the classifier (`awk` strings, a `--jq` argument, read-only use of a protected name).
+**Status:** open
+**Intent raised:** none yet (the owner decides whether this extends INT-20)
+
+## Pattern, runs of 2026-11-09 and the coordinating session
+
+| Run | Flagged commands | Breaches that went through | Disclosed |
+|---|---|---|---|
+| Coordinating session 9bfd3425, all of Phase 2 (301 Bash calls) | 17 | 10 (7 shell-write, 3 protected-file), 0 on tracked files except the three installed-file moves | not determined |
+| Earlier coordinating session 17f1691c (2026-11-02) | 1 | 1 (`sed -i` on tracked files) | not determined |
+| Phase 1 test set, ten agent transcripts (2026-11-09) | 1 | 0 (refused by the guard) | yes |
+
+What the rows show (inference): the agents whose commands the hook sees stopped at the first refusal and said so, while the main session, which the hook does not see, kept the same slips as the agents had before the guard (read-only heredocs, one empty heredoc, one `sed -i`). Where the work was handed to an agent rooted in the worktree, the count was one refused command in 135.
