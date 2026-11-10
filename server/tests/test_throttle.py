@@ -2,7 +2,10 @@
 """The per-address delay for repeated bad credentials (PHASE_1_PLAN T20)."""
 
 import asyncio
+import gc
 import json
+import threading
+import time
 
 import pytest
 
@@ -238,15 +241,48 @@ def test_flood_a_throttled_address_adds_one_audit_row_and_counts_the_rest(auth_w
     assert guess not in json.dumps(rows)
 
 
-def test_flood_does_not_stall_the_loop_for_other_addresses(auth_world):
+def test_flood_does_not_stall_the_loop_for_other_addresses(auth_world, monkeypatch):
+    # DIAGNOSTIC, TEMPORARY (see the pull request): the checks below are unchanged; only the failure message
+    # is longer. It says what the loop was waiting on (collector pauses, the sign-in lookup that runs on the
+    # loop, the audit write that runs in a worker thread), so the CI log shows where a stall comes from.
     middleware, _ = flood_world(auth_world)
     guess = "mf_000000000000_" + "a" * 43
+    seen = {"gc": [], "authenticate": [], "audit": [], "stall_at": None}
+    started = []
+
+    def on_gc(phase, info):
+        if phase == "start":
+            started.append(time.perf_counter())
+        elif started:
+            seen["gc"].append((info["generation"], round(time.perf_counter() - started.pop(), 4)))
+
+    real_authenticate = middleware.store.authenticate
+
+    def timed_authenticate(presented):
+        began = time.perf_counter()
+        try:
+            return real_authenticate(presented)
+        finally:
+            seen["authenticate"].append(round(time.perf_counter() - began, 4))
+
+    middleware.store.authenticate = timed_authenticate
+    real_record = audit.record_throttled_signin
+
+    def timed_record(*args, **kwargs):
+        began = time.perf_counter()
+        try:
+            return real_record(*args, **kwargs)
+        finally:
+            seen["audit"].append(round(time.perf_counter() - began, 4))
+
+    monkeypatch.setattr(audit, "record_throttled_signin", timed_record)
 
     async def run():
         for _ in range(3):
             await request_from(middleware, "203.0.113.7", guess)
         worst = 0.0
         running = True
+        began = time.perf_counter()
 
         async def ticker():
             nonlocal worst
@@ -254,6 +290,8 @@ def test_flood_does_not_stall_the_loop_for_other_addresses(auth_world):
             while running:
                 await asyncio.sleep(0.001)
                 now = asyncio.get_running_loop().time()
+                if now - last > worst:
+                    seen["stall_at"] = round(time.perf_counter() - began, 4)
                 worst, last = max(worst, now - last), now
 
         watcher = asyncio.create_task(ticker())
@@ -264,9 +302,17 @@ def test_flood_does_not_stall_the_loop_for_other_addresses(auth_world):
         await watcher
         return results, worst
 
-    results, worst = asyncio.run(run())
+    gc.callbacks.append(on_gc)
+    try:
+        results, worst = asyncio.run(run())
+    finally:
+        gc.callbacks.remove(on_gc)
     assert results[-1] == 200 and set(results[:-1]) == {429}
-    assert worst < FLOOD_LAG_BOUND_SECONDS, "the event loop stalled for %.3fs during the flood" % worst
+    diagnostic = "diagnostic: stall began %ss into the flood; gc pauses over 2 ms (generation, s): %s; " \
+                 "sign-in lookups on the loop (s): %s; audit writes (s): %s; threads alive: %d; live objects: %d" % (
+                     seen["stall_at"], [p for p in seen["gc"] if p[1] > 0.002], seen["authenticate"], seen["audit"],
+                     threading.active_count(), len(gc.get_objects()))
+    assert worst < FLOOD_LAG_BOUND_SECONDS, "the event loop stalled for %.3fs during the flood; %s" % (worst, diagnostic)
 
 
 def test_the_state_is_capped_and_drops_the_quietest_address():
