@@ -1131,6 +1131,7 @@ The review file is the reviewer's and is not edited; its States stay `open` unti
 | F2 (Important) no coder completion summary | repaired | The "Completion summary" above, written by the coordinating session from the task notes and records (commit `648f9e6`); it says it is not the coder's own report. |
 | F3 (Important) the T57 sample departs from T57 and INT-25 | deferred | The owner accepted the departures on 2026-11-10 (T57 Todo line). Follow-up: when the sample is quoted, repeat the departures; a real-use run has a person write **Approved by**. |
 | F4 (Nit) shipped text says the hook has not been seen in a live run | deferred | The text errs on the cautious side. Fix in one pre-release pass with F5: say one live refusal in a Claude Code subagent was recorded on 2026-11-09 (F9) in `bundles/base/INSTALL.md` lines 78 and 91, `bundles/base/HOWTO.md` line 120 and the INT-20 S1 traceability row; keep "not seen" for Copilot, `--agent` and plugins. Needs a plan amendment with the owner's approval line before the shipped text changes. |
+| F5 (Nit) shipped `REVIEW_CYCLE.md` carries this repository's history and a pronoun | deferred | Same pre-release pass as F4 (one amendment, one rebuild, one install refresh): in `bundles/base/process/REVIEW_CYCLE.md` line 56 say "the owner" with no pronoun, and move or generalize the section "How the first cycles ran" (lines 50 to 62), which names this repository's Phase 2, CP2a and CP2b. |
 
 ## Traceability (T43)
 
