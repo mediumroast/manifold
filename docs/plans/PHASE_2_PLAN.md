@@ -1091,6 +1091,37 @@ Note (2026-11-08): the table is under "Traceability (T43)" after the Completion 
   - Deferred items and follow-ups
 -->
 
+### Completion summary (written 2026-11-10 by the coordinating session, repairing REVIEW_PLAN_2.md F2)
+
+The coder's per-checkpoint reports were not committed, so this summary is assembled from the task notes, the gate runs, `docs/agents/claude-desktop-failures.md` and `REVIEW_PLAN_2.md`. It is not the coder's own report and says so.
+
+**Files changed:** `git diff --stat origin/main...HEAD` before this summary: 93 files, 9975 insertions, 325 deletions. By area: `bundles/base/` (agents, rules, templates, process, hooks, config, tests, `install.py`, `install.sh`, `tools/build.py`, `VERSION`, `README.md`), the installed copies of this repository (`.claude/agents`, `docs/templates`, `docs/process`, `.manifold`), `tests/live/` (12 files), `tests/results/` (claude-code-2 and copilot-2), `intent/` (INT-20 to INT-25), `docs/agents/`, `docs/plans/` (this plan, `REVIEW_PLAN_2.md`) and `.github/workflows/ci.yml`. Merged in from `main`, not Phase 2 work: the two flaky-test repairs of PR #30 (`server/tests/`).
+
+**Deviations from the plan, and why:**
+- T40 to T42 (walk-throughs) were dropped by the owner on 2026-11-06 and replaced by real use after the phase.
+- T58 ran before T55 and after T54 (it changes documents, CI and generated text, so the T55 gates ran on the final build). Python 3.8 was dropped (owner, 2026-11-08); the minimum is 3.10 (Open question 21).
+- T37c ran in a sibling worktree and PR #29 (stacked draft), not in this branch.
+- T37b was accepted by the owner (2026-11-10) as a planner-only run: the `test-coder` step was not run because the plan had nothing to implement. T57 was accepted by the owner (2026-11-10) with three departures: the Claude Code run was driven by a subagent, not a person; both plans carry an **Approved by** written by the coordinating session under the owner's limited authority; no model was recorded for the Claude Code run. See the T57 note and `REVIEW_PLAN_2.md` F3.
+- `bundles/base/VERSION` was bumped to 0.2.0 before the comparison runs (Open question 7).
+- Two Phase 1 test files were repaired in PR #30 (not a Phase 2 task): a flaky secret needle and a flood-test timing assertion (garbage-collector pause), with the owner's approval; the Python 3.8 matrix line was removed there too.
+
+**Verification evidence (commit `309fa6b`, 2026-11-10, run by the coordinating session; the independent review repeated them on `53df8cf` with the same counts):**
+- `python3 bundles/base/tools/build.py --check` -> `lint ok`.
+- `.venv/bin/python -m pytest bundles/base/tests -q` -> 1954 passed, 1 skipped.
+- `cd server && ../.venv/bin/python -m pytest -q` -> 1014 passed, 2 warnings (107.64 s).
+- `.venv/bin/python tools/vendor_web.py --check` -> "vendored files match a fresh build".
+- `.venv/bin/python -m pytest tests/live -q` -> 24 passed.
+- CI on `53df8cf`: `ci` and `server` completed, success (read from `gh run list --commit`). CI on later commits is not read.
+- Not run: Python 3.10 and Windows locally (system Python 3.11.3); any live client beyond the two recorded samples; the guard under Copilot. The owner's K5 reading of the agent-behavior text is not done.
+
+**Rule exceptions:** not "none". The record in `docs/agents/claude-desktop-failures.md` is the authority: F1 to F6 (the Phase 1 cycle and its agents' shell writes, a `sed -i.bak`, rule breaks after restatement, no written procedure), F7 (coordinating session: 7 shell-write breaches that went through, 1 `sed -i` in an earlier session, plus 5 classifier false positives counted in F10), F8 (3 writes to installed agent files, 2 of them plan-directed edits in scratch clones), F9 (the Phase 1 test-set agents: one heredoc, refused by the guard and disclosed) and F10 (guard classifier false positives). The counts there come from the guard's own classifier over transcripts and are not recounted here. `.manifold/guard-log.jsonl` is git-ignored and absent from the Phase 2 checkout, so no refusal log was compared.
+
+**Deferred items and follow-ups:**
+- `REVIEW_PLAN_2.md` F1 and F3 to F7 await the owner's decision (repaired, deferred or rejected).
+- PR #29 review Nits F6, F7, F8 (`REVIEW_PLAN_1.md`) and the deferred F4, F5 and the folder-symlink gap, plus manual cases M1 to M4 of the Phase 1 test plan.
+- Record the worktree and `CLAUDE_PROJECT_DIR` guard limit in `INSTALL.md` or the guard documents; template fixes from the breach findings; tests for the guard classifier's false positives (F10); watch the 0.05 s flood-test bound over several CI runs.
+- Real use of the agents, recorded by the coordinator and the owner after this phase (T40).
+
 ## Traceability (T43)
 
 One row per "We will know when" line: 5 (INT-20) + 12 (INT-21) + 10 (INT-22) + 4 (INT-23) + 8 (INT-25) = 39. Paths are under `bundles/base/` unless rooted. Check: K1 build and lint, K2 tests, K3 every path, command and format read or run, K5 the owner reads the text. A row whose behavior has not been seen in real use says "no evidence yet", as the review standard requires; real use is recorded after Phase 2 (T40).
