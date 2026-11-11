@@ -1,6 +1,6 @@
 # PHASE_3_PLAN.md
 
-**Approved by:**
+**Approved by:** Michael Hay on November 11, 2026
 **Source intent:** INT-26, `intent/INT-26-finishing-a-phase-clear-and-light.md` (accepted by Michael Hay, 2026-11-11, on branch `claude/intent-phase3-streamline`, commit c1d51c9, PR #31 still draft; the intent file arrives on `main` with that PR's merge, and the owner's answers are in its Open questions)
 
 ## Objective
