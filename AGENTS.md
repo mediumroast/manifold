@@ -72,9 +72,11 @@ Confirmed by the owner on 2026-11-01 (from PHASE_1_PLAN.md, run and verified by 
 - **Install:** `python3 -m venv .venv`, then `.venv/bin/pip install -r server/requirements-dev.txt -c server/requirements.lock`.
 - **Server tests:** `cd server && ../.venv/bin/python -m pytest -q`.
 - **Bundle tests:** `.venv/bin/python -m pytest bundles/base/tests -q`.
+- **Bundle lint:** `python3 bundles/base/tools/build.py --check` (prints `lint ok`; CI runs it).
+- **Live-protocol checker tests:** `.venv/bin/python -m pytest tests/live -q` (CI does not run them).
 - **Vendored web files:** `.venv/bin/python tools/vendor_web.py --check`.
 - **Build and run (Docker):** `./svc_ctl.sh <dev|staging|production> init-env|start|status|logs|health|stop`; `./svc_ctl.sh <env> admin ...` runs the host command in the container; `./manifold init` sets up a first instance.
-- **Lint and type-check:** none exist.
+- **Type-check:** none exists. Lint exists only for the bundle (see Bundle lint above).
 - In a plan, `pytest` means the server tests command above.
 
 <!-- The managed block above is overwritten on update; this section is yours. -->
