@@ -135,8 +135,15 @@ def write_page_of_kinds(wiki_root: Path, request: WikiWriteRequest, kinds) -> Wi
             path=request.path, status="error",
             error="Write refused: %s is a %s page and cannot be written this way." % (request.path, kind),
         )
+    # A link inside wiki/ would redirect the write to whatever it points at (manifold.yaml,
+    # wiki/log.md, another page); refuse before touching disk, whether or not the target exists.
+    if file_path.is_symlink():
+        return WikiWriteResponse(
+            path=request.path, status="error",
+            error="Write refused: %s is a symbolic link." % request.path,
+        )
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Check if file exists
     file_exists = file_path.exists()
     

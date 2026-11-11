@@ -155,3 +155,49 @@ def test_the_server_applies_the_rules_when_it_starts(monkeypatch, auth_world, ca
         server._check_auth_settings()
     text = caplog.text
     assert "refuses every request" in text and "no longer accepted" in text
+
+
+# ── PHASE_1_TEST_PLAN A10: look-alike and empty hosts ────────────────────────
+
+@pytest.fixture()
+def empty_store_env(security_conn, tmp_path, monkeypatch):
+    """The server module pointed at the empty temporary store of ``security_conn`` (no principal)."""
+    monkeypatch.setenv("MANIFOLD_DATA_DIR", str(tmp_path / "security-data"))
+    monkeypatch.setenv("CONTAINER_WIKI_ROOT", str(tmp_path / "wiki-root"))
+    monkeypatch.delenv("MANIFOLD_PUBLIC_ADDRESS", raising=False)
+    return security_conn
+
+
+@pytest.mark.parametrize("host", ["localhost.evil.test", "127.0.0.1.nip.io", "0"])
+def test_A10_a_look_alike_host_on_an_empty_store_refuses_to_start(empty_store_env, monkeypatch, host):
+    pytest.importorskip("fastmcp")
+    import server
+    with pytest.raises(StartupError, match=r"\./manifold init"):
+        check_startup(empty_store_env, host, {})
+    monkeypatch.setenv("MANIFOLD_HOST", host)
+    with pytest.raises(StartupError, match=r"\./manifold init"):
+        server._check_auth_settings()
+
+
+def test_A10_an_empty_public_address_does_not_hide_a_shared_bind(empty_store_env, monkeypatch):
+    pytest.importorskip("fastmcp")
+    import server
+    monkeypatch.setenv("MANIFOLD_HOST", "0.0.0.0")
+    monkeypatch.setenv("MANIFOLD_PUBLIC_ADDRESS", "")
+    with pytest.raises(StartupError, match=r"\./manifold init"):
+        server._check_auth_settings()
+
+
+def test_A10_an_empty_host_starts_with_a_warning_and_the_app_refuses_every_request(
+        empty_store_env, monkeypatch, caplog):
+    pytest.importorskip("fastmcp")
+    import logging
+    from starlette.testclient import TestClient
+    import server
+    monkeypatch.setenv("MANIFOLD_HOST", "")
+    with caplog.at_level(logging.WARNING):
+        server._check_auth_settings()
+    assert "./manifold init" in caplog.text and "refuses every request" in caplog.text
+    client = TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")
+    for path in ("/mcp", "/sse", "/ingest", "/docs/", "/"):
+        assert client.get(path, follow_redirects=False).status_code == 401, path

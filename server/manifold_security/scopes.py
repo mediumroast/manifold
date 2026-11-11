@@ -94,4 +94,9 @@ def check_readable(wiki_root, path: str) -> Path:
     absolute, relative = confine(wiki_root, path)
     if not relative.startswith(READ_PREFIXES):
         raise PathRefused("Only wiki/ and raw/ can be read: %s" % path)
+    # A symlink inside wiki/ or raw/ may point at a file elsewhere in the root
+    # (.git/, manifold.yaml); the real location must also be readable.
+    real = absolute.resolve().relative_to(Path(wiki_root).resolve()).as_posix()
+    if not real.startswith(READ_PREFIXES):
+        raise PathRefused("The path leads outside wiki/ and raw/: %s" % path)
     return absolute
