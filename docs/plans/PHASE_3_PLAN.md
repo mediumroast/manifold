@@ -86,7 +86,8 @@ The owner asked whether a DoD template for the coordinator is the way, or someth
 **Action:** MODIFY
 **Change:** In `INSTALL.md` line 78 (table row, Claude Code subagent) replace "Documented, not yet seen in a live run: the recorded runs captured no guard log." with "Documented, and a live refusal has been recorded for a subagent." In `INSTALL.md` line 91 replace "None of this has been recorded in a live client yet;" with "A live refusal has been recorded only for a Claude Code subagent, and for no other row;". In `HOWTO.md` line 120 replace "none of it has been recorded in a live run yet, so treat it as "no evidence yet"" with "the only live evidence recorded is one refusal in a Claude Code subagent; for every other client or mode treat it as "no evidence yet"". Keep "not seen" for Copilot, `--agent` and plugins. No date, no finding ID.
 **Acceptance:** `grep -n "not yet seen in a live run\|recorded in a live" bundles/base/INSTALL.md bundles/base/HOWTO.md` prints nothing; `git diff --stat` shows only these two files.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): INSTALL.md lines 78 and 91 and HOWTO.md line 120 reworded as written; `grep -n "not yet seen in a live run\|recorded in a live" bundles/base/INSTALL.md bundles/base/HOWTO.md` prints nothing. The `git diff --stat` acceptance reads on the whole CP1 diff; the two files here are only the F4 text files (the rest is Tasks 2 to 6).
 
 ---
 
@@ -95,7 +96,8 @@ The owner asked whether a DoD template for the coordinator is the way, or someth
 **Action:** MODIFY
 **Change:** Replace "no live-client evidence yet" with "one live refusal in a Claude Code subagent, 2026-11-09 (`docs/agents/claude-desktop-failures.md` F9); none yet for Copilot, `--agent`, plugins". No other line of the file changes.
 **Acceptance:** `git diff -U0 docs/plans/PHASE_2_PLAN.md` shows one changed line.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): last cell of the INT-20 S1 row replaced as written (owner's decision: Open question 4, yes, that cell only). `git diff -U0 docs/plans/PHASE_2_PLAN.md` -> one hunk (`@@`), one line removed and one added.
 
 ---
 
@@ -104,7 +106,8 @@ The owner asked whether a DoD template for the coordinator is the way, or someth
 **Action:** MODIFY
 **Change:** Delete the section "How the first cycles ran" and its table (the record already exists in `docs/plans/PHASE_2_PLAN.md`, CP2a and CP2b). Keep the lessons paragraph under the new heading "What earlier cycles taught", with no mention of Manifold, Phase 2, CP2a, CP2b or any person's pronoun ("the owner", not "his"). Check that nothing links to the deleted heading: `grep -rn "first cycles" bundles docs README.md`.
 **Acceptance:** `grep -n "Phase 2\|CP2\| his \|first cycles ran" bundles/base/process/REVIEW_CYCLE.md` prints nothing.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): section "How the first cycles ran" and its table deleted from `bundles/base/process/REVIEW_CYCLE.md`; the lessons paragraph now sits under "What earlier cycles taught" and starts "These lessons are now part of the steps:". `grep -n "Phase 2\|CP2\| his \|first cycles" bundles/base/process/REVIEW_CYCLE.md` -> nothing; `grep -rn "first cycles" bundles docs README.md` -> only the installed copy `docs/process/REVIEW_CYCLE.md` (refreshed in Task 6) and the historical plan/review records, no link to the heading.
 
 ---
 
@@ -113,7 +116,8 @@ The owner asked whether a DoD template for the coordinator is the way, or someth
 **Action:** MODIFY
 **Change:** Replace the line "other languages, editors and tools than the ones named in the shell rule;" with "other languages, editors and tools than the ones named in the shell rule (for example `dd of=`, `curl -o`, `wget -O`, `tar x`, `unzip`, `install`, `python3 -m json.tool in out` are allowed although they write files);" in both files, in the same words. Change no line outside the docstring.
 **Acceptance:** `git diff -U0 bundles/base/hooks/guard.py` shows one changed line, inside the docstring (it ends before `from __future__`); the existing parity test between the docstring and `harness-capabilities.md` (if any) passes in Task 6.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): the "other languages, editors and tools" line in the guard.py docstring (line 77) and in `docs/agents/harness-capabilities.md` (line 75) replaced with the same words. `git diff -U0 bundles/base/hooks/guard.py` -> one hunk, one line, inside the docstring. No parity test exists between the two files (none found by grep); the full bundle suite passes (Task 6).
 
 ---
 
@@ -122,7 +126,8 @@ The owner asked whether a DoD template for the coordinator is the way, or someth
 **Action:** MODIFY
 **Change:** Add `test_deferred_text_fixes_f1_f4_f5`: the shipped `REVIEW_CYCLE.md` contains none of `Phase 2`, `CP2a`, `CP2b`, ` his `; `INSTALL.md` and `HOWTO.md` do not contain "not yet seen in a live run"; the `guard.py` docstring names `curl -o`. Follow the style of `test_t35_user_documents_link_nothing_outside_the_zip_and_name_no_bundle_version` (line 2230).
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests -q -k deferred_text_fixes` shows 1 passed. Failing-first: the note records the failing run of this test on the unchanged files, made by writing the test before applying Tasks 1 to 4 locally (the order in the plan is the order of the commits, not of the first run).
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): added `test_deferred_text_fixes_f1_f4_f5` (also checks "recorded in a live" is gone, to cover the HOWTO wording). Failing first, on the unchanged files: `.venv/bin/python -m pytest bundles/base/tests -q -k deferred_text_fixes` -> 1 failed, 1955 deselected. After Tasks 1 to 4: same command -> 1 passed, 1955 deselected.
 
 ---
 
@@ -131,7 +136,8 @@ The owner asked whether a DoD template for the coordinator is the way, or someth
 **Action:** MODIFY
 **Change:** Build into the scratchpad (`python3 bundles/base/tools/build.py --out <scratchpad>/dist`) and install over this repository with the command and flags recorded in the Phase 2 T38 note (`docs/plans/PHASE_2_PLAN.md`); read `install.py --help` first, do not guess flags. `INSTALL.md` is not installed (not in the manifest). Stage explicit paths only.
 **Acceptance:** `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes with no failures; `.manifold/hooks/guard.py` equals `bundles/base/hooks/guard.py` (`cmp`); `install.py --status` reports no modified file.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): `python3 bundles/base/tools/build.py --out <scratchpad>/dist` -> zip built (sha256 932121eee04c66f4...), unzipped into a fresh scratchpad folder; `install.py --help` read first. From that unzipped bundle: `install.py --target . --format claude --profile build` (dry run: UPDATE only `docs/process/REVIEW_CYCLE.md`, `docs/process/HOWTO.md`, `.manifold/hooks/guard.py`; everything else SKIP), then the same with `--apply` (no `--force`) -> "Installed manifold 0.2.0". `git status --short` shows only those three files plus `.manifold/manifest.json` as installed changes. `build.py --check` -> `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` -> 1955 passed, 1 skipped; `cmp .manifold/hooks/guard.py bundles/base/hooks/guard.py` -> equal; `install.py --status` (run from the unzipped bundle, because the source folder has no `bundle.json`) -> 23 files `ok`, none MODIFIED. The guard did not block the install.
 
 ---
 

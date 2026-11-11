@@ -2,7 +2,7 @@
   "name": "manifold",
   "bundle": "base",
   "version": "0.2.0",
-  "installed_at": "2026-11-09T03:04:06Z",
+  "installed_at": "2026-11-11T15:40:44Z",
   "formats": [
     "claude"
   ],
@@ -20,11 +20,11 @@
     ".manifold/.gitignore": "c42ebf9d1d28a44836f4c3322fcb833f765066f5794023452780fe9d0ba8686c",
     ".manifold/LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     ".manifold/NOTICE": "ceb5dd17a271ae545ba0af0da2bfc651df569b602993948538a8a215a4a27867",
-    ".manifold/hooks/guard.py": "77ed4d1b270e1a5c509e470ef04ef452cb7f2bfd9e2bec7305fd6f44f357ed9d",
+    ".manifold/hooks/guard.py": "ef736c424e639a3b6aca885cd727e46757137908bb91033f0badfb9928b46d06",
     ".manifold/scratch/.gitignore": "240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d",
     "docs/process/BREACH_PROCEDURE.md": "33486e8835b06c272644bb19b70fe4169afeebe3282ddc342c774dd89dc3da9b",
-    "docs/process/HOWTO.md": "dde61df3293d6f66261d6f196fb81472cfd849c200a3cfeebe56f2aea8b065ae",
-    "docs/process/REVIEW_CYCLE.md": "a7323f83daac792994a225d2755c039210ddea08bdc4e6133dfc60e011ccad87",
+    "docs/process/HOWTO.md": "d79f28db935e7e68c55ce81036a3a3af7c56b8ebaf54d9de11de8b22e2cdba3f",
+    "docs/process/REVIEW_CYCLE.md": "77889e8b7466d9299a32af8a8272ee80e9e20f4e3f8a5e3e1b0b6b6dc3fed5f6",
     "docs/templates/AGENT_FAILURES_TEMPLATE.md": "ce71c64535898789c60cc5a36bcf31935de06353b8f3e2a60affdf4f2d2e7987",
     "docs/templates/INTENT_TEMPLATE.md": "6b1d9f2c279a8ef71197949dc0ebff64b1b6f1a60ebb6a7a754e358eec868ab6",
     "docs/templates/PHASE_PLAN_TEMPLATE.md": "7d28bac9d15c5e73708713672fc6bef74e877af24f6f4453c99bbe9f66bf4502",
