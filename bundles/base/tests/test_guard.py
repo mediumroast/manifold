@@ -989,3 +989,287 @@ def test_t31_the_coordinators_skill_file_is_protected_like_every_other_skill_fil
         assert allowed is False, agent
         assert "path exception" in message
     assert "coordinate-cycle" in guard.SKILL_DIRS
+
+
+# ---- worktrees: the hook's project directory is the main checkout, the agent works in a checkout under it.
+# Structure follows the test_r1_through_main_* tests (run_main with a project directory and a payload).
+
+def _main_with_worktrees(tmp_path):
+    """A main checkout (project directory) with two linked worktrees under .claude/worktrees/, each with a `.git` file."""
+    main = tmp_path / "main"
+    (main / ".git").mkdir(parents=True)
+    trees = [_add_worktree(main, main / ".claude" / "worktrees" / name, name) for name in ("wt-a", "wt-b")]
+    return main, trees[0], trees[1]
+
+
+def _add_worktree(main, wt, name):
+    """A linked worktree of `main` at `wt`, laid out as git does: a `.git` file pointing at `.git/worktrees/<name>`,
+    which holds `commondir` and a `gitdir` file pointing back at the worktree's `.git` file."""
+    (wt / "docs" / "plans").mkdir(parents=True)
+    (wt / "docs" / "agents").mkdir(parents=True)
+    (wt / "intent").mkdir()
+    (wt / ".claude" / "agents").mkdir(parents=True)
+    (wt / ".manifold" / "hooks").mkdir(parents=True)
+    gitdir = main / ".git" / "worktrees" / name
+    gitdir.mkdir(parents=True)
+    (gitdir / "commondir").write_text("../..\n")
+    (gitdir / "gitdir").write_text("%s\n" % (wt / ".git"))
+    (wt / ".git").write_text("gitdir: %s\n" % gitdir)
+    return wt
+
+
+def _other_repository(tmp_path):
+    other = tmp_path / "other"
+    (other / ".git").mkdir(parents=True)
+    (other / "docs" / "plans").mkdir(parents=True)
+    (other / "docs" / "agents").mkdir(parents=True)
+    return other
+
+
+def _write_payload(agent, path, tool="Write"):
+    return {"tool_name": tool, "tool_input": {"file_path": str(path)}, "agent_type": agent}
+
+
+def test_wt_a_reviewer_may_write_its_review_file_in_a_worktree_under_the_project_directory(tmp_path):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    p = run_main(main, _write_payload("reviewer", wt / "docs" / "plans" / "REVIEW_PLAN_3.md"))
+    assert p.returncode == 0, p.stderr
+    assert log_lines(main) == []
+
+
+def test_wt_a_coordinator_may_write_its_failures_record_and_a_new_draft_in_a_worktree(tmp_path):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    for path in (wt / "docs" / "agents" / "claude-desktop-failures.md", wt / "intent" / "INT-31-gap.md"):
+        p = run_main(main, _write_payload("coordinator", path))
+        assert p.returncode == 0, (path, p.stderr)
+    (wt / "intent" / "INT-1-old.md").write_text("x")
+    assert run_main(main, _write_payload("coordinator", wt / "intent" / "INT-1-old.md")).returncode == 2
+
+
+@pytest.mark.parametrize("name", ["docs/plans/PHASE_3_PLAN.md", "server/app.py", "docs/plans/sub/REVIEW_PLAN_3.md",
+                                  "docs/plans/REVIEW_PLAN_x.md"])
+def test_wt_a_reviewer_is_refused_any_other_path_in_a_worktree(tmp_path, name):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    p = run_main(main, _write_payload("reviewer", wt / name))
+    assert p.returncode == 2
+    assert "may write only" in p.stderr
+    assert log_lines(main)[-1]["rule"] == "write-allowlist"
+
+
+def test_wt_a_directory_without_a_git_entry_under_the_project_is_not_a_checkout(tmp_path):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    (main / "sub" / "docs" / "plans").mkdir(parents=True)
+    p = run_main(main, _write_payload("reviewer", main / "sub" / "docs" / "plans" / "REVIEW_PLAN_3.md"))
+    assert p.returncode == 2
+
+
+def test_wt_a_reviewer_still_writes_its_review_file_in_the_main_checkout(tmp_path):
+    main, _, _ = _main_with_worktrees(tmp_path)
+    (main / "docs" / "plans").mkdir(parents=True)
+    assert run_main(main, _write_payload("reviewer", main / "docs" / "plans" / "REVIEW_PLAN_3.md")).returncode == 0
+    assert run_main(main, _write_payload("reviewer", main / "docs" / "plans" / "PHASE_3_PLAN.md")).returncode == 2
+
+
+@pytest.mark.parametrize("agent", ["reviewer", "coordinator", "coder", ""])
+@pytest.mark.parametrize("rel", [".manifold/guard-allow.json", ".manifold/guard-log.jsonl", ".manifold/hooks/guard.py"])
+def test_wt_the_manifold_files_stay_protected_in_the_main_checkout_and_in_a_worktree(tmp_path, agent, rel):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    for base in (main, wt):
+        p = run_main(main, _write_payload(agent, base / rel, tool="Edit"))
+        assert p.returncode == 2, (base, rel)
+        assert log_lines(main)[-1]["rule"] == "protected-file"
+
+
+@pytest.mark.parametrize("agent", ["reviewer", "coordinator", "coder", ""])
+@pytest.mark.parametrize("rel", [".claude/agents/coder.md", ".claude/settings.json",
+                                 ".claude/skills/fix-bug/SKILL.md", ".github/agents/coder.agent.md"])
+def test_wt_agent_definitions_stay_protected_in_the_main_checkout_and_in_a_worktree(tmp_path, agent, rel):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    for base in (main, wt):
+        p = run_main(main, _write_payload(agent, base / rel))
+        assert p.returncode == 2, (base, rel)
+        assert "path exception" in p.stderr
+
+
+def test_wt_a_path_exception_for_a_definition_still_needs_to_match_the_path_as_the_guard_sees_it(tmp_path):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    (main / ".manifold").mkdir(exist_ok=True)
+    entry = dict(ENTRY, scope="path", pattern=r"\.claude/worktrees/wt-a/\.claude/agents/coder\.md",
+                 expires=TOMORROW.isoformat())
+    (main / ".manifold" / "guard-allow.json").write_text(json.dumps([entry]))
+    assert run_main(main, _write_payload("coder", wt / ".claude" / "agents" / "coder.md")).returncode == 0
+    assert run_main(main, _write_payload("coder", main / ".claude" / "agents" / "coder.md")).returncode == 2
+
+
+def test_wt_a_write_into_another_worktrees_definitions_is_refused_from_either_project_directory(tmp_path):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    target = wt_b / ".claude" / "agents" / "coder.md"
+    for project in (main, wt_a):  # the hook's project directory is the main checkout or the worktree the agent works in
+        p = run_main(project, _write_payload("coder", target))
+        assert p.returncode == 2, project
+        assert "path exception" in p.stderr
+    p = run_main(wt_a, _write_payload("coder", main / ".claude" / "agents" / "coder.md"))
+    assert p.returncode == 2
+
+
+def test_wt_a_symlink_in_a_worktree_to_another_checkouts_definitions_is_refused(tmp_path):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    (wt_a / "docs" / "plans" / "link").symlink_to(wt_b / ".claude" / "agents", target_is_directory=True)
+    (wt_a / "docs" / "plans" / "mainlink").symlink_to(main / ".manifold", target_is_directory=True)
+    for given in ("link/coder.md", "mainlink/guard-allow.json"):
+        for agent in ("reviewer", "coder"):
+            p = run_main(main, _write_payload(agent, wt_a / "docs" / "plans" / given))
+            assert p.returncode == 2, (agent, given)
+
+
+def test_wt_a_symlink_that_makes_a_review_file_land_outside_the_worktree_is_refused(tmp_path):
+    main, wt_a, _ = _main_with_worktrees(tmp_path)
+    (main / "docs" / "plans").mkdir(parents=True)
+    (wt_a / "docs" / "plans" / "REVIEW_PLAN_3.md").symlink_to(main / "docs" / "plans" / "PHASE_3_PLAN.md")
+    p = run_main(main, _write_payload("reviewer", wt_a / "docs" / "plans" / "REVIEW_PLAN_3.md"))
+    assert p.returncode == 2
+
+
+def test_wt_a_planted_git_entry_inside_a_definitions_folder_does_not_lift_the_protection(tmp_path):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    (wt / ".claude" / "agents" / ".git").write_text("gitdir: elsewhere\n")
+    (main / ".manifold" / "hooks").mkdir(parents=True)
+    (main / ".manifold" / "hooks" / ".git").write_text("gitdir: elsewhere\n")
+    cases = [wt / ".claude" / "agents" / "coder.md", main / ".manifold" / "hooks" / "guard.py"]
+    for agent in ("reviewer", "coder", ""):
+        for target in cases:
+            assert run_main(main, _write_payload(agent, target)).returncode == 2, (agent, target)
+
+
+def test_wt_an_error_in_the_checkout_lookup_blocks_the_call(monkeypatch, tmp_path, capsys):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+
+    def boom(*a, **k):
+        raise OSError("lookup failed")
+    monkeypatch.setattr(guard.os.path, "lexists", boom)
+    rc = _call_main_in_process(monkeypatch, main, "claude", _write_payload("reviewer", wt / "docs" / "plans" / "REVIEW_PLAN_3.md"))
+    assert rc == 2 and "Manifold guard failed" in capsys.readouterr().err
+
+
+def test_wt_the_exception_file_and_the_log_belong_to_the_project_directory_not_the_worktree(tmp_path):
+    main, wt, _ = _main_with_worktrees(tmp_path)
+    (main / ".manifold").mkdir(exist_ok=True)
+    (wt / ".manifold" / "guard-allow.json").write_text(json.dumps([dict(ENTRY, pattern="echo x > f")]))  # a worktree's own file grants nothing
+    bash = {"tool_name": "Bash", "tool_input": {"command": "echo x > f"}, "cwd": str(wt)}
+    assert run_main(main, bash).returncode == 2
+    assert len(log_lines(main)) == 1 and not (wt / ".manifold" / "guard-log.jsonl").exists()
+
+
+# ---- sibling checkouts: the hook's project directory is one checkout (here a worktree), the agent works in another
+# checkout of the same repository, wherever it sits on disk (the observed refusal of a review file in a sibling worktree).
+
+def test_wt_sibling_a_reviewer_may_write_its_review_file_in_another_worktree_of_the_same_repository(tmp_path):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    target = wt_b / "docs" / "plans" / "REVIEW_PLAN_3.md"
+    for project in (wt_a, main):
+        p = run_main(project, _write_payload("reviewer", target))
+        assert p.returncode == 0, (project, p.stderr)
+        assert log_lines(project) == []
+    # and into the main checkout from a worktree
+    assert run_main(wt_a, _write_payload("reviewer", main / "docs" / "plans" / "REVIEW_PLAN_3.md")).returncode == 0
+
+
+def test_wt_sibling_a_worktree_outside_the_project_directory_tree_counts_too(tmp_path):
+    main, wt_a, _ = _main_with_worktrees(tmp_path)
+    far = _add_worktree(main, tmp_path / "elsewhere" / "far", "far")
+    assert run_main(wt_a, _write_payload("reviewer", far / "docs" / "plans" / "REVIEW_PLAN_3.md")).returncode == 0
+    assert run_main(wt_a, _write_payload("coordinator", far / "docs" / "agents" / "cli-failures.md")).returncode == 0
+    assert run_main(wt_a, _write_payload("reviewer", far / "server" / "app.py")).returncode == 2
+
+
+def test_wt_sibling_a_coordinator_may_write_failures_and_a_new_draft_in_another_worktree(tmp_path):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    for path in (wt_b / "docs" / "agents" / "claude-desktop-failures.md", wt_b / "intent" / "INT-31-gap.md"):
+        assert run_main(wt_a, _write_payload("coordinator", path)).returncode == 0, path
+    (wt_b / "intent" / "INT-1-old.md").write_text("x")
+    assert run_main(wt_a, _write_payload("coordinator", wt_b / "intent" / "INT-1-old.md")).returncode == 2
+
+
+@pytest.mark.parametrize("name", ["docs/plans/PHASE_3_PLAN.md", "server/app.py", "docs/plans/REVIEW_PLAN_x.md"])
+def test_wt_sibling_a_reviewer_is_refused_any_other_path_in_another_worktree(tmp_path, name):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    p = run_main(wt_a, _write_payload("reviewer", wt_b / name))
+    assert p.returncode == 2
+    assert "may write only" in p.stderr
+    assert log_lines(wt_a)[-1]["rule"] == "write-allowlist"
+
+
+@pytest.mark.parametrize("agent", ["reviewer", "coordinator", "coder", ""])
+@pytest.mark.parametrize("rel", [".manifold/guard-allow.json", ".manifold/guard-log.jsonl", ".manifold/hooks/guard.py",
+                                 ".claude/agents/coder.md", ".claude/settings.json", ".claude/skills/fix-bug/SKILL.md"])
+def test_wt_sibling_protected_files_and_definitions_stay_protected_in_every_checkout(tmp_path, agent, rel):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    for base in (wt_a, wt_b, main):
+        assert run_main(wt_a, _write_payload(agent, base / rel)).returncode == 2, (base, rel)
+
+
+def test_wt_sibling_a_checkout_of_a_different_repository_stays_refused(tmp_path):
+    main, wt_a, _ = _main_with_worktrees(tmp_path)
+    other = _other_repository(tmp_path)
+    for agent, rel in (("reviewer", "docs/plans/REVIEW_PLAN_3.md"), ("coordinator", "docs/agents/cli-failures.md")):
+        p = run_main(wt_a, _write_payload(agent, other / rel))
+        assert p.returncode == 2, agent
+        assert str(other) in p.stderr  # judged as a path outside the project, as given
+    other_wt = _add_worktree(other, tmp_path / "other-wt", "ow")
+    assert run_main(wt_a, _write_payload("reviewer", other_wt / "docs" / "plans" / "REVIEW_PLAN_3.md")).returncode == 2
+
+
+def test_wt_sibling_a_forged_git_entry_is_not_accepted(tmp_path):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    real_common = main / ".git"
+    review = "docs/plans/REVIEW_PLAN_3.md"
+    # 1. a `.git` file that points at a real worktree's git directory: the back-link names the real worktree, not this one
+    f1 = tmp_path / "forged1"
+    (f1 / "docs" / "plans").mkdir(parents=True)
+    (f1 / ".git").write_text("gitdir: %s\n" % (real_common / "worktrees" / "wt-b"))
+    # 2. a `.git` file with its own git directory whose `commondir` names the real repository and whose back-link is right
+    f2 = tmp_path / "forged2"
+    (f2 / "docs" / "plans").mkdir(parents=True)
+    (tmp_path / "forged2-gitdir").mkdir()
+    (tmp_path / "forged2-gitdir" / "commondir").write_text(str(real_common) + "\n")
+    (tmp_path / "forged2-gitdir" / "gitdir").write_text("%s\n" % (f2 / ".git"))
+    (f2 / ".git").write_text("gitdir: %s\n" % (tmp_path / "forged2-gitdir"))
+    # 3. a `.git` directory (a repository of its own, never the same one)
+    f3 = tmp_path / "forged3"
+    (f3 / ".git").mkdir(parents=True)
+    (f3 / "docs" / "plans").mkdir(parents=True)
+    # 4. a `.git` file with garbage in it, and one whose git directory does not exist
+    f4 = tmp_path / "forged4"
+    (f4 / "docs" / "plans").mkdir(parents=True)
+    (f4 / ".git").write_text("not a gitdir line\n")
+    f5 = tmp_path / "forged5"
+    (f5 / "docs" / "plans").mkdir(parents=True)
+    (f5 / ".git").write_text("gitdir: %s\n" % (tmp_path / "does-not-exist"))
+    for forged in (f1, f2, f3, f4, f5):
+        for project in (wt_a, main):
+            p = run_main(project, _write_payload("reviewer", forged / review))
+            assert p.returncode == 2, (forged, project)
+
+
+def test_wt_sibling_a_symlink_to_another_repository_is_refused(tmp_path):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    other = _other_repository(tmp_path)
+    (wt_b / "docs" / "plans" / "REVIEW_PLAN_3.md").symlink_to(other / "docs" / "plans" / "REVIEW_PLAN_3.md")
+    assert run_main(wt_a, _write_payload("reviewer", wt_b / "docs" / "plans" / "REVIEW_PLAN_3.md")).returncode == 2
+
+
+def test_wt_sibling_an_error_while_reading_the_git_entry_blocks_the_call(monkeypatch, tmp_path, capsys):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+
+    def boom(*a, **k):
+        raise OSError("lookup failed")
+    monkeypatch.setattr(guard.os.path, "lexists", boom)
+    rc = _call_main_in_process(monkeypatch, wt_a, "claude", _write_payload("reviewer", wt_b / "docs" / "plans" / "REVIEW_PLAN_3.md"))
+    assert rc == 2 and "Manifold guard failed" in capsys.readouterr().err
+
+
+def test_wt_sibling_the_exception_file_and_the_log_stay_the_project_directorys_own(tmp_path):
+    main, wt_a, wt_b = _main_with_worktrees(tmp_path)
+    p = run_main(wt_a, _write_payload("reviewer", wt_b / "server" / "app.py"))
+    assert p.returncode == 2
+    assert len(log_lines(wt_a)) == 1 and not (wt_b / ".manifold" / "guard-log.jsonl").exists()
