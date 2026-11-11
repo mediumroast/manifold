@@ -74,6 +74,7 @@ Residual gaps, in the guard's own words (the module docstring of `bundles/base/h
 - `sed` with a `w` command (it cannot be told from text without parsing sed);
 - other languages, editors and tools than the ones named in the shell rule;
 - a `cd` in an earlier call followed by a bare file name;
+- worktrees: a git checkout (a directory with a `.git` entry) is recognised only under the project directory, so the reviewer and coordinator allowlists judge a file there relative to that checkout; a worktree outside the project directory is judged as a path outside the project and matches no allowlist; `.manifold/guard-allow.json` and `.manifold/guard-log.jsonl` are always the project directory's own, never a worktree's;
 - tools the guard does not look at;
 - clients and sessions the hook does not cover: the main session under per-agent hooks, plugin agents, and Copilot, where enforcement is unverified;
 - Copilot agent identity is unverified, so the reviewer and coordinator allowlists may not apply there, while the protected files apply to every identity;

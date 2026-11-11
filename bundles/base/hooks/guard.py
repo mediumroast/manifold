@@ -15,7 +15,10 @@ standard input. The guard enforces three rules and refuses the call when one is 
 2. Write allowlist (rules `write-allowlist` and `protected-file`): the `reviewer` may write only
    `docs/plans/REVIEW_PLAN_<N>.md`; the `coordinator` may write `docs/agents/*-failures.md`
    and create (not replace) `intent/INT-*.md`. The identity is normalised (`Reviewer`,
-   `manifold:reviewer` are `reviewer`).
+   `manifold:reviewer` are `reviewer`). A file inside a git worktree under the project directory is judged for
+   these two allowlists relative to that worktree (its nearest ancestor with a `.git` entry), because the hook's
+   project directory can be the main checkout while the agent works in `.claude/worktrees/<name>/`; the protected
+   files and definitions below are still judged relative to the project directory, by the end of the path.
 3. Protected files (rule `protected-file`), for every agent including one with no identity, against
    Write/Edit and the shell, after resolving `./`, `..`, case and symlinks:
    - always, with no exception route: `.manifold/guard-allow.json`, `.manifold/guard-log.jsonl`,
@@ -76,6 +79,7 @@ Residual gaps (stated, not fixed), one per line:
 - `sed` with a `w` command (it cannot be told from text without parsing sed);
 - other languages, editors and tools than the ones named in the shell rule;
 - a `cd` in an earlier call followed by a bare file name;
+- worktrees: a git checkout (a directory with a `.git` entry) is recognised only under the project directory, so the reviewer and coordinator allowlists judge a file there relative to that checkout; a worktree outside the project directory is judged as a path outside the project and matches no allowlist; `.manifold/guard-allow.json` and `.manifold/guard-log.jsonl` are always the project directory's own, never a worktree's;
 - tools the guard does not look at;
 - clients and sessions the hook does not cover: the main session under per-agent hooks, plugin agents, and
   Copilot, where enforcement is unverified;
@@ -952,21 +956,28 @@ def path_exception(norm, allow):
     return False, note
 
 
-def judge_write(agent_type, path, exists, allow=None):
+def judge_write(agent_type, path, exists, allow=None, checkout_path=None):
+    """`checkout_path` is the same file relative to the git checkout (a worktree) that holds it under the project
+    directory, or None. It is used only for the reviewer and coordinator allowlists, so that a worktree's
+    `docs/plans/REVIEW_PLAN_3.md` counts as that file. The protected files and the definitions are always judged on
+    `path`, by the end of the path, so a checkout never lifts them."""
     norm = normalise_path(path)
     if PROTECTED_RE.search(norm):  # the mechanism: no exception route
         return False, protected_message(norm)
     agent = normalise_agent(agent_type)
+    listed = normalise_path(checkout_path) if checkout_path else norm  # the spelling the allowlists judge
     refusal = None
     if is_definition(norm):
         refusal = definition_message(norm)
     elif agent == "reviewer":
-        if not REVIEW_FILE_RE.match(norm):
-            refusal = allowlist_message("reviewer", "docs/plans/REVIEW_PLAN_<N>.md", norm)
+        if not REVIEW_FILE_RE.match(listed):
+            refusal = allowlist_message("reviewer", "docs/plans/REVIEW_PLAN_<N>.md", listed)
+            norm = listed
     elif agent == "coordinator":
-        if not (FAILURES_RE.match(norm) or (INTENT_RE.match(norm) and not exists)):
+        if not (FAILURES_RE.match(listed) or (INTENT_RE.match(listed) and not exists)):
             refusal = allowlist_message(
-                "coordinator", "docs/agents/<harness>-failures.md, or a new intent/INT-*.md draft (never an existing one)", norm)
+                "coordinator", "docs/agents/<harness>-failures.md, or a new intent/INT-*.md draft (never an existing one)", listed)
+            norm = listed
     if refusal is None:
         return True, ""
     granted, note = path_exception(norm, allow)
@@ -975,11 +986,12 @@ def judge_write(agent_type, path, exists, allow=None):
     return False, refusal + (" Note: " + note + "." if note else "")
 
 
-def classify_write(agent_type, path, exists, allow=None):
+def classify_write(agent_type, path, exists, allow=None, checkout_path=None):
     """Return (allowed, message). `path` is relative to the project root where the caller can make it so;
     `exists` says whether the file is already there (a coordinator may create an intent, not replace one).
-    `allow` is the list of human exceptions; only entries with `"scope": "path"` and a valid `expires` apply."""
-    return judge_write(agent_type, path, exists, allow)
+    `allow` is the list of human exceptions; only entries with `"scope": "path"` and a valid `expires` apply.
+    `checkout_path` is the path relative to the worktree that holds the file (see judge_write)."""
+    return judge_write(agent_type, path, exists, allow, checkout_path)
 
 
 # ------------------------------------------------------------------------ main
@@ -1089,8 +1101,8 @@ def run(args):
         exists = os.path.exists(full)
         used = None
         # Judge the path as written and the path after symlinks are resolved: both must pass.
-        for shown in write_candidates(project_dir, path):
-            allowed, message = classify_write(agent_type, shown, exists, allow)
+        for shown, local in write_spellings(project_dir, path):
+            allowed, message = classify_write(agent_type, shown, exists, allow, local)
             if not allowed:
                 if problem:
                     message += " (" + problem + ")"
@@ -1098,7 +1110,7 @@ def run(args):
                 rule = RULE_PROTECTED if PROTECTED_RE.search(norm) or is_definition(norm) else RULE_ALLOWLIST
                 log_refusal(project_dir, rule, tool, agent_type, shown)
                 return refuse(args.client, message)
-            if allow and not classify_write(agent_type, shown, exists)[0]:
+            if allow and not classify_write(agent_type, shown, exists, None, local)[0]:
                 used = shown
         if used is not None:
             log_refusal(project_dir, RULE_EXCEPTION_USED, tool, agent_type, used)
@@ -1118,9 +1130,25 @@ def real_target(full):
     return os.path.join(os.path.realpath(head), *tail) if tail else os.path.realpath(head)
 
 
-def write_candidates(project_dir, path):
-    """The project-relative spellings to judge for a written path: as written, and after resolving symlinks in the
-    path and in the project directory. A path outside the project is judged as given."""
+def checkout_relative(target, base):
+    """The path of `target` relative to the nearest directory between it and `base` that holds a `.git` entry (a
+    worktree has a `.git` file), or None when there is none. `base` itself is not looked at: the main checkout is the
+    project. An error here propagates, and main() turns it into a refusal."""
+    d = os.path.dirname(target)
+    while d != base and not os.path.relpath(d, base).startswith(".."):
+        if os.path.lexists(os.path.join(d, ".git")):
+            return os.path.relpath(target, d)
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return None
+
+
+def write_spellings(project_dir, path):
+    """(project-relative spelling, checkout-relative spelling or None) pairs to judge for a written path: as written,
+    and after resolving symlinks in the path and in the project directory. A path outside the project is judged as
+    given. The checkout-relative spelling is set only for a path inside a worktree under the project directory."""
     full = os.path.abspath(path if os.path.isabs(path) else os.path.join(project_dir, path))
     out = []
     for target, base, resolved in ((full, os.path.abspath(project_dir), False),
@@ -1128,7 +1156,18 @@ def write_candidates(project_dir, path):
         rel = os.path.relpath(target, base)
         # Outside the project: the path as given, and for the resolved spelling the resolved absolute path, so a
         # symlink that points at another checkout's definitions is judged by where it lands (CP2b R1).
-        shown = (target if resolved else path) if rel.startswith("..") else rel
+        outside = rel.startswith("..")
+        shown = (target if resolved else path) if outside else rel
+        pair = (shown, None if outside else checkout_relative(target, base))
+        if pair not in out:
+            out.append(pair)
+    return out
+
+
+def write_candidates(project_dir, path):
+    """The project-relative spellings to judge for a written path (see write_spellings)."""
+    out = []
+    for shown, _ in write_spellings(project_dir, path):
         if shown not in out:
             out.append(shown)
     return out
