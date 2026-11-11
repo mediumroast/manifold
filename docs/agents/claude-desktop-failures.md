@@ -224,6 +224,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F12 — The `reviewer` tried a shell command the guard read as a write; refused, disclosed (2026-11-11)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While re-reviewing the repair of checkpoint 1 of Phase 3 (revision 2), the `reviewer` tried to unzip a scratchpad build with a `python3 -c` zipfile call. The live guard refused the command before it ran, so nothing was written. The `reviewer` did not retry it another way, left `install.py --status` as not run, and said so in the review.
+**Evidence:** `.manifold/guard-log.jsonl`, third line (2026-11-11T23:41:35Z, rule `no-heredocs`, agent_type `reviewer`); `docs/plans/REVIEW_PLAN_3.md`, "Could not check".
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. The command was a read-style unzip, so the refusal may be a false positive of the classifier (unverified: not re-run through `classify_bash`).
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report and the review file).
+**Suggested change:** None for the agent; the guard held. Whether the unzip form should be allowed is for the owner (same family as F10).
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
