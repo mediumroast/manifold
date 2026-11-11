@@ -399,4 +399,10 @@ Deferred (owner, 2026-11-09, review F5): A10's empty `MANIFOLD_HOST` case is che
 
 Deferred (owner, 2026-11-09, found by the A1 bug-coder): the symlink check in write_page_of_kinds covers only the last path component. A symlinked folder inside the wiki root that points elsewhere inside the root (for example wiki/x -> .git) is not covered by A1 and not tested; whether such a write is refused is unverified. No new test written.
 
+Deferred (owner, 2026-11-10, review F6): `_multi_line_field` in `server/wiki_backend/register.py` refuses only `\n` and `\r`. Other characters that `str.splitlines()` or YAML 1.1 treat as line breaks (U+0085, U+2028, U+2029, `\x0b`, `\x0c`) are not refused, and whether any of them reaches the index or frontmatter as a second entry is unverified. Reason: no production change is allowed in this task. The narrower scope is a known gap. No new test written.
+
+Deferred (owner, 2026-11-10, review F7): the four bug-coder fix notes (`e4479a5`, `e01970c`, `87e66b4`, `42b3109`) carry no "Rule exceptions" line. The guard log and the fix diffs contradict no "none", but the line was not stated. Reason: a past report; the breach record is the authority (`docs/agents/claude-desktop-failures.md`). No note rewritten.
+
+Deferred (owner, 2026-11-10, review F8): in `/health` (`server/server.py`) the authorization call runs before the `try` block, so if the store raised for an authenticated caller the route would raise instead of returning an `unhealthy` payload; A4 also does not pin the behavior for a reader-only or contributor principal. The anonymous container health check is unaffected. Reason: no production change is allowed in this task, and the owner's earlier decision on A4 was to leave `/health` as is. Not reproduced. No new test written.
+
 Rule exceptions: one attempted heredoc in a Bash command, refused by the guard hook before it ran (no file written); otherwise none.
