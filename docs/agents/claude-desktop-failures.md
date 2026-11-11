@@ -212,6 +212,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** open
 **Intent raised:** none yet (the owner decides whether this extends INT-20)
 
+## F11 — The `reviewer` tried a shell redirect; refused, disclosed (2026-11-11)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While reviewing checkpoint 1 of Phase 3, the `reviewer` tried to stage the old file tree with a shell redirect, to reproduce a failing-first run. The live guard refused the command before it ran, so no file was written. The `reviewer` did not retry it and said so in the review.
+**Evidence:** `docs/plans/REVIEW_PLAN_3.md`, finding on the failing-first run and "Rule exceptions compared".
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the review file).
+**Suggested change:** None; the guard held and the agent said so.
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
