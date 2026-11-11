@@ -49,7 +49,7 @@ Then a human decides. The `coordinator` does not move a pull request out of draf
 
 ## What earlier cycles taught
 
-These lessons are now part of the steps: the review must be a file (the points were numbered by hand); the amendment lists how every finding ends, so none is dropped; the first repair task is the failing tests and the last is a replay with the gates; the owner's decisions and answers are written into the plan, not left in chat; a completed task's note is not edited, so a correction goes in the note of a later task; and the loop has a limit, so a round can be declared the last.
+These lessons are now part of the steps: the review must be a file, not a chat message; the amendment lists how every finding ends, so none is dropped; the first repair task is the failing tests and the last is a replay with the gates; the owner's decisions and answers are written into the plan, not left in chat; a completed task's note is not edited, so a correction goes in the note of a later task; and the loop has a limit, so a round can be declared the last.
 
 ## Compatibility
 

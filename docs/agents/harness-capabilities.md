@@ -84,7 +84,7 @@ Rejected, with reason (CP2a): `bash < s.sh` is treated like `bash s.sh`, the scr
 
 ## Enforcement by client and agent type
 
-One row per client and per kind of agent run (T39). "Hook" means the guard refuses the call; "instructions only" means nothing refuses it and the coordinator finds a breach afterwards. The same table, without the row citations, is in `bundles/base/INSTALL.md`. Each row cites the row of the matrix above it rests on. Nothing here was seen in a live client: the recorded runs of 2026-11-08 captured no guard log.
+One row per client and per kind of agent run (T39). "Hook" means the guard refuses the call; "instructions only" means nothing refuses it and the coordinator finds a breach afterwards. The same table, without the row citations, is in `bundles/base/INSTALL.md`. Each row cites the row of the matrix above it rests on. One live guard refusal is recorded, for a Claude Code subagent (`test-coder`, 2026-11-09, `docs/agents/claude-desktop-failures.md` F9); no other row of this table was seen in a live client, and the runs of 2026-11-08 captured no guard log.
 
 | Client and where the agent runs | Enforced by | Rests on (row of the matrix, or of the table of unverified items) |
 |---|---|---|

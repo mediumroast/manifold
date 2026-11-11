@@ -324,7 +324,8 @@ Owner decisions applied (chat, 2026-11-11: "Accept all recommendations"): F1 rep
 **Action:** MODIFY
 **Change:** Replace "Nothing here was seen in a live client: the recorded runs of 2026-11-08 captured no guard log." with "One live guard refusal is recorded, for a Claude Code subagent (`test-coder`, 2026-11-09, `docs/agents/claude-desktop-failures.md` F9); no other row of this table was seen in a live client, and the runs of 2026-11-08 captured no guard log." Change no other line, and leave the table rows as they are. This file is not installed (not in `.manifold/manifest.json`), so no refresh is needed.
 **Acceptance:** `grep -rInE "Nothing here was seen|not yet seen in a live|recorded in a live|None of this has been recorded" . --exclude-dir=.git --exclude-dir=.venv --exclude-dir=plans` prints nothing (run from the repository root); `grep -n "claude-desktop-failures.md" docs/agents/harness-capabilities.md` shows the new sentence on line 87; `git diff -U0 docs/agents/harness-capabilities.md` shows one changed line.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): line 87 last sentence of `docs/agents/harness-capabilities.md` replaced as written. `grep -n "claude-desktop-failures.md" docs/agents/harness-capabilities.md` -> line 87; `git diff -U0` -> one hunk. The repo-wide acceptance grep prints two lines, both in `bundles/base/tests/test_bundle.py` (2249, 2250): the assertions of `test_deferred_text_fixes_f1_f4_f5` that the phrases are absent. No false statement remains in any document; the grep's exclusions did not anticipate the test file (plan gap, reported, nothing changed for it).
 
 ---
 
@@ -335,7 +336,8 @@ Owner decisions applied (chat, 2026-11-11: "Accept all recommendations"): F1 rep
 **Action:** MODIFY
 **Change:** In the paragraph under "What earlier cycles taught", replace "the review must be a file (the points were numbered by hand);" with "the review must be a file, not a chat message;". Change nothing else in the paragraph. Then refresh this repository's own install exactly as Task 6 did: `python3 bundles/base/tools/build.py --out <scratchpad>/dist`, unzip into a fresh scratchpad folder, read `install.py --help`, run `install.py --target . --format claude --profile build` as a dry run (expect UPDATE for `docs/process/REVIEW_CYCLE.md` only; everything else SKIP), then the same with `--apply` and no `--force`. Stage explicit paths only.
 **Acceptance:** `grep -rn "numbered by hand" bundles docs/process .manifold` prints nothing; `cmp bundles/base/process/REVIEW_CYCLE.md docs/process/REVIEW_CYCLE.md` prints nothing; the sha256 of `docs/process/REVIEW_CYCLE.md` (`shasum -a 256`) equals its entry in `.manifold/manifest.json`; `install.py --status` run from the unzipped bundle reports no MODIFIED file.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): the phrase in `bundles/base/process/REVIEW_CYCLE.md` line 52 reworded as written. `build.py --out <scratchpad>/dist5` -> built, unzipped to `<scratchpad>/unz5`; `install.py --help` read; dry run `--target . --format claude --profile build` -> UPDATE `docs/process/REVIEW_CYCLE.md` only; same with `--apply`, no `--force` -> "Installed manifold 0.2.0". `grep -rn "numbered by hand" bundles docs/process .manifold` -> nothing; `cmp` of the two REVIEW_CYCLE.md files -> equal; sha256 of `docs/process/REVIEW_CYCLE.md` (82492993...c0d) equals its manifest entry; `install.py --status` from the unzipped bundle -> 0 lines with MODIFIED. Nothing staged.
 
 ---
 
@@ -346,7 +348,8 @@ Owner decisions applied (chat, 2026-11-11: "Accept all recommendations"): F1 rep
 **Action:** none (run and record)
 **Change:** Try to run `test_deferred_text_fixes_f1_f4_f5` against the old text: `git worktree add --detach <scratchpad>/old 3e2bbaf`, add the one test function (copied from `bundles/base/tests/test_bundle.py` as it is now) to that worktree's `bundles/base/tests/test_bundle.py` with the `Edit` tool, run `.venv/bin/python -m pytest bundles/base/tests -q -k deferred_text_fixes` there, record the counts, then `git worktree remove --force <scratchpad>/old`. Use no shell redirect. If the test cannot be made to run that way (for example it resolves paths from the main checkout), do not work around a guard refusal; write in the note which step failed and why. Edit no test or file in this checkout.
 **Acceptance:** this task's note holds either the command and its "1 failed" count on `3e2bbaf` text, or one sentence naming the step that could not be done and why; `git status --short` in this checkout shows no change caused by this task.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): `git worktree add --detach <scratchpad>/old 3e2bbaf`; the test function (copy of the current one, without its docstring) added at the end of that worktree's `bundles/base/tests/test_bundle.py` with `Edit`; there, `.venv/bin/python -m pytest bundles/base/tests -q -k deferred_text_fixes` -> 1 failed, 1955 deselected (AssertionError on the old text). Worktree removed with `git worktree remove --force`; no guard refusal; `git status --short` in this checkout shows only the changes of Tasks 19 and 20 and this plan.
 
 ---
 

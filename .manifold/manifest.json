@@ -2,7 +2,7 @@
   "name": "manifold",
   "bundle": "base",
   "version": "0.2.0",
-  "installed_at": "2026-11-11T20:08:15Z",
+  "installed_at": "2026-11-11T21:53:37Z",
   "formats": [
     "claude"
   ],
@@ -24,7 +24,7 @@
     ".manifold/scratch/.gitignore": "240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d",
     "docs/process/BREACH_PROCEDURE.md": "33486e8835b06c272644bb19b70fe4169afeebe3282ddc342c774dd89dc3da9b",
     "docs/process/HOWTO.md": "d79f28db935e7e68c55ce81036a3a3af7c56b8ebaf54d9de11de8b22e2cdba3f",
-    "docs/process/REVIEW_CYCLE.md": "77889e8b7466d9299a32af8a8272ee80e9e20f4e3f8a5e3e1b0b6b6dc3fed5f6",
+    "docs/process/REVIEW_CYCLE.md": "824929931473835b0cf352b244ebd01d3018c6bba761a30d83757da527b73c0d",
     "docs/templates/AGENT_FAILURES_TEMPLATE.md": "ce71c64535898789c60cc5a36bcf31935de06353b8f3e2a60affdf4f2d2e7987",
     "docs/templates/INTENT_TEMPLATE.md": "6b1d9f2c279a8ef71197949dc0ebff64b1b6f1a60ebb6a7a754e358eec868ab6",
     "docs/templates/PHASE_PLAN_TEMPLATE.md": "7d28bac9d15c5e73708713672fc6bef74e877af24f6f4453c99bbe9f66bf4502",
