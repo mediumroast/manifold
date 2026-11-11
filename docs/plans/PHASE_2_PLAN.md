@@ -56,8 +56,8 @@ Each needs a decision by the owner; the plan follows the stated recommendation a
 - [x] INT-20 to INT-23 are accepted (read: `status: accepted`, `accepted_by: Michael Hay on November 3, 2026`). INT-25 is accepted (read: `status: accepted`, `accepted_by: Michael Hay on November 8, 2026`).
 - [x] `docs/agents/claude-desktop-failures.md` and root `REVIEW.md` are in this worktree (read).
 - [x] Project commands are in `AGENTS.md` "Project commands" (confirmed by the owner 2026-11-01). Used here: bundle tests `.venv/bin/python -m pytest bundles/base/tests -q`; server tests `cd server && ../.venv/bin/python -m pytest -q`; vendored files `.venv/bin/python tools/vendor_web.py --check`; bundle lint `python3 bundles/base/tools/build.py --check` (from `bundles/base/tools/build.py` docstring and `.github/workflows/ci.yml`). No linter or type-checker exists. "`pytest`" below means the bundle tests command.
-- [ ] The `.venv` exists in this checkout (not seen here; the main checkout's `.venv` was not checked). If missing, ask; do not create it unprompted.
-- [ ] The owner answers the Open questions marked "before CP2" (3, 5, 6) before CP2 starts.
+- [x] (2026-11-10: `.venv/bin/python` ran every gate) The `.venv` exists in this checkout (not seen here; the main checkout's `.venv` was not checked). If missing, ask; do not create it unprompted.
+- [x] (answered 2026-11-06, see Open questions) The owner answers the Open questions marked "before CP2" (3, 5, 6) before CP2 starts.
 - Scratch space: temporary files go in the session scratchpad named in the session, never `/tmp`; no shell heredocs (AGENTS.md "Heredocs").
 
 ## File inventory
@@ -1067,19 +1067,19 @@ Note (2026-11-08): the table is under "Traceability (T43)" after the Completion 
 ---
 
 ## Completion checklist
-- [ ] All tasks marked [x] by the coder (T37b may stay `[~]` until the person who drove the Copilot chat has done it; T40 to T42 are `[-]` dropped by the owner and are not counted)
+- [x] (2026-11-10: no task unticked except T40 to T42 `[-]`; T37b, T37d and T57 `[x]` by the owner's acceptance, `REVIEW_PLAN_2.md` confirms) All tasks marked [x] by the coder (T37b may stay `[~]` until the person who drove the Copilot chat has done it; T40 to T42 are `[-]` dropped by the owner and are not counted)
 - [ ] The owner has been told which scenarios have only K2 text checks until real use (list in T40) and where the real-use evidence will be recorded
 - [x] `python3 bundles/base/tools/build.py --check` prints `lint ok` (2026-11-10, commit `309fa6b`, system `python3`)
 - [x] `.venv/bin/python -m pytest bundles/base/tests -q` passes, `cd server && ../.venv/bin/python -m pytest -q` passes (no regression), `.venv/bin/python tools/vendor_web.py --check` passes (2026-11-10, commit `309fa6b`: bundle 1954 passed, 1 skipped; server 1014 passed, 2 warnings, 107.64 s; vendor check "vendored files match a fresh build"; run again if a later commit changes code)
-- [ ] The traceability table (T43) is filled (39 rows, INT-25 S1 to S8 included) and every row resolves
+- [x] (2026-11-10, `REVIEW_PLAN_2.md`: 39 rows, every path resolves except `.github/agents/` and the `REVIEW_PLAN_<N>.md` pattern) The traceability table (T43) is filled (39 rows, INT-25 S1 to S8 included) and every row resolves
 - [ ] CP8 and CP9 (INT-25): **Amendment approved by** under CP8 is filled by a human; T44 to T51 and T53 to T56 are marked [x]; T52 is [x] (the owner answered Open question 18 on 2026-11-08: Option A); T57 is [x], or `[~]` until a person has driven both clients; the INT-25 text was read by the owner (K5); the owner has been told that whether the skeptical test side works is shown only by T57 and real use (K4), not by the tests
 - [x] `.venv/bin/python -m pytest tests/live -q` passes (2026-11-10, commit `309fa6b`: 24 passed; the checker and its fixtures, T45 and T46), and T55 re-ran the T36 gates and the T37 install check on the INT-25 build, with the new zip checksum and commit recorded
-- [ ] T58 (Python 3.8 dropped, owner decision of 2026-11-08): Open question 21 answered; the stated minimum agrees in every file listed in T58 and with the `ci` matrix; the `ci` workflow has no 3.8 job; `grep -rn "3\.8"` over the files in scope prints only the deliberate historical mentions; `VERSION` is still 0.2.0
-- [ ] CP2a: **Amendment approved by** is filled by a human; T14a to T14g are marked [x]; each CP2 review finding F1 to F10 is repaired, deferred or rejected as the table under CP2a says; the CP2a re-review is in the CP2b table (R1 to R12), not in a separate review file
-- [ ] CP2b: **Amendment approved by** is filled by a human; T14h to T14m are marked [x]; each re-review point R1 to R12 is repaired, deferred or rejected as the table under CP2b says; the residuals are stated once in the `guard.py` docstring and in "Guard limits and exit codes"; the review of the final commit in `REVIEW_PLAN_2.md` confirms it
+- [x] (2026-11-10, `REVIEW_PLAN_2.md`: matrix 3.10 and 3.12, grep prints only the listed history, `VERSION` 0.2.0; CI green with no 3.8 job) T58 (Python 3.8 dropped, owner decision of 2026-11-08): Open question 21 answered; the stated minimum agrees in every file listed in T58 and with the `ci` matrix; the `ci` workflow has no 3.8 job; `grep -rn "3\.8"` over the files in scope prints only the deliberate historical mentions; `VERSION` is still 0.2.0
+- [x] (2026-11-10, `REVIEW_PLAN_2.md`: approval line filled Nov 7, the probe replay agrees with the table) CP2a: **Amendment approved by** is filled by a human; T14a to T14g are marked [x]; each CP2 review finding F1 to F10 is repaired, deferred or rejected as the table under CP2a says; the CP2a re-review is in the CP2b table (R1 to R12), not in a separate review file
+- [x] (2026-11-10, `REVIEW_PLAN_2.md` confirms: approval line filled Nov 7, residuals stated once, 121 refused and 65 allowed recounted) CP2b: **Amendment approved by** is filled by a human; T14h to T14m are marked [x]; each re-review point R1 to R12 is repaired, deferred or rejected as the table under CP2b says; the residuals are stated once in the `guard.py` docstring and in "Guard limits and exit codes"; the review of the final commit in `REVIEW_PLAN_2.md` confirms it
 - [x] (2026-11-10: `REVIEW_PLAN_2.md` revision 1 on `53df8cf`; findings decided in "Owner decisions on `REVIEW_PLAN_2.md`"; K5 approved there as a partial read) A review of the final commit exists as `docs/plans/REVIEW_PLAN_2.md`, written by the `reviewer` in its own session using the standard above; each finding is repaired, deferred or rejected with a reason; the owner has approved the agent-behavior text (K5)
 - [x] CI on the pushed commit is green and read by a human (owner, 2026-11-10: all 7 jobs green on `ea1ee23`, run 42836756250 `server` and 42836756260 `ci`; and again on `4e44022`, the head reviewed after `REVIEW_PLAN_2.md`, run 42956741701 `server` and 42956741849 `ci`; PR #29 on `c9bdf17`, run 42957504629 `server` and 42957504609 `ci`; the owner confirmed in chat. Plan-only commits after `4e44022` are not covered; read again if code changes)
-- [ ] No [~] blocked items outstanding except those waiting on a human run
+- [x] (2026-11-10: no `[~]` Todo line remains) No [~] blocked items outstanding except those waiting on a human run
 - [ ] Summary note added by the coder below this line
 
 <!--
