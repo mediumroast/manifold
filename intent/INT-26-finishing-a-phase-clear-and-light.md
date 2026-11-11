@@ -3,10 +3,10 @@ id: INT-26
 title: Make finishing a phase clear and light for the human
 author: Michael Hay
 created: 2026-11-11
-status: draft
+status: accepted
 affects: [bundles/base, docs/process, .github/workflows, GitHub ruleset on main]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay on November 11, 2026
 ---
 
 # Intent: Make finishing a phase clear and light for the human
@@ -130,12 +130,12 @@ Finishing a phase is a short, predictable path in which the human is asked few q
 - Re-reviewing Phase 2 beyond the three deferred findings.
 
 ## Open questions
-- **Where does CI status live after confirmation?** The idea is the PR (a comment or checklist item) rather than a repository file, so recording it does not move the head commit. Recommendation: the PR checklist, with the coordinator reading the CI result and the human ticking it. Who: the owner.
-- **Can CI be skipped for docs-only changes?** Unverified: confirm with the GitHub documentation on path filters and on how required checks behave when a workflow is skipped (a skipped required check can block a merge). Recommendation: investigate first, do not change `.github/workflows/` until the answer is known. Who: the planner, then the owner.
-- **Which changes may use the light path?** Recommendation: only text in documents and agent instructions that changes no behavior, in a solo repository, with a human tick on the diff. Who: the owner.
-- **Where does the definition of done live: in each phase plan or as one coordinator-owned checklist?** Recommendation: one checklist in `docs/process/`, referenced by the plan template, so it is not copied per phase. Who: the owner.
-- **Does the PR checkbox count as the approval the plan's Approved by line records?** Recommendation: the checkbox approves the PR; the **Approved by** line of a plan stays a human-written line, since `AGENTS.md` "Plan approval" reads it. Who: the owner.
-- **Should `REVIEW_PLAN_N.md` stay the home of finding state, or should decisions be recorded in the PR?** Recommendation: keep the reviewer's file as the record of what was found and the PR as the record of what was decided, with a link, so only the reviewer edits the first. Who: the owner.
-- **Is the cross-worktree edit block (cause 8) deliberate?** A hook blocks it; the rule "Deliberate workarounds" says to read why before changing it. Recommendation: leave it and document the delegation route. Who: the owner, after the planner reads the hook.
-- **Stacked PRs under squash-only:** document the rebase step, or ask the owner to allow rebase-merge? Recommendation: document only; the ruleset is the owner's to change. Who: the owner.
-- **Bring this intent under the same plan as the v0.2.0 release or separately?** Recommendation: a separate phase, after v0.2.0 ships. Who: the owner.
+- **Where does CI status live after confirmation?** The idea is the PR (a comment or checklist item) rather than a repository file, so recording it does not move the head commit. Recommendation: the PR checklist, with the coordinator reading the CI result and the human ticking it. Who: the owner. Answer: Agree with the recommendation.
+- **Can CI be skipped for docs-only changes?** Unverified: confirm with the GitHub documentation on path filters and on how required checks behave when a workflow is skipped (a skipped required check can block a merge). Recommendation: investigate first, do not change `.github/workflows/` until the answer is known. Who: the planner, then the owner. Answer: Agree with the recommendation.
+- **Which changes may use the light path?** Recommendation: only text in documents and agent instructions that changes no behavior, in a solo repository, with a human tick on the diff. Who: the owner. Answer: Agree with the recommendation.
+- **Where does the definition of done live: in each phase plan or as one coordinator-owned checklist?** Recommendation: one checklist in `docs/process/`, referenced by the plan template, so it is not copied per phase. Who: the owner. Answer: Will we write a DoD template for the coordinator or something else, please present the approach in the phase plan.
+- **Does the PR checkbox count as the approval the plan's Approved by line records?** Recommendation: the checkbox approves the PR; the **Approved by** line of a plan stays a human-written line, since `AGENTS.md` "Plan approval" reads it. Who: the owner. Answer: Agree with the recommendation.
+- **Should `REVIEW_PLAN_N.md` stay the home of finding state, or should decisions be recorded in the PR?** Recommendation: keep the reviewer's file as the record of what was found and the PR as the record of what was decided, with a link, so only the reviewer edits the first. Who: the owner. Answer: Agree with the recommendation.
+- **Is the cross-worktree edit block (cause 8) deliberate?** A hook blocks it; the rule "Deliberate workarounds" says to read why before changing it. Recommendation: leave it and document the delegation route. Who: the owner, after the planner reads the hook. Answer: Agree with the recommendation.
+- **Stacked PRs under squash-only:** document the rebase step, or ask the owner to allow rebase-merge? Recommendation: document only; the ruleset is the owner's to change. Who: the owner. Answer: Agree with the recommendation.
+- **Bring this intent under the same plan as the v0.2.0 release or separately?** Recommendation: a separate phase, after v0.2.0 ships. Who: the owner. Answer: We're going to have a new release V0.3.0.
