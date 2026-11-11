@@ -47,16 +47,9 @@ Before a pull request is called ready, the `coordinator` writes, in the pull req
 
 Then a human decides. The `coordinator` does not move a pull request out of draft and does not merge.
 
-## How the first cycles ran
+## What earlier cycles taught
 
-This section records how the loop was first used in the Manifold repository (Phase 2, guard hook), so a later cycle can be compared with it. The two rounds below used the written sequence by hand, before the reviewer could write a file; they are the reason the steps above exist.
-
-| Round | Review | Amendment | Approval | Repair | Result |
-|---|---|---|---|---|---|
-| 1 | an independent read-only review of the guard hook, relayed in chat; its ten points numbered F1 to F10 in the amendment, because no review file existed | `CP2a` in `docs/plans/PHASE_2_PLAN.md`: a table saying how every finding ends (repaired, deferred, rejected, each with a reason), the owner's binding decisions, new open questions | the owner wrote his name and date on **Amendment approved by** and answered the open questions | the `coder` ran `CP2a` as a checkpoint: failing tests first for every finding (recorded with the failing counts), then the fixes, then a replay of the reviewer's probes with the gates run and reported | F1, F3 and F4 repaired; the long tail of F2 deferred as a stated residual; F10 rejected with a reason |
-| 2 | a re-review of the round 1 repairs by the `reviewer` (about 300 probes); points numbered R1 to R12 | `CP2b` in the same plan, the same shape | the owner approved it and directed that this be the last guard repair round | the same: failing tests first, fixes, replay and gates | the remaining gaps were stated once as residuals; real use, not a third round, is where they would show |
-
-What the first cycles taught, now part of the steps: the review must be a file (the points were numbered by hand); the amendment lists how every finding ends, so none is dropped; the first repair task is the failing tests and the last is a replay with the gates; the owner's decisions and answers are written into the plan, not left in chat; a completed task's note is not edited, so a correction goes in the note of a later task; and the loop has a limit, so a round can be declared the last.
+These lessons are now part of the steps: the review must be a file (the points were numbered by hand); the amendment lists how every finding ends, so none is dropped; the first repair task is the failing tests and the last is a replay with the gates; the owner's decisions and answers are written into the plan, not left in chat; a completed task's note is not edited, so a correction goes in the note of a later task; and the loop has a limit, so a round can be declared the last.
 
 ## Compatibility
 

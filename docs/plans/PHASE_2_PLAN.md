@@ -1143,7 +1143,7 @@ One row per "We will know when" line: 5 (INT-20) + 12 (INT-21) + 10 (INT-22) + 4
 
 | Seed | "We will know when" lands in | Tasks | Check |
 |---|---|---|---|
-| INT-20 S1 heredoc write refused | `hooks/guard.py` (rule `no-heredocs`); `rules/core/no-heredocs.md`; `INSTALL.md` "What each client enforces"; `/docs/agents/harness-capabilities.md` "Enforcement by client and agent type" | T3, T4, T6, T7, T8, T14a to T14m, T39 | K2 (`tests/test_guard.py`); Copilot enforcement unverified; no live-client evidence yet |
+| INT-20 S1 heredoc write refused | `hooks/guard.py` (rule `no-heredocs`); `rules/core/no-heredocs.md`; `INSTALL.md` "What each client enforces"; `/docs/agents/harness-capabilities.md` "Enforcement by client and agent type" | T3, T4, T6, T7, T8, T14a to T14m, T39 | K2 (`tests/test_guard.py`); Copilot enforcement unverified; one live refusal in a Claude Code subagent, 2026-11-09 (`docs/agents/claude-desktop-failures.md` F9); none yet for Copilot, `--agent`, plugins |
 | INT-20 S2 one-off snippet has a legal route | `rules/core/no-heredocs.md` (scratch route); `.manifold/scratch/` shipped by `install.py`; agent text | T5, T8 | K2; no evidence yet |
 | INT-20 S3 breach shows in the report | `rules/core/rule-exceptions-line.md`; "Rule exceptions" line in each agent; `templates/REVIEW_PLAN_TEMPLATE.md` "Rule exceptions compared" | T9, T10, T19, T21 | K2; no evidence yet |
 | INT-20 S4 new breach recorded by procedure | `process/BREACH_PROCEDURE.md` "How to record"; `templates/AGENT_FAILURES_TEMPLATE.md` | T11, T12 | K3, K5 |

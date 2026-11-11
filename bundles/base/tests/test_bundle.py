@@ -2239,6 +2239,19 @@ def test_t35_user_documents_link_nothing_outside_the_zip_and_name_no_bundle_vers
     assert "manifold-base-<version>" in _doc("INSTALL.md") and "manifold-base-<version>" in _doc("README.md")
 
 
+def test_deferred_text_fixes_f1_f4_f5():
+    """Phase 3 CP1: no repository history or pronoun in the review cycle, no 'never seen live' claim that a live
+    refusal contradicts, and the guard's stated limits name the write-capable tools it allows."""
+    cycle = (ROOT / "process" / "REVIEW_CYCLE.md").read_text()
+    for needle in ("Phase 2", "CP2a", "CP2b", " his "):
+        assert needle not in cycle, needle
+    for name in ("INSTALL.md", "HOWTO.md"):
+        assert "not yet seen in a live run" not in _doc(name), name
+        assert "recorded in a live" not in _doc(name), name
+    docstring = (ROOT / "hooks" / "guard.py").read_text().split("from __future__")[0]
+    assert "curl -o" in docstring
+
+
 def test_t35_install_states_the_guard_per_client_and_how_a_human_grants_an_exception():
     t = _doc("INSTALL.md")
     for needle in ("Claude Code", "Copilot", "unverified", ".manifold/hooks/guard.py", ".github/hooks/manifold-guard.json",

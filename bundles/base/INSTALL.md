@@ -75,7 +75,7 @@ The agents' rules say that files are created with the client's Write or Edit too
 
 | Client, format and where the agent runs | Enforced by the hook, or instruction only? |
 |---|---|
-| Claude Code, `claude` format, an agent started as a subagent (Agent tool or an @-mention) | **Enforced by hook.** A `PreToolUse` hook in each agent's definition; the vendor documentation says it runs for a subagent. If `python3` or `.manifold/hooks/guard.py` is missing, the agent's Bash, Edit and Write calls are blocked rather than allowed. Documented, not yet seen in a live run: the recorded runs captured no guard log. |
+| Claude Code, `claude` format, an agent started as a subagent (Agent tool or an @-mention) | **Enforced by hook.** A `PreToolUse` hook in each agent's definition; the vendor documentation says it runs for a subagent. If `python3` or `.manifold/hooks/guard.py` is missing, the agent's Bash, Edit and Write calls are blocked rather than allowed. Documented, and a live refusal has been recorded for a subagent. |
 | Claude Code, an agent run as the main session (`claude --agent <name>`) | **Enforced by hook**, same hook, documented, not run. |
 | Claude Code, a plain main session with no agent selected | **Instruction only.** The per-agent hook does not run. |
 | Claude Code, agents that come from a plugin | **Instruction only.** The vendor documentation says plugin subagents ignore `hooks`. |
@@ -88,7 +88,7 @@ The agents' rules say that files are created with the client's Write or Edit too
 
 The source of each row is the capability record `docs/agents/harness-capabilities.md` in the Manifold source (not installed), section "Enforcement by client and agent type".
 
-**Instruction only** means: nothing refuses the breach, but the same rule, the same sanctioned route and the same "Rule exceptions" report line are in the agent's instructions in every format, and the `coordinator` (or you) compares that line with the diff afterwards (see `docs/process/BREACH_PROCEDURE.md`). The hook also has stated limits, even where it runs: it matches commands and does not read a script that writes when it is run from a file. They are listed at the top of `.manifold/hooks/guard.py`. None of this has been recorded in a live client yet; the capability record behind it is `docs/agents/harness-capabilities.md` in the Manifold source (not installed).
+**Instruction only** means: nothing refuses the breach, but the same rule, the same sanctioned route and the same "Rule exceptions" report line are in the agent's instructions in every format, and the `coordinator` (or you) compares that line with the diff afterwards (see `docs/process/BREACH_PROCEDURE.md`). The hook also has stated limits, even where it runs: it matches commands and does not read a script that writes when it is run from a file. They are listed at the top of `.manifold/hooks/guard.py`. A live refusal has been recorded only for a Claude Code subagent, and for no other row; the capability record behind it is `docs/agents/harness-capabilities.md` in the Manifold source (not installed).
 
 To check that the hook runs, from your repository's root with the Claude format installed, send it a command it must refuse (this adds one line to `.manifold/guard-log.jsonl`):
 

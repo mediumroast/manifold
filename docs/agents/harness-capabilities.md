@@ -72,7 +72,7 @@ Residual gaps, in the guard's own words (the module docstring of `bundles/base/h
 - kept refusals: `cd` into a protected directory, and `python3 .manifold/hooks/guard.py` typed by an agent (the client runs the hook);
 - command substitution inside double quotes;
 - `sed` with a `w` command (it cannot be told from text without parsing sed);
-- other languages, editors and tools than the ones named in the shell rule;
+- other languages, editors and tools than the ones named in the shell rule (for example `dd of=`, `curl -o`, `wget -O`, `tar x`, `unzip`, `install`, `python3 -m json.tool in out` are allowed although they write files);
 - a `cd` in an earlier call followed by a bare file name;
 - tools the guard does not look at;
 - clients and sessions the hook does not cover: the main session under per-agent hooks, plugin agents, and Copilot, where enforcement is unverified;

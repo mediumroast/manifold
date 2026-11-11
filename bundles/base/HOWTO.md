@@ -117,7 +117,7 @@ To allow something the guard refuses, you add an entry to `.manifold/guard-allow
 
 ## What differs by client
 
-The guard is the same file in every client. What differs is whether the client runs it. This list is limited to what `docs/agents/harness-capabilities.md` in the Manifold source records, read from the vendors' documentation; none of it has been recorded in a live run yet, so treat it as "no evidence yet".
+The guard is the same file in every client. What differs is whether the client runs it. This list is limited to what `docs/agents/harness-capabilities.md` in the Manifold source records, read from the vendors' documentation; the only live evidence recorded is one refusal in a Claude Code subagent; for every other client or mode treat it as "no evidence yet".
 
 - **Claude Code.** The guard is a pre-tool hook written into each agent's definition. The vendor documentation says such hooks run when the agent is started as a subagent and when it runs as the main session (`claude --agent <name>`). A plain main session with no agent selected is not covered, and neither are agents supplied by plugins: there the rules are instruction only.
 - **GitHub Copilot.** With `--format copilot` (or `both`, `all`) the installer adds `.github/hooks/manifold-guard.json`. The vendor documentation describes hooks that can deny, but whether VS Code Copilot Chat runs this file, and how it names the running agent, is unverified: confirm by running it. Until you have, treat Copilot as instruction only. In particular the write limit for the `reviewer` and the `coordinator` may not apply there.
