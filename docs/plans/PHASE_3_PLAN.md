@@ -143,6 +143,8 @@ Note (2026-11-11): `python3 bundles/base/tools/build.py --out <scratchpad>/dist`
 
 **Verification:** `.venv/bin/python -m pytest bundles/base/tests -q` and `python3 bundles/base/tools/build.py --check` pass with counts reported; `git diff origin/main --stat` lists only the files in Tasks 1 to 6. The owner reads the diff of Tasks 1 to 4 in the PR and ticks it (the pilot of the light path; see Concerns 1).
 
+Rule exceptions: not established: the coder session's shell commands and transcript for CP1 (commits 996bcbd, aabccb3) are not available, and `.manifold/guard-log.jsonl` holds one entry only (a reviewer `write-allowlist` event of 2026-11-11T20:03:10Z in another worktree, after these commits), so it says nothing about the CP1 session. The diff 3e2bbaf..aabccb3 touches only files named in Tasks 1 to 6 (plus `.manifold/manifest.json`, an install output).
+
 ### CP2 — One home per fact, definition of done, light path (documents)
 
 ### Task 7 — Add the table of homes of facts to the review cycle
