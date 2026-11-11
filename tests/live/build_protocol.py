@@ -16,6 +16,13 @@ LP = "$MANIFOLD_REPO/tests/live/lp.sh"
 DATE_CMD = '$(date +%F)'
 
 
+def bundle_version():
+    """The bundle version, read from bundles/base/VERSION in the repository this file is in."""
+    path = os.path.join(HERE, "..", "..", "bundles", "base", "VERSION")
+    with open(path) as f:
+        return f.read().strip()
+
+
 class Client:
     def __init__(self, key):
         self.key = key
@@ -32,7 +39,7 @@ class Client:
     # --- shared helpers -------------------------------------------------
     def sub(self, text):
         return (text.replace("@ROOT@", self.root).replace("@LP@", LP).replace("@RFILE@", self.rfile)
-                    .replace("@CLIENT@", self.key))
+                    .replace("@CLIENT@", self.key).replace("@VERSION@", bundle_version()))
 
     def check(self, cid, text):
         self.checks.append((cid, text))
@@ -177,7 +184,7 @@ def part0(c):
 
 Set two variables in Terminal B and keep using that terminal: `export MANIFOLD_REPO=<your clone of this repository, on the branch under test>` and `export PRODUCT_SRC=<the product repository to copy>`.
 
-You need: a Mac with a terminal, Python 3.8 or newer, git, internet access, about 1 GB free space, and %s
+You need: a Mac with a terminal, Python 3.10 or newer, git, internet access, about 1 GB free space, and %s
 
 Check each in Terminal B. Every command should print a version, not an error:
 
@@ -335,7 +342,7 @@ python3 ../bundle/install.py --target . --status
 ls -la @AGENTS@
 ```
 
-Apply ends with `Installed manifold 0.1.0 into ...`. Every line of `--status` says `ok`. The listing shows six files. (Finder hides folders that start with a dot; Terminal does not.)
+Apply ends with `Installed manifold @VERSION@ into ...`. Every line of `--status` says `ok`. The listing shows six files. (Finder hides folders that start with a dot; Terminal does not.)
 
 - **[1.1]** The dry run wrote nothing (the count was `0`) and said so.
 - **[1.2]** Apply created six agents in `@AGENTS@`, and `--status` showed only `ok`.
@@ -386,7 +393,7 @@ python3 bundle/install.py --target quality  --profile quality --format @FORMAT@ 
 python3 bundle/install.py --target manifold --profile build   --format @FORMAT@ --apply
 ```
 
-Each ends with `Installed manifold 0.1.0 into ...`. If the third prints an overlap message instead, add `--allow-overlap` to that one command and record that you had to.
+Each ends with `Installed manifold @VERSION@ into ...`. If the third prints an overlap message instead, add `--allow-overlap` to that one command and record that you had to.
 
 Then lock the baseline. This commits the installed files in each scratch repository and tags it, so that `reset` can come back here:
 
@@ -528,8 +535,11 @@ def task5(c):
     out += c.reset("product") + "\n\nSwitch branch (Terminal B):\n\n```bash\ncd @ROOT@/product && git checkout review-target && git branch --show-current\n```\n\nIt prints `review-target`.\n\n"
     out += c.start("test-planner", "product") + "\n\n"
     out += c.typed("Plan local tests for docs/plans/PHASE_9_PLAN.md.") + "\n\n"
-    out += ("**What should happen:** it says which mode it is in, reads the plan and the existing tests, and writes a test plan file in `docs/plans/`. If it asks for test commands, give the same pytest command as before. Then, in Terminal B, find the file and check that nothing else changed (check 5.2):\n\n```bash\nls -t @ROOT@/product/docs/plans | head -3\ngit -C @ROOT@/product status --short\n```\n\n")
+    out += ("**What should happen:** it says which mode it is in, reads the plan and the existing tests, and writes a test plan file in `docs/plans/`. If it asks for test commands, give the same pytest command as before. Then, in Terminal B, find the file and check that nothing else changed (check 5.2):\n\n```bash\nls -t @ROOT@/product/docs/plans | head -3\ngit -C @ROOT@/product status --short\n```\n\n"
+            "It also names the intent the plan came from, says what it found missing in the existing tests (or `no gap found`, with the evidence), asks you a question where it cannot decide, and leaves **Approved by** blank. "
+            "Answer its questions, but do not fill in **Approved by** for the test-planner: save the evidence first (labels `testplan` and `task5` below; `testplan` judges the plan before any approval).\n\n")
     out += c.stop() + "\n\n"
+    out += c.evidence("testplan") + "\n\n"
     out += c.start("test-coder", "product") + "\n\n"
     out += c.typed("Implement the test plan docs/plans/<name of the test plan file>.") + "\n\n" + c.permissions() + "\n\n"
     out += "**What I will judge** (from the saved evidence; you do not need to check these yourself)\n\n" + "\n".join([
@@ -569,7 +579,7 @@ def task6(c):
 def task7(c):
     out = "### Task 7. Behavior scenarios in a separate repository (scenario-writer, test-planner, test-coder) - quality - 40 minutes\n\n"
     out += ("The quality repository holds behavior scenarios, written without looking at the product's code. The agents work only from the accepted intent and its scenario seeds. "
-            "All of Task 7 happens in the window for `quality` (Copilot: `code @ROOT@/quality`), not the product window. Start a **New Chat** for each step and check the Agent chip each time. In v0.1.0 there is no tool that carries an intent between repositories, so you copy it by hand: **tell me in the chat that you had to** (it is a known gap).\n\n")
+            "All of Task 7 happens in the window for `quality` (Copilot: `code @ROOT@/quality`), not the product window. Start a **New Chat** for each step and check the Agent chip each time. In v@VERSION@ there is no tool that carries an intent between repositories, so you copy it by hand: **tell me in the chat that you had to** (it is a known gap).\n\n")
     out += c.reset("quality") + "\n\nCopy the intent into the quality repository and commit it (Terminal B):\n\n```bash\ncd @ROOT@/quality\nmkdir -p intent && cp @ROOT@/product/intent/INT-1-freshness-days-behind.md intent/\ngit add -A && git commit -q -m \"intent: INT-1\" && git status --short\n```\n\nThe last command prints nothing.\n\n"
     out += "#### 7a. Write the scenarios\n\n" + c.start("scenario-writer", "quality") + "\n\n"
     out += c.typed("Write scenarios for intent/INT-1-freshness-days-behind.md.") + "\n\n"
@@ -757,7 +767,7 @@ def wrapup(c):
 
 
 def results(c):
-    out = "# Results: %s\n\n| Run | |\n|---|---|\n| Date | |\n| Bundle branch and commit | bundle-v0.1.0-improvements (commit filled in by Claude) |\n| Client and version | |\n| Model | |\n| Plan / account type | |\n| Tester | |\n\n" % c.title
+    out = "# Results: %s\n\n| Run | |\n|---|---|\n| Date | |\n| Bundle branch and commit | bundle-v%s-improvements (commit filled in by Claude) |\n| Client and version | |\n| Model | |\n| Plan / account type | |\n| Tester | |\n\n" % (c.title, bundle_version())
     out += "Filled in by Claude from the saved evidence and the tester's chat notes; the tester does not edit it. Result is **Pass**, **Partial** or **Fail**. Details are in `PROTOCOL-%s.md`.\n\n" % c.key
     out += "| Id | Check | Result | What happened |\n|---|---|---|---|\n"
     for cid, text in c.checks:

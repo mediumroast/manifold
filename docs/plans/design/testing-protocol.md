@@ -13,6 +13,8 @@ The automated tests (`bundles/base/tests`) prove the bundle **builds, installs a
 | Live protocol | The agents behave as written, in a real client with a named model | [`tests/live/`](../../../tests/live/README.md): a step-by-step protocol per client, a script that saves evidence and a reader that judges what it can |
 | Model matrix | How much the result depends on the model | Part 8 of the live protocol: short probes of the guardrails, repeated per model |
 
+The pseudo hold-out (the test planner reads the originating intent, looks for gaps before it reads the existing tests, and asks the human) exists only where there is no quality repository. It does not replace one, and whether it works is shown only by a live run and real use, not by the automated tests.
+
 ## 2. The live protocol
 
 One protocol per client (Claude Code, GitHub Copilot in VS Code). It is generated from a single source so both clients get the same inputs. It runs the roles on two scratch repositories (a product and a separate quality repository) and a third scratch copy of this repository:

@@ -142,8 +142,9 @@ def test_claude_format_keeps_only_name_description_and_denied_tools(built):
     with zipfile.ZipFile(built) as zf:
         name = [n for n in zf.namelist() if n.endswith("payload/claude/.claude/agents/reviewer.md")][0]
         head = zf.read(name).decode().split("---")[1]
-    keys = {line.split(":")[0] for line in head.strip().splitlines()}
-    assert keys == {"name", "description", "disallowedTools"}
+    # top-level keys only: the guard hook block (T6) adds "hooks" and its nested lines are indented
+    keys = {line.split(":")[0] for line in head.strip().splitlines() if not line.startswith((" ", "-"))}
+    assert keys == {"name", "description", "disallowedTools", "hooks"}
 
 
 def test_copilot_format_keeps_tools_hint_and_handoffs(built):
@@ -209,7 +210,7 @@ def test_zip_has_one_visible_top_level_folder_and_safe_paths(built):
     with zipfile.ZipFile(built) as zf:
         names = zf.namelist()
     tops = {n.split("/")[0] for n in names}
-    assert tops == {"manifold-base-0.1.0"}
+    assert tops == {"manifold-base-" + (ROOT / "VERSION").read_text().strip()}
     assert not any(n.startswith("/") or ".." in n.split("/") for n in names)
 
 
@@ -218,6 +219,247 @@ def test_installers_are_executable_in_the_zip(built):
         for info in zf.infolist():
             if info.filename.endswith(("install.py", "install.sh")):
                 assert (info.external_attr >> 16) & 0o111
+
+
+HOOK_INSTALLED = ".manifold/hooks/guard.py"
+SCRATCH_INSTALLED = ".manifold/scratch/.gitignore"
+LOG_IGNORE_INSTALLED = ".manifold/.gitignore"
+
+
+def test_hook_scratch_and_log_ignore_files_are_in_the_zip_and_bundle_json(built, bundle_dir):
+    with zipfile.ZipFile(built) as zf:
+        names = zf.namelist()
+    for path in (HOOK_INSTALLED, SCRATCH_INSTALLED, LOG_IGNORE_INSTALLED):
+        assert any(n.endswith("payload/common/" + path) for n in names), path
+    bundle = json.loads((bundle_dir / "bundle.json").read_text())
+    by_path = {e["path"]: e for e in bundle["common"]}
+    for path in (HOOK_INSTALLED, SCRATCH_INSTALLED, LOG_IGNORE_INSTALLED):
+        assert set(by_path[path]["profiles"]) == {"build", "quality", "single"}, path
+
+
+def test_scratch_gitignore_ignores_everything_but_itself_and_the_log_is_ignored():
+    assert (ROOT / "config" / "scratch.gitignore").read_text() == "*\n!.gitignore\n"
+    assert "guard-log.jsonl" in (ROOT / "config" / "manifold.gitignore").read_text().split()
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_hook_script_scratch_folder_and_log_ignore_are_installed_in_every_profile(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    assert (repo / HOOK_INSTALLED).read_bytes() == (ROOT / "hooks" / "guard.py").read_bytes()
+    assert (repo / SCRATCH_INSTALLED).read_text() == "*\n!.gitignore\n"
+    assert "guard-log.jsonl" in (repo / LOG_IGNORE_INSTALLED).read_text()
+
+
+def test_lint_rejects_a_hook_that_does_not_compile(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "hooks" / "guard.py"
+    p.write_text(p.read_text() + "\ndef broken(:\n")
+    assert any("hooks/guard.py does not compile" in x for x in build.lint(src))
+
+
+@pytest.mark.parametrize("line", ["import requests", "from yaml import safe_load", "from . import sibling"])
+def test_lint_rejects_a_hook_that_imports_outside_the_standard_library(tmp_path, line):
+    src = copy_source(tmp_path / "src")
+    p = src / "hooks" / "guard.py"
+    p.write_text(p.read_text() + "\n" + line + "\n")
+    assert any("hooks/guard.py" in x and ("standard library" in x or "relative import" in x) for x in build.lint(src))
+
+
+def _frontmatter_lines(text):
+    assert text.startswith("---\n")
+    return text.split("\n---\n", 1)[0].split("\n")[1:]
+
+
+def test_every_claude_agent_carries_the_guard_hook_block_after_disallowed_tools(bundle_dir):
+    folder = bundle_dir / "payload" / "claude" / ".claude" / "agents"
+    files = sorted(folder.glob("*.md"))
+    assert [p.stem for p in files] == sorted(build.ROLES)
+    for p in files:
+        fm = _frontmatter_lines(p.read_text())
+        assert fm[0] == "name: " + p.stem, p.name
+        start = fm.index("hooks:")
+        assert fm[start:] == list(build.GUARD_HOOKS_CLAUDE), p.name
+        assert all(not line.startswith("disallowedTools") for line in fm[start:])
+        assert start == len(fm) - len(build.GUARD_HOOKS_CLAUDE)
+
+
+def test_the_claude_guard_hook_uses_the_project_dir_and_an_exact_name_matcher():
+    lines = list(build.GUARD_HOOKS_CLAUDE)
+    matcher = json.loads([x for x in lines if "matcher:" in x][0].split(": ", 1)[1])
+    command = json.loads([x for x in lines if "command:" in x][0].split(": ", 1)[1])
+    # only letters and | make Claude Code read the matcher as a list of exact tool names (harness-capabilities.md)
+    assert all(c.isalpha() or c == "|" for c in matcher)
+    assert {"Bash", "Write", "Edit"} <= set(matcher.split("|"))
+    assert '"${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py"' in command and command.endswith("--client claude")
+    assert "PreToolUse" in lines[1]
+
+
+def test_rendered_claude_frontmatter_still_starts_on_line_one_for_every_role():
+    fragments, rules = build.load_fragments(ROOT), build.load_rules(ROOT)
+    for role, text in build.load_agents(ROOT).items():
+        out = build.render_agent(role, text, "claude", fragments, rules)
+        assert out.startswith("---\nname: %s\n" % role), role
+        assert "hooks:" in out.split("\n---\n", 1)[0], role
+
+
+def test_copilot_and_skills_outputs_do_not_carry_the_claude_hook_block(bundle_dir):
+    for folder in ("copilot", "skills"):
+        for p in (bundle_dir / "payload" / folder).rglob("*.md"):
+            text = p.read_text()
+            assert "PreToolUse" not in text and "CLAUDE_PROJECT_DIR" not in text, p
+            assert "hooks:" not in text.split("\n---\n", 1)[0], p
+
+
+COPILOT_HOOK_INSTALLED = ".github/hooks/manifold-guard.json"
+
+
+def test_copilot_hook_file_has_the_verified_schema_and_calls_the_guard():
+    data = json.loads((ROOT / "hooks" / "copilot-guard.json").read_text())
+    assert data["version"] == 1
+    (entry,) = data["hooks"]["preToolUse"]
+    assert entry["type"] == "command"
+    # CP2a T14a (named in the plan): the exact-command assertion changes with the fail-closed command (T14b);
+    # the old expectation was "python3 .manifold/hooks/guard.py --client copilot" alone.
+    # CP2b T14h, R5 (named in the plan): the three `in` checks below are replaced by one exact `==` against the
+    # whole command, so dropping the `||` fallback or the `test -f` check fails it. The change makes the test stricter.
+    deny = '{"permissionDecision":"deny","permissionDecisionReason":"%s"}'
+    expected = (
+        "test -f .manifold/hooks/guard.py || { echo '" + deny % build.GUARD_MISSING_MESSAGE + "'; exit 0; }; "
+        "python3 .manifold/hooks/guard.py --client copilot || echo '"
+        + deny % "The Manifold guard failed to run, so this tool call is blocked. Tell a human." + "'"
+    )
+    assert entry["command"] == expected
+    assert isinstance(entry["timeoutSec"], int)
+
+
+# ---- CP2a T14a, F4: the hook commands fail closed (run with `sh -c`, the shell form the plan records)
+
+def _sh(command, cwd, project_dir=None, stdin="{}"):
+    env = {"PATH": "/usr/bin:/bin"}
+    if project_dir is not None:
+        env["CLAUDE_PROJECT_DIR"] = str(project_dir)
+    return subprocess.run(["sh", "-c", command], input=stdin, capture_output=True, text=True, env=env, cwd=str(cwd))
+
+
+def _stub(project, code, message=""):
+    script = project / ".manifold" / "hooks" / "guard.py"
+    script.parent.mkdir(parents=True, exist_ok=True)
+    script.write_text("import sys\nsys.stderr.write(%r)\nsys.exit(%d)\n" % (message, code))
+
+
+def test_the_claude_command_blocks_with_a_plain_message_when_the_guard_script_is_missing(tmp_path):
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path)
+    assert p.returncode == 2
+    assert build.GUARD_MISSING_MESSAGE in p.stderr
+    assert "re-running the installer" in build.GUARD_MISSING_MESSAGE and ".manifold/hooks/guard.py" in build.GUARD_MISSING_MESSAGE
+
+
+def test_the_claude_command_blocks_when_the_project_dir_variable_is_not_set(tmp_path):
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=None)
+    assert p.returncode == 2 and p.stderr.strip()
+
+
+def test_the_claude_command_maps_an_unexpected_exit_code_to_a_block_with_a_message(tmp_path):
+    _stub(tmp_path, 1)
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path)
+    assert p.returncode == 2
+    assert "guard" in p.stderr.lower() and "blocked" in p.stderr.lower()
+
+
+def test_the_claude_command_maps_a_script_that_cannot_run_to_a_block(tmp_path):
+    script = tmp_path / ".manifold" / "hooks" / "guard.py"
+    script.parent.mkdir(parents=True)
+    script.write_text("def broken(:\n")  # a syntax error fails before main runs
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path)
+    assert p.returncode == 2 and "blocked" in p.stderr.lower()
+
+
+def test_the_claude_command_passes_through_exit_0_and_exit_2(tmp_path):
+    _stub(tmp_path, 0)
+    assert _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path).returncode == 0
+    _stub(tmp_path, 2, "Refused by stub")
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path)
+    assert p.returncode == 2 and "Refused by stub" in p.stderr
+
+
+def test_the_claude_command_runs_the_real_guard_and_passes_its_refusal_through(tmp_path):
+    script = tmp_path / ".manifold" / "hooks" / "guard.py"
+    script.parent.mkdir(parents=True)
+    script.write_bytes((ROOT / "hooks" / "guard.py").read_bytes())
+    hook = json.dumps({"tool_name": "Bash", "tool_input": {"command": "echo x > f"}})
+    p = _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path, stdin=hook)
+    assert p.returncode == 2 and "Refused by the Manifold guard" in p.stderr
+    ok = json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls"}})
+    assert _sh(build.GUARD_COMMAND, tmp_path, project_dir=tmp_path, stdin=ok).returncode == 0
+
+
+def _copilot_command():
+    return json.loads((ROOT / "hooks" / "copilot-guard.json").read_text())["hooks"]["preToolUse"][0]["command"]
+
+
+def test_the_copilot_command_prints_a_deny_json_naming_the_missing_script(tmp_path):
+    p = _sh(_copilot_command(), tmp_path)
+    assert p.returncode == 0
+    out = json.loads(p.stdout)
+    assert out["permissionDecision"] == "deny"
+    assert build.GUARD_MISSING_MESSAGE in out["permissionDecisionReason"]  # the same text as the Claude command
+
+
+def test_the_copilot_command_denies_when_the_guard_exits_with_an_error_and_passes_a_clean_run(tmp_path):
+    _stub(tmp_path, 1)
+    p = _sh(_copilot_command(), tmp_path)
+    assert p.returncode == 0 and json.loads(p.stdout)["permissionDecision"] == "deny"
+    _stub(tmp_path, 0)
+    p = _sh(_copilot_command(), tmp_path)
+    assert (p.returncode, p.stdout) == (0, "")
+
+
+def test_the_copilot_command_runs_the_real_guard_from_the_project_root(tmp_path):
+    script = tmp_path / ".manifold" / "hooks" / "guard.py"
+    script.parent.mkdir(parents=True)
+    script.write_bytes((ROOT / "hooks" / "guard.py").read_bytes())
+    hook = json.dumps({"tool_name": "Bash", "tool_input": {"command": "echo x > f"}})
+    p = _sh(_copilot_command(), tmp_path, stdin=hook)
+    assert p.returncode == 0 and json.loads(p.stdout)["permissionDecision"] == "deny"
+    assert "Refused by the Manifold guard" in json.loads(p.stdout)["permissionDecisionReason"]
+
+
+@pytest.mark.parametrize("fmt,expected", [("copilot", True), ("both", True), ("all", True),
+                                          ("claude", False), ("skills", False)])
+def test_copilot_hook_file_is_installed_for_the_copilot_format_only(bundle_dir, repo, fmt, expected):
+    args = ["--format", fmt] + (["--allow-overlap"] if fmt == "all" else [])
+    assert run(bundle_dir, repo, "--apply", *args)[0] == 0
+    assert (COPILOT_HOOK_INSTALLED in tree(repo)) is expected
+    if expected:
+        installed = json.loads((repo / COPILOT_HOOK_INSTALLED).read_text())
+        assert installed == json.loads((ROOT / "hooks" / "copilot-guard.json").read_text())
+    assert HOOK_INSTALLED in tree(repo)  # the guard script itself comes with every format
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_copilot_hook_file_is_installed_in_every_profile_and_uninstalls_cleanly(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--format", "copilot", "--apply")[0] == 0
+    assert COPILOT_HOOK_INSTALLED in tree(repo)
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_lint_rejects_a_copilot_hook_file_that_is_not_the_verified_shape(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "hooks" / "copilot-guard.json"
+    p.write_text('{"hooks": {}}')
+    assert any("version 1" in x for x in build.lint(src))
+    p.write_text("{not json")
+    assert any("not valid JSON" in x for x in build.lint(src))
+
+
+def test_lint_rejects_a_missing_hook_or_support_file(tmp_path):
+    src = copy_source(tmp_path / "src")
+    (src / "hooks" / "guard.py").unlink()
+    (src / "config" / "scratch.gitignore").unlink()
+    problems = build.lint(src)
+    assert any("missing file: hooks/guard.py" in x for x in problems)
+    assert any("missing file: config/scratch.gitignore" in x for x in problems)
 
 
 # ----------------------------------------------------------------- installer
@@ -240,7 +482,7 @@ def test_apply_installs_agents_templates_instructions_and_manifest(bundle_dir, r
     assert "<!-- manifold:begin v=1 -->" in agents and "<!-- manifold:end -->" in agents
     assert "## Project commands" in agents
     manifest = json.loads((repo / ".manifold/manifest.json").read_text())
-    assert manifest["version"] == "0.1.0" and set(AGENT_FILES) <= set(manifest["files"])
+    assert manifest["version"] == (ROOT / "VERSION").read_text().strip() and set(AGENT_FILES) <= set(manifest["files"])
 
 
 def test_installed_agent_files_start_with_frontmatter(bundle_dir, repo):
@@ -698,6 +940,65 @@ def test_edited_project_commands_keeps_all_created_files(bundle_dir, repo):
     assert (repo / "CLAUDE.md").read_text() == "@AGENTS.md\n"
 
 
+REVIEW_PROCESS_LABELS = ("Repository type:", "Companion quality repository:", "Second approver (team only):")
+
+
+def test_a_fresh_install_writes_the_review_process_stub_outside_the_managed_block(bundle_dir, repo):
+    """T16 (INT-23): the owner fills the section in; an agent never does."""
+    run(bundle_dir, repo, "--apply")
+    text = (repo / "AGENTS.md").read_text()
+    assert text.count("## Review process") == 1
+    after_block = text.split("<!-- manifold:end -->")[1]
+    assert "## Review process" in after_block and "## Project commands" in after_block
+    for label in REVIEW_PROCESS_LABELS:
+        assert label in after_block, label
+    assert "solo" in after_block and "team" in after_block
+    # nothing is filled in: each label line ends with its colon
+    for line in after_block.splitlines():
+        if line.startswith(REVIEW_PROCESS_LABELS):
+            assert line.rstrip().endswith(":"), line
+
+
+def test_an_existing_review_process_section_is_left_alone_by_the_stub(bundle_dir, repo):
+    mine = "# Mine\n\n## Review process\n\nRepository type: team\nSecond approver (team only): Sam\n"
+    (repo / "AGENTS.md").write_text(mine)
+    run(bundle_dir, repo, "--apply")
+    run(bundle_dir, repo, "--apply")
+    text = (repo / "AGENTS.md").read_text()
+    assert text.count("## Review process") == 1
+    assert "Repository type: team" in text and "Second approver (team only): Sam" in text
+    assert "Companion quality repository:" not in text
+
+
+def test_uninstall_removes_an_untouched_created_file_with_both_stubs(bundle_dir, repo):
+    run(bundle_dir, repo, "--apply")
+    assert "## Review process" in (repo / "AGENTS.md").read_text()
+    rc, out = run(bundle_dir, repo, "--uninstall", "--apply")
+    assert rc == 0, out
+    assert not (repo / "AGENTS.md").exists() and not (repo / "CLAUDE.md").exists()
+
+
+def test_uninstall_keeps_a_created_file_whose_review_process_was_filled_in(bundle_dir, repo):
+    run(bundle_dir, repo, "--apply")
+    agents = repo / "AGENTS.md"
+    agents.write_text(agents.read_text().replace("Repository type:", "Repository type: solo"))
+    rc, out = run(bundle_dir, repo, "--uninstall", "--apply")
+    assert rc == 0 and "holds your content" in out
+    text = agents.read_text()
+    assert "manifold:begin" not in text and "Repository type: solo" in text
+
+
+def test_uninstall_still_removes_a_file_created_with_only_the_old_commands_stub(bundle_dir, repo):
+    """An install made before the review stub existed: the created file holds only the commands stub."""
+    run(bundle_dir, repo, "--apply")
+    agents = repo / "AGENTS.md"
+    text = agents.read_text()
+    agents.write_text(text[: text.index("## Review process")].rstrip("\n") + "\n")
+    rc, out = run(bundle_dir, repo, "--uninstall", "--apply")
+    assert rc == 0, out
+    assert not agents.exists()
+
+
 def test_edited_claude_md_keeps_all_created_files(bundle_dir, repo):
     run(bundle_dir, repo, "--apply")
     (repo / "CLAUDE.md").write_text("@AGENTS.md\n\nAlways answer in French.\n")
@@ -734,8 +1035,8 @@ def test_uninstall_dry_run_names_created_files_but_removes_nothing(bundle_dir, r
 
 # ----------------------------------------------------------------- profiles
 
-BUILD_ROLES = ["planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder"]
-QUALITY_ROLES = ["scenario-writer", "test-planner", "test-coder"]
+BUILD_ROLES = ["planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "coordinator"]
+QUALITY_ROLES = ["scenario-writer", "test-planner", "test-coder", "coordinator"]
 
 
 def _agent_names(repo):
@@ -788,6 +1089,7 @@ def test_installing_build_then_quality_becomes_single_with_warning(bundle_dir, r
 def test_every_profile_and_format_uninstalls_to_an_empty_repo(bundle_dir, repo, profile, fmt):
     assert run(bundle_dir, repo, "--profile", profile, "--format", fmt, "--apply")[0] == 0
     assert tree(repo)
+    assert HOOK_INSTALLED in tree(repo) and SCRATCH_INSTALLED in tree(repo)
     assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
     assert tree(repo) == []
 
@@ -849,6 +1151,132 @@ def test_rules_reach_only_the_roles_they_apply_to(tmp_path):
     assert "human-confirms-closure" in ids("bug-coder") and "human-confirms-closure" not in ids("reviewer")
 
 
+def test_shell_write_rule_applies_to_every_role_and_names_the_sanctioned_routes():
+    rules = {r["id"]: r for r in build.load_rules(ROOT)}
+    rule = rules["no-heredocs"]  # the id equals the file name and stays
+    assert rule["title"] == "Shell writes to files" and rule["applies_to"] == ["all"]
+    text = " ".join((rule["rule"], rule["instead"]))
+    for needle in ("replace_all", ".manifold/scratch/", "/tmp", "Write", "Edit", "sed -i", "tee", "heredoc", "ask a human"):
+        assert needle in text, needle
+    assert ".manifold/hooks/guard.py" in rule["enforce"] and "Rule exceptions" in rule["enforce"]
+    for role in build.ROLES:
+        assert "no-heredocs" in {r["id"] for r in build.rules_for(build.load_rules(ROOT), role)}, role
+
+
+@pytest.mark.parametrize("fmt", ["claude", "copilot", "skills"])
+@pytest.mark.parametrize("role", build.ROLES)
+def test_rule_exceptions_line_rule_reaches_every_role_in_every_rendering(role, fmt):
+    rules = build.load_rules(ROOT)
+    rule = {r["id"]: r for r in rules}["rule-exceptions-line"]
+    assert rule["applies_to"] == ["all"] and rule["severity"] == "high" and rule["title"] == "Rule exceptions"
+    text = build.load_agents(ROOT)[role]
+    fragments = build.load_fragments(ROOT)
+    out = (build.render_skill(role, text, fragments, rules, "0") if fmt == "skills"
+           else build.render_agent(role, text, fmt, fragments, rules))
+    assert "- **Rule exceptions.** Every report from an agent that changed files or ran commands" in out
+
+
+CLOSING_HEADINGS = {"planner": "## When you finish", "coder": "### When all tasks are done",
+                    "bug-coder": "## When you finish", "test-planner": "## When you finish",
+                    "test-coder": "### When all automated cases are done",
+                    "scenario-writer": "## When you finish", "reviewer": "## Report",
+                    "coordinator": "## When you finish"}
+
+
+@pytest.mark.parametrize("fmt", ["claude", "copilot", "skills"])
+@pytest.mark.parametrize("role", build.ROLES)
+def test_every_agent_ends_with_a_rule_exceptions_line(role, fmt):
+    assert set(CLOSING_HEADINGS) == set(build.ROLES)
+    fragments, rules = build.load_fragments(ROOT), build.load_rules(ROOT)
+    text = build.load_agents(ROOT)[role]
+    out = (build.render_skill(role, text, fragments, rules, "0") if fmt == "skills"
+           else build.render_agent(role, text, fmt, fragments, rules))
+    body = out.split("## Rules from experience")[0]
+    heading = body.index(CLOSING_HEADINGS[role])
+    marker = "- **Rule exceptions:** " + ("the comparison" if role == "reviewer" else "`none` or each exception (command, file, reason).")
+    assert body.index(marker, heading) > heading, role
+    assert body.count("**Rule exceptions:**") == 1, role
+
+
+FAILURE_ENTRY_FIELDS = ("Rule", "What happened", "Evidence", "Count", "Agent", "Disclosed by the agent",
+                        "Suggested change", "Status", "Intent raised")
+
+
+def test_failures_template_has_the_header_and_every_entry_field():
+    t = (ROOT / "templates" / "AGENT_FAILURES_TEMPLATE.md").read_text()
+    for field in ("Harness", "Client version", "Enforcement in this harness", "How to add an entry"):
+        assert "**%s:**" % field in t, field
+    assert "docs/process/BREACH_PROCEDURE.md" in t and "docs/agents/<harness>-failures.md" in t
+    entry = t.split("## F<N>", 1)[1]
+    positions = [entry.index("**%s:**" % f) for f in FAILURE_ENTRY_FIELDS]
+    assert positions == sorted(positions)  # fields appear in one fixed order
+    for word in ("concealed", "inference", "never copy"):
+        assert word in t, word
+
+
+def test_breach_procedure_names_who_when_how_exceptions_and_the_return_path():
+    t = (ROOT / "process" / "BREACH_PROCEDURE.md").read_text()
+    for needle in ("## Who and when", "## How to record", "## Exceptions", "## From a record to a rule change",
+                   "## Returning the result to Manifold", "`coordinator`", ".manifold/guard-log.jsonl",
+                   ".manifold/guard-allow.json", "docs/agents/<harness>-failures.md",
+                   "docs/templates/AGENT_FAILURES_TEMPLATE.md", "Append only", "concealed", "status `draft`",
+                   "does not post it"):
+        assert needle in t, needle
+    for field in FAILURE_ENTRY_FIELDS:
+        assert field in t, field
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_failures_template_and_breach_procedure_are_installed_in_every_profile(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    assert (repo / "docs/templates/AGENT_FAILURES_TEMPLATE.md").read_bytes() == (ROOT / "templates" / "AGENT_FAILURES_TEMPLATE.md").read_bytes()
+    assert (repo / "docs/process/BREACH_PROCEDURE.md").read_bytes() == (ROOT / "process" / "BREACH_PROCEDURE.md").read_bytes()
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_lint_rejects_a_missing_process_document_or_template(tmp_path):
+    src = copy_source(tmp_path / "src")
+    (src / "process" / "BREACH_PROCEDURE.md").unlink()
+    (src / "templates" / "AGENT_FAILURES_TEMPLATE.md").unlink()
+    problems = build.lint(src)
+    assert any("missing process document: process/BREACH_PROCEDURE.md" in x for x in problems)
+    assert any("missing template: AGENT_FAILURES_TEMPLATE.md" in x for x in problems)
+
+
+def test_rendered_instructions_block_carries_the_shell_write_rule_for_every_profile():
+    agents, rules = build.load_agents(ROOT), build.load_rules(ROOT)
+    for profile in build.PROFILES:
+        block = build.render_instructions_block(agents, rules, "agents", profile)
+        (line,) = [x for x in block.splitlines() if x.startswith("- **Shell writes to files.**")]
+        assert "Do not write or change file contents from a shell command" in line
+        assert "`Write`" in line and ".manifold/scratch/" in line and "replace_all" in line
+
+
+def test_rendered_instructions_state_the_review_policy_once_and_point_only_at_shipped_paths():
+    """T18 (INT-23): the stale 'Review policy lives in REVIEW.md' line is gone; every path named is installed."""
+    import re
+    agents, rules = build.load_agents(ROOT), build.load_rules(ROOT)
+    for style in ("agents", "skills", "both"):
+        for profile in build.PROFILES:
+            block = build.render_instructions_block(agents, rules, style, profile)
+            assert "Review policy lives in" not in block
+            shipped = {dst for dst, profiles in list(build.TEMPLATE_PATHS.values()) + list(build.PROCESS_PATHS.values())
+                       if profile in profiles}
+            for path in re.findall(r"`(docs/(?:templates|process)/[A-Za-z_.]+)`", block):
+                assert path in shipped, (profile, path)
+            review = [x for x in block.splitlines() if x.startswith("- Review:")]
+            if profile in ("build", "single"):
+                (line,) = review
+                assert "built into the `reviewer`" in line and "optional" in line
+                assert "docs/templates/REVIEW_TEMPLATE.md" in line and "`Review process` section" in line
+                assert "docs/templates/REVIEW_PLAN_TEMPLATE.md" in block
+            else:
+                assert not review and "REVIEW_PLAN_TEMPLATE" not in block
+            assert "docs/templates/AGENT_FAILURES_TEMPLATE.md" in block
+            assert "docs/process/BREACH_PROCEDURE.md" in block
+
+
 # ----------------------------------------------------- intent, review, scenarios
 
 def _agent_text(role):
@@ -872,6 +1300,23 @@ def test_plan_template_carries_intent_concerns_and_cross_repository_lines():
     t = (ROOT / "templates" / "PHASE_PLAN_TEMPLATE.md").read_text()
     for needle in ("**Source intent:**", "## Concerns flagged", "**Needs from other repositories:**", "**Provides to other repositories:**", "**Approved by:**"):
         assert needle in t, needle
+    # T24 (INT-21): checkpoints, the amendment skeleton and the two completion-summary lines
+    for needle in ("### CP1", "**Verification:**", "a plan without checkpoints is one checkpoint",
+                   "## Review amendment (round <n>)", "**Amendment approved by:**", "**Source:**",
+                   "REVIEW_PLAN_<N>.md F<id>", "Rule exceptions", "Gates run"):
+        assert needle in t, needle
+
+
+def test_plan_template_puts_checkpoints_under_tasks_and_the_amendment_after_the_checklist():
+    """T24 (INT-21): the order of the sections, and that the human-only approval line of an amendment is blank."""
+    t = (ROOT / "templates" / "PHASE_PLAN_TEMPLATE.md").read_text()
+    assert t.index("## Tasks") < t.index("### CP1") < t.index("### Task 1") < t.index("## Completion checklist")
+    assert t.index("## Completion checklist") < t.index("## Review amendment (round <n>)")
+    amendment = t.split("## Review amendment (round <n>)", 1)[1]
+    for needle in ("**Source:**", "**Amendment approved by:**", "deferred", "rejected", "Open questions", "never fills in"):
+        assert needle in amendment, needle
+    line = [x for x in amendment.splitlines() if x.startswith("**Amendment approved by:**")][0]
+    assert "human" in line
 
 
 def test_planner_has_intent_mode_and_never_accepts_its_own_plan():
@@ -881,12 +1326,40 @@ def test_planner_has_intent_mode_and_never_accepts_its_own_plan():
 
 
 def test_reviewer_is_read_only_and_never_approves():
+    # T21: assertion changed with the owner's approval of the plan (INT-21 Open questions, answer "yes"):
+    # the reviewer now has an edit tool and may write only its one review file; it still never approves.
     tools = _tools("reviewer")
-    assert "edit" not in tools and "write" not in tools
+    assert "edit" in tools and "write" not in tools
     t = _agent_text("reviewer")
     assert "must not review its own change" in t
     assert "you do **not approve or block** anything" in t
-    assert "REVIEW.md" in t and "Read-only" in t
+    assert "REVIEW.md" in t
+    assert "You edit only `docs/plans/REVIEW_PLAN_<N>.md`" in t
+    assert "never edit code or the plan" in t
+    assert "Read-only, by role" not in t
+
+
+def test_reviewer_states_its_built_in_review_defaults_and_which_policy_it_used():
+    """T15 (INT-23): REVIEW.md is optional; the defaults live in the reviewer; no invented human threshold."""
+    t = _agent_text("reviewer")
+    assert "built-in defaults" in t and "nit cap" in t.lower() and "Important" in t
+    assert "states which policy" in t
+    assert "never stop for lack of a policy file" in t and "never invent a human threshold" in t
+    assert "Review process" in t and "applies / does not apply" in t
+    assert "second person" not in t
+    assert "and the review policy, and" in t.split("---")[1]
+    assert "REVIEW.md's" not in t.split("---")[1]
+
+
+def test_reviewer_says_how_the_four_passes_apply_to_documents():
+    """T17 (INT-21): no new pass; the standard is in docs/process/REVIEW_CYCLE.md."""
+    t = _agent_text("reviewer")
+    assert "## When the change is mostly documents or agent instructions" in t
+    assert "docs/process/REVIEW_CYCLE.md" in t
+    section = t.split("## When the change is mostly documents or agent instructions")[1].split("\n## ")[0]
+    for needle in ("**Bugs:**", "**Compliance:**", "**Tests:**", "No new pass"):
+        assert needle in section, needle
+    assert "Important" in section and "Nit" in section
 
 
 def test_claude_format_denies_the_tools_an_agent_does_not_declare():
@@ -894,9 +1367,14 @@ def test_claude_format_denies_the_tools_an_agent_does_not_declare():
     and black-box roles must carry a denylist (an allowlist would also hide MCP tools)."""
     def fm(role):
         out = build.render_agent(role, _agent_text(role), "claude", build.load_fragments(), build.load_rules())
-        return out.split("---")[1]
+        # up to the guard hook block (T6), whose matcher names Bash, Edit and Write on purpose
+        return out.split("---")[1].split("\nhooks:")[0]
     reviewer = fm("reviewer")
-    assert "disallowedTools: Edit, Write, NotebookEdit, WebFetch, WebSearch" in reviewer
+    # T21: the reviewer writes exactly one file (REVIEW_PLAN_<N>.md), so it keeps the edit tools and the
+    # guard's write allowlist limits it; assertion changed with the owner's approval of the plan (INT-21 Open questions)
+    assert "disallowedTools: WebFetch, WebSearch" in reviewer
+    disallowed = [l for l in reviewer.splitlines() if l.startswith("disallowedTools:")]
+    assert len(disallowed) == 1 and "Edit" not in disallowed[0] and "Write" not in disallowed[0]
     assert "Bash" not in reviewer
     # search is Bash in Claude Code, so a role that may search keeps it (the 7c live run: the
     # test-planner could not list scenarios/ and stopped)
@@ -980,40 +1458,94 @@ def test_satisfaction_report_states_thresholds_and_per_seed_results():
 
 def test_review_template_has_passes_and_a_nit_cap():
     t = (ROOT / "templates" / "REVIEW_TEMPLATE.md").read_text()
-    for needle in ("## Passes", "What Important means", "Cap the nits", "Do not report", "Human threshold"):
+    for needle in ("## Passes", "What Important means", "Cap the nits", "Do not report"):
         assert needle in t, needle
 
 
-STARTER = ROOT / "templates" / "REVIEW_STARTER.md"
+def test_review_template_is_the_optional_policy_and_has_no_human_threshold():
+    """T20 (INT-23): defaults live in the reviewer; who approves lives in AGENTS.md 'Review process'."""
+    t = (ROOT / "templates" / "REVIEW_TEMPLATE.md").read_text()
+    assert "Human threshold" not in t
+    assert "Review process" in t and "AGENTS.md" in t
+    header = t.split("-->")[0]
+    assert "optional" in header and "additions and exclusions" in header and "built-in defaults" in header
+    assert "second person" not in t.lower()
 
 
-def test_build_profile_installs_review_md_from_the_starter(bundle_dir, repo):
-    rc, out = run(bundle_dir, repo, "--apply")
-    assert rc == 0, out
-    assert (repo / "REVIEW.md").read_bytes() == STARTER.read_bytes()
-    assert "REVIEW.md" in json.loads((repo / ".manifold/manifest.json").read_text())["files"]
+def test_review_plan_template_has_every_section_of_the_review_document():
+    """T19 (INT-21 S1, S6): the per-phase review document; a re-review revises it in place."""
+    t = (ROOT / "templates" / "REVIEW_PLAN_TEMPLATE.md").read_text()
+    for needle in ("# REVIEW_PLAN_<N>.md", "**Phase:**", "**Intent:**", "**Commit reviewed:**", "**Plan version:**",
+                   "**Policy used:**", "**Revision:**", "## Revision log", "## Counts by severity", "## Findings",
+                   "### Bugs", "### Security", "### Compliance", "### Tests", "### Context files",
+                   "**State:**", "`open`", "`repaired`", "`deferred`", "`rejected`",
+                   "## Rule exceptions compared", "## Gates run", "## CI on the pushed commit", "## Tests run and changed",
+                   "## Could not check", "## A human decides"):
+        assert needle in t, needle
+    for word in ("Evidence", "Direction", "Location"):
+        assert word.lower() in t.lower(), word
+    assert "not run" in t
+    assert "in place" in t
+    # the reviewer never approves or blocks
+    assert "does not approve or block" in t
 
 
-def test_quality_profile_does_not_install_review_md(bundle_dir, repo):
+def test_review_plan_template_is_installed_for_build_and_single_not_quality(bundle_dir, repo):
+    assert run(bundle_dir, repo, "--apply")[0] == 0
+    assert (repo / "docs/templates/REVIEW_PLAN_TEMPLATE.md").read_bytes() == (ROOT / "templates" / "REVIEW_PLAN_TEMPLATE.md").read_bytes()
+
+
+def test_review_plan_template_is_not_installed_in_the_quality_profile(bundle_dir, repo):
     assert run(bundle_dir, repo, "--profile", "quality", "--apply")[0] == 0
+    assert not (repo / "docs/templates/REVIEW_PLAN_TEMPLATE.md").exists()
+
+
+# T22 (Open question 6, the owner chose "remove"): REVIEW.md is optional and per repository, so the bundle
+# no longer installs a REVIEW.md. These tests replaced four that pinned the REVIEW_STARTER.md file
+# (changes approved by the owner with the plan); see the T22 note.
+
+def test_the_review_starter_is_gone_from_the_bundle():
+    assert not (ROOT / "templates" / "REVIEW_STARTER.md").exists()
+    assert "REVIEW_STARTER.md" not in build.TEMPLATE_PATHS
+    assert "REVIEW.md" not in [dst for dst, _profiles in build.TEMPLATE_PATHS.values()]
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_no_profile_installs_a_review_md(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
     assert not (repo / "REVIEW.md").exists()
+    assert "REVIEW.md" not in json.loads((repo / ".manifold/manifest.json").read_text())["files"]
 
 
-def test_an_existing_different_review_md_is_a_conflict_and_is_left_alone(bundle_dir, repo):
+def test_an_existing_review_md_is_not_touched_by_an_install(bundle_dir, repo):
     mine = repo / "REVIEW.md"
     mine.write_text("# My own review policy\n")
     rc, out = run(bundle_dir, repo, "--apply")
-    assert rc == 2 and "CONFLICT" in out and "REVIEW.md" in out
+    assert rc == 0 and "CONFLICT" not in out, out
     assert mine.read_text() == "# My own review policy\n"
 
 
-def test_the_review_starter_has_the_template_headings_and_no_comments():
-    text = STARTER.read_text()
-    for heading in ("## Passes", "## What Important means here", "## Cap the nits", "## Do not report",
-                    "## Human threshold"):
-        assert heading in text, heading
-    assert "<!--" not in text
-    assert "mediumroast" not in text.lower()
+def test_upgrading_from_a_payload_that_shipped_review_md_keeps_the_file(tmp_path, monkeypatch):
+    """The installer never removes a file the bundle stopped shipping (an install made before T22)."""
+    old_src = copy_source(tmp_path / "old_src")
+    (old_src / "templates" / "REVIEW_STARTER.md").write_text("# Review instructions\n\nOld starter.\n")
+    monkeypatch.setitem(build.TEMPLATE_PATHS, "REVIEW_STARTER.md", ("REVIEW.md", ("build", "single")))
+    old_zip = build.build_zip(old_src, tmp_path / "old_dist")
+    monkeypatch.delitem(build.TEMPLATE_PATHS, "REVIEW_STARTER.md")
+    new_zip = build.build_zip(ROOT, tmp_path / "new_dist")
+    target = tmp_path / "repo"
+    (target / ".git").mkdir(parents=True)
+    for z, name in ((old_zip, "old"), (new_zip, "new")):
+        with zipfile.ZipFile(z) as zf:
+            zf.extractall(tmp_path / name)
+    (old_dir,) = [p for p in (tmp_path / "old").iterdir() if p.is_dir()]
+    (new_dir,) = [p for p in (tmp_path / "new").iterdir() if p.is_dir()]
+    assert run(old_dir, target, "--apply")[0] == 0
+    assert (target / "REVIEW.md").read_text().endswith("Old starter.\n")
+    rc, out = run(new_dir, target, "--apply")
+    assert rc == 0, out
+    assert (target / "REVIEW.md").read_text().endswith("Old starter.\n")
+    assert "REVIEW.md" in json.loads((target / ".manifold/manifest.json").read_text())["files"]
 
 
 # ------------------------------------------------------------------ roadmap
@@ -1079,11 +1611,101 @@ def test_a_request_to_edit_the_test_to_fit_the_bug_is_declined():
     assert "do not add a test that asserts the buggy behavior either" in _agent_text("bug-coder")
 
 
+def _both_flavors(role):
+    """The agent as rendered for Claude Code and for Copilot (T25 to T27: the same text in both)."""
+    return [build.render_agent(role, _agent_text(role), fmt, build.load_fragments(), build.load_rules())
+            for fmt in ("claude", "copilot")]
+
+
+def test_coder_stops_after_each_checkpoint_and_waits_for_the_amendment_approval():
+    """T25 (INT-21 S3): one checkpoint, gates with real counts, stop; a repair checkpoint needs a human's approval line."""
+    for out in _both_flavors("coder"):
+        assert "one checkpoint at a time" in out
+        assert "stop until told to continue" in out
+        assert "a plan without checkpoints is one checkpoint" in out
+        assert "**Verification**" in out
+        assert "real counts" in out and "not run" in out
+        assert "**Amendment approved by**" in out and "filled in by a person" in out
+        assert "docs/process/REVIEW_CYCLE.md" in out
+        assert "failing-first" in out and "both results" in out
+    # the approval gate is still stated first, and the old wording stays
+    assert "Check the plan's **Approved by** line" in _agent_text("coder")
+
+
+def test_approval_rule_covers_the_tasks_present_when_it_was_given():
+    """T25 (INT-21): a task added later needs its own approval line."""
+    t = (ROOT / "rules" / "core" / "approved-plan-before-execution.md").read_text()
+    assert "Approval covers the tasks present when it was given" in t
+    assert "**Amendment approved by**" in t and "its own approval line" in t
+    for out in _both_flavors("coder"):
+        assert "Approval covers the tasks present when it was given" in out
+
+
+def test_a_fix_that_changes_a_pinned_behavior_goes_to_the_owner_before_the_test_changes():
+    """T25 (INT-21 S10): stop, name the test and the assertion, say why the old expectation is wrong, ask the owner."""
+    t = (ROOT / "rules" / "core" / "dont-edit-the-test-to-pass.md").read_text()
+    for needle in ("legitimately changes behavior", "name the test and the assertion",
+                   "why the old expectation is wrong", "ask the owner", "only after the owner says yes",
+                   "record the approval and the change"):
+        assert needle in t, needle
+    # the decline of 'edit the test to match the bug' is unchanged (see test_a_request_to_edit_the_test_to_fit_the_bug_is_declined)
+    assert "is not an instruction to carry out in a fix" in t
+    for role in ("coder", "bug-coder", "test-coder", "reviewer"):
+        for out in _both_flavors(role):
+            assert "ask the owner" in out, role
+
+
+def test_planner_groups_tasks_into_checkpoints_and_amends_a_plan_from_a_review():
+    """T26 (INT-21 S2, S4): checkpoints; amendment from REVIEW_PLAN_<N>.md; never an approval; edits with Edit, never the shell."""
+    for out in _both_flavors("planner"):
+        assert "## Checkpoints" in out and "ends in a verification" in out
+        assert "no task outside a checkpoint" in out and "dependency order" in out
+        assert "## Amending a plan from a review" in out
+        assert "REVIEW_PLAN_<N>.md" in out and "## Review amendment (round <n>)" in out
+        assert "**Source:**" in out and "`REVIEW_PLAN_<N>.md F<id>`" in out
+        assert "one task per Important finding" in out
+        assert "deferred and rejected" in out and "open questions" in out
+        assert "completed tasks" in out and "original acceptance lines" in out
+        assert "**Amendment approved by**" in out and "never fill in" in out
+        assert "never the shell" in out
+        assert "docs/process/REVIEW_CYCLE.md" in out
+    section = _agent_text("planner").split("## Amending a plan from a review")[1].split("\n## ")[0]
+    assert "Edit" in section
+
+
+@pytest.mark.parametrize("role", ["bug-coder", "test-planner", "test-coder"])
+def test_checkpoints_apply_to_bug_fixes_and_the_test_side_agents(role):
+    """T27 (INT-21 Open questions: yes for bug fixes and the test-side agents)."""
+    for out in _both_flavors(role):
+        assert "checkpoint" in out.lower()
+    t = _agent_text(role)
+    if role == "bug-coder":
+        assert "group the triage entries into checkpoints" in t and "stop after each checkpoint" in t
+        assert "failing-first" in t and "both results" in t
+        assert "ask the owner" in "".join(_both_flavors(role))
+    elif role == "test-planner":
+        assert "checkpoints that mirror the phase plan's" in t
+    else:
+        assert "one checkpoint at a time" in t and "stop until told to continue" in t
+
+
+def test_test_plan_template_carries_checkpoints_that_mirror_the_phase_plan():
+    """T27 (INT-21): the test plan is written in checkpoints."""
+    t = (ROOT / "templates" / "PHASE_TEST_PLAN_TEMPLATE.md").read_text()
+    assert "## Checkpoints" in t and "CP1" in t
+    assert t.index("## Test environment") < t.index("## Checkpoints") < t.index("## Manual test cases")
+    assert t.count("**Checkpoint:**") >= 2  # the manual and the automated case blocks
+    assert "mirror" in t and "one checkpoint" in t
+
+
 def test_reviewer_never_edits_and_does_not_offer_to_once_tools_are_enabled():
     """Live run: Claude Haiku 4.5 declined only because it had no editing tools and offered to edit 'once enabled'."""
+    # T21: assertion changed with the owner's approval of the plan (INT-21 Open questions): the reviewer
+    # has an edit tool for its review file only; it still does not edit code or offer to.
     t = _agent_text("reviewer")
-    assert "Read-only, by role" in t and "even when editing tools are available" in t
-    assert "do not offer to edit" in t
+    assert "do not offer to edit code" in t and "even when the user asks you to" in t
+    assert "even when editing tools are available" not in t
+    assert "chat reply" in t and "pointer" in t
 
 
 def test_test_roles_open_with_an_exact_mode_line():
@@ -1118,3 +1740,674 @@ def test_models_page_ships_in_the_zip(tmp_path):
     built = build.build_zip(ROOT, tmp_path)
     with zipfile.ZipFile(built) as zf:
         assert any(n.endswith("/MODELS.md") for n in zf.namelist())
+
+
+# ------------------------------------------------ review-to-repair loop (T28, T29; INT-21)
+
+# The one-line sequence of docs/process/REVIEW_CYCLE.md: each step name must be in the document and in the
+# reviewer and the coordinator (T33), in both flavors.
+CYCLE_STEPS = ("review", "REVIEW_PLAN_<N>.md", "planner amendment", "human approval", "repair checkpoint", "re-review")
+
+
+def _review_cycle():
+    return (ROOT / "process" / "REVIEW_CYCLE.md").read_text()
+
+
+def test_review_cycle_has_the_sequence_the_handling_and_the_ready_check():
+    """T28 (INT-21 S5, S8): who, input and output for each step; every point of 'How a review is handled'."""
+    t = _review_cycle()
+    for heading in ("## The sequence", "## How a review is handled", "## How tests are handled", "## The ready check",
+                    "## Compatibility", "## Reviewing documents and agent instructions"):
+        assert heading in t, heading
+    for step in CYCLE_STEPS:
+        assert step in t, step
+    sequence = t.split("## The sequence")[1].split("\n## ")[0]
+    for column in ("| Step | Who | Input | Output |", "| Review |", "| Amendment |", "| Approval |", "| Repair |", "| Re-review |"):
+        assert column in sequence, column
+    handled = t.split("## How a review is handled")[1].split("\n## ")[0]
+    for point in ("**Who runs it, and in which session.**", "**What it reads.**", "**Where the output goes.**",
+                  "**Who consumes it.**", "**How findings become plan tasks.**",
+                  "**What stops a pull request from being marked ready.**", "**How cycles end.**"):
+        assert point in handled, point
+    for needle in ("three runs", "until the human says enough", "the human may set another limit", "in place",
+                   "A finding is never deleted", "nothing open, or only Nits"):
+        assert needle in handled, needle
+
+
+def test_review_cycle_answers_the_five_test_handling_points():
+    t = _review_cycle().split("## How tests are handled")[1].split("\n## ")[0]
+    for point in ("**Who writes tests.**", "**Failing-first evidence.**",
+                  "**A fix that breaks a test that pinned the old behavior.**", "**How gates are run and reported.**",
+                  "**Who confirms CI on a pushed commit.**"):
+        assert point in t, point
+    for needle in ("asks the owner", "only after a yes", "not run", "real output", "exact commit", "neither writes nor reads held-out"):
+        assert needle in t, needle
+
+
+def test_review_cycle_ready_check_leaves_the_decisions_to_a_human():
+    t = _review_cycle().split("## The ready check")[1].split("\n## ")[0]
+    for needle in ("A review of the final commit exists", "repaired, deferred or rejected", "CI of that exact commit",
+                   "`Review process` section of `AGENTS.md`", "does not move a pull request out of draft", "does not merge"):
+        assert needle in t, needle
+    compat = _review_cycle().split("## Compatibility")[1].split("\n## ")[0]
+    assert "a plan without checkpoints is one checkpoint" in compat.lower() and "REVIEW.md" in compat
+
+
+def test_review_cycle_keeps_the_review_standard_and_matches_the_reviewer():
+    """The standard in the reviewer is the same text as in the process document (the reviewer says so)."""
+    standard = _review_cycle().split("## Reviewing documents and agent instructions")[1].split("\n## ")[0]
+    reviewer = _agent_text("reviewer")
+    for line in standard.splitlines():
+        if line.startswith("("):
+            assert line in reviewer, line
+
+
+@pytest.mark.parametrize("fmt", ["claude", "copilot"])
+def test_reviewer_and_the_other_agents_name_the_cycle_and_point_to_the_procedure(fmt):
+    def out(role):
+        return build.render_agent(role, _agent_text(role), fmt, build.load_fragments(), build.load_rules())
+    reviewer = out("reviewer")
+    for step in CYCLE_STEPS:
+        assert step in reviewer, step
+    for role in ("reviewer", "planner", "coder", "coordinator"):
+        assert "docs/process/REVIEW_CYCLE.md" in out(role), role
+    coordinator = out("coordinator")  # T33 adds the coordinator to the agents checked here
+    for step in CYCLE_STEPS:
+        assert step in coordinator, step
+
+
+def test_process_documents_are_shipped_and_linted_like_the_breach_procedure(tmp_path):
+    """T29: REVIEW_CYCLE.md is a process document (installed in every profile); lint checks its presence and its terms."""
+    target, profiles = build.PROCESS_PATHS["process/REVIEW_CYCLE.md"]
+    assert target == "docs/process/REVIEW_CYCLE.md" and profiles == build.ALL_PROFILES
+    src = copy_source(tmp_path / "src")
+    assert build.lint(src) == []
+    (src / "process" / "REVIEW_CYCLE.md").unlink()
+    assert any("missing process document: process/REVIEW_CYCLE.md" in x for x in build.lint(src))
+    src = copy_source(tmp_path / "src2")
+    path = src / "process" / "REVIEW_CYCLE.md"
+    path.write_text(path.read_text() + "\nSee the " + build.FORBIDDEN_TERMS[0] + " site.\n")
+    assert any("process/REVIEW_CYCLE.md contains forbidden term" in x for x in build.lint(src))
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_review_cycle_is_installed_in_every_profile(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    assert (repo / "docs/process/REVIEW_CYCLE.md").read_bytes() == (ROOT / "process" / "REVIEW_CYCLE.md").read_bytes()
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+# Paths that a document names and that are not installed, not created by a document and not in a list above:
+# none today. Add a path here only with the reason, in a comment.
+DOC_PATH_ALLOWLIST = set()
+# Folders a document asks the repository to create or that agents create when they run. The installed
+# templates and process documents are not here: those must be named exactly, as build.py installs them.
+DOC_PATH_PREFIXES = ("docs/plans/", "docs/agents/", "docs/walkthroughs/")
+SHIPPED_MARKDOWN = ("agents/*.md", "templates/*.md", "process/*.md", "rules/**/*.md", "fragments/*.md",
+                    "README.md", "INSTALL.md", "MODELS.md", "CONTRIBUTING.md", "HOWTO.md")
+
+
+def _broken_references(root):
+    """Relative Markdown links that do not resolve in `root`, and backticked docs/ paths in an agent, template or
+    process document that are neither installed, nor created by a document, nor on the allowlist."""
+    import re
+    installed = {dst for dst, _ in list(build.TEMPLATE_PATHS.values()) + list(build.PROCESS_PATHS.values())}
+    problems = []
+    for pattern in SHIPPED_MARKDOWN:
+        for path in sorted(root.glob(pattern)):
+            text = path.read_text(encoding="utf-8")
+            rel = path.relative_to(root)
+            for target in re.findall(r"\]\(([^)\s]+)\)", text):
+                target = target.split("#")[0]
+                if not target or "://" in target or target.startswith("mailto:"):
+                    continue
+                if not (path.parent / target).resolve().exists():
+                    problems.append("%s: link %s does not resolve" % (rel, target))
+            if rel.parts[0] in ("agents", "templates", "process") or rel.name == "HOWTO.md":
+                for doc in re.findall(r"`(docs/[A-Za-z0-9_./-]+)`", text):
+                    if doc in installed or doc in DOC_PATH_ALLOWLIST or doc.endswith("/") or doc.startswith(DOC_PATH_PREFIXES):
+                        continue
+                    problems.append("%s: path %s is not installed and not created by a document" % (rel, doc))
+    return problems
+
+
+def test_markdown_links_and_paths_resolve():
+    """T29: every relative link in the shipped Markdown resolves in the source; every docs/ path an agent, template
+    or process document names is installed, created by a document, or on the allowlist."""
+    assert _broken_references(ROOT) == []
+
+
+def test_the_reference_check_fails_on_a_broken_link_and_a_broken_path(tmp_path):
+    """T29 acceptance: the check above fails when a bad link or path is added (run on a copy, never on the source)."""
+    src = copy_source(tmp_path / "src")
+    # the copy sits outside the repository, so the README's links to the repository root do not resolve there;
+    # compare with that baseline and look only at what the added lines change
+    baseline = _broken_references(src)
+    assert all(x.startswith("README.md: link ../../") for x in baseline), baseline
+    readme = src / "README.md"
+    readme.write_text(readme.read_text() + "\nSee [nothing](no/such/file.md).\n")
+    planner = src / "agents" / "planner.agent.md"
+    planner.write_text(planner.read_text() + "\nRead `docs/process/NOT_SHIPPED.md`.\n")
+    added = [x for x in _broken_references(src) if x not in baseline]
+    assert any("README.md: link no/such/file.md does not resolve" in x for x in added), added
+    assert any("docs/process/NOT_SHIPPED.md" in x for x in added), added
+    assert len(added) == 2, added
+
+
+# ------------------------------------------------------- coordinator (T30 to T33; INT-22)
+
+# The sections of the pull request template, in the order of INT-22 Scenario seed S3 (T30).
+PR_TEMPLATE_HEADINGS = ("What and why", "Plan and intent", "Checkpoints done", "Review state and findings", "Gates",
+                        "CI on the pushed commit", "Rule exceptions", "Could not check", "Follow-ups", "Ready check")
+
+
+def test_pull_request_template_has_every_section_in_the_order_of_the_intent():
+    t = (ROOT / "templates" / "PULL_REQUEST_TEMPLATE.md").read_text()
+    positions = [t.index("\n## " + h + "\n") for h in PR_TEMPLATE_HEADINGS]
+    assert positions == sorted(positions)
+    review = t.split("\n## Review state and findings\n")[1].split("\n## ")[0]
+    for needle in ("REVIEW_PLAN_<N>.md", "Commit reviewed", "| Severity | Open | Repaired | Deferred | Rejected |"):
+        assert needle in review, needle
+    assert "| Command | Counts | Result |" in t.split("\n## Gates\n")[1].split("\n## ")[0]
+    ci = t.split("\n## CI on the pushed commit\n")[1].split("\n## ")[0]
+    assert "Commit (full hash)" in ci and "Confirmed by" in ci
+    ready = t.split("\n## Ready check\n")[1]
+    for needle in ("met", "missing", "Human confirmation", "only a human", "draft"):
+        assert needle in ready, needle
+
+
+def test_pull_request_template_is_a_template_path_for_build_and_single_only():
+    target, profiles = build.TEMPLATE_PATHS["PULL_REQUEST_TEMPLATE.md"]
+    assert target == "docs/templates/PULL_REQUEST_TEMPLATE.md" and tuple(profiles) == ("build", "single")
+
+
+@pytest.mark.parametrize("profile,installed", [("build", True), ("single", True), ("quality", False)])
+def test_pull_request_template_is_installed_by_profile_and_uninstalls_cleanly(bundle_dir, repo, profile, installed):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    path = repo / "docs/templates/PULL_REQUEST_TEMPLATE.md"
+    assert path.exists() is installed
+    if installed:
+        assert path.read_bytes() == (ROOT / "templates" / "PULL_REQUEST_TEMPLATE.md").read_bytes()
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def _unshipped_paths(block, profile):
+    """The `docs/templates/...` and `docs/process/...` paths in an instructions block that this profile does not install."""
+    import re
+    shipped = {dst for dst, profiles in list(build.TEMPLATE_PATHS.values()) + list(build.PROCESS_PATHS.values())
+               if profile in profiles}
+    return [p for p in re.findall(r"`(docs/(?:templates|process)/[A-Za-z_.]+)`", block) if p not in shipped]
+
+
+def test_rendered_instructions_name_the_review_cycle_and_the_pull_request_template_where_they_ship():
+    """T29/T30 (CP4 follow-up): the lines are added with the paths, and the path check catches a line whose path is not shipped."""
+    agents, rules = build.load_agents(ROOT), build.load_rules(ROOT)
+    for style in ("agents", "skills", "both"):
+        for profile in build.PROFILES:
+            block = build.render_instructions_block(agents, rules, style, profile)
+            assert _unshipped_paths(block, profile) == [], (style, profile)
+            (cycle,) = [x for x in block.splitlines() if "docs/process/REVIEW_CYCLE.md" in x]
+            assert cycle.startswith("- ") and "review" in cycle.lower()
+            pr = [x for x in block.splitlines() if "docs/templates/PULL_REQUEST_TEMPLATE.md" in x]
+            assert len(pr) == (1 if profile in ("build", "single") else 0), (profile, pr)
+    assert _unshipped_paths("- See `docs/templates/PULL_REQUEST_TEMPLATE.md`.", "quality") == [
+        "docs/templates/PULL_REQUEST_TEMPLATE.md"]
+    assert _unshipped_paths("- See `docs/process/NOT_SHIPPED.md`.", "build") == ["docs/process/NOT_SHIPPED.md"]
+
+
+def _coordinator(fmt):
+    return build.render_agent("coordinator", _agent_text("coordinator"), fmt, build.load_fragments(), build.load_rules())
+
+
+def _install_module():
+    spec = importlib.util.spec_from_file_location("manifold_install", ROOT / "install.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_t32_coordinator_is_a_role_in_every_profile_with_a_skill_name_and_a_known_install_role():
+    assert "coordinator" in build.ROLES
+    for profile, roles in build.PROFILES.items():
+        assert "coordinator" in roles, profile
+    assert build.SKILL_NAMES["coordinator"] == "coordinate-cycle"
+    installer = _install_module()
+    assert set(installer.KNOWN_ROLES) == set(build.ROLES)
+    assert installer.role_of("acme-coordinator") == "coordinator" and installer.role_of("coordinator") == "coordinator"
+
+
+def test_t32_the_claude_coordinator_keeps_the_agent_tool_and_carries_the_guard_hook():
+    """The Agent tool is denied to no role today (CLAUDE_DENY has no entry for it), so the coordinator keeps it."""
+    out = _coordinator("claude")
+    front = out.split("\n---\n")[0].splitlines()
+    assert "disallowedTools: WebFetch, WebSearch" in front
+    assert front[front.index("hooks:"):] == list(build.GUARD_HOOKS_CLAUDE)
+    for role in build.ROLES:
+        blocks, _ = build.split_frontmatter(_agent_text(role))
+        assert "Agent" not in build.claude_disallowed(blocks), role
+    copilot_front = _coordinator("copilot").split("\n---\n")[0]
+    assert "tools: [read, search, execute, edit, agent, todo]" in copilot_front
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+@pytest.mark.parametrize("fmt", ["claude", "copilot", "skills"])
+def test_t33_coordinator_is_installed_in_every_profile_and_format_and_uninstalls_cleanly(bundle_dir, repo, profile, fmt):
+    path = {"claude": ".claude/agents/coordinator.md", "copilot": ".github/agents/coordinator.agent.md",
+            "skills": ".claude/skills/coordinate-cycle/SKILL.md"}[fmt]
+    assert run(bundle_dir, repo, "--profile", profile, "--format", fmt, "--apply")[0] == 0
+    assert (repo / path).exists(), path
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_t33_coordinator_is_one_source_for_both_flavors_and_uses_no_role_references():
+    source = _agent_text("coordinator")
+    assert "{{" not in source  # Concern 4: the quality profile does not install the planner, coder or reviewer
+    assert build.lint(ROOT) == []
+    bodies = [_coordinator(fmt).split("\n---\n", 1)[1] for fmt in ("claude", "copilot")]
+    assert bodies[0] == bodies[1]
+    agents, rules = build.load_agents(ROOT), build.load_rules(ROOT)
+    for style in ("agents", "both"):
+        for profile in build.PROFILES:
+            block = build.render_instructions_block(agents, rules, style, profile)
+            assert "**coordinator**" in block, (style, profile)
+
+
+# every duty of INT-22 (Proposed outcome items 1 to 8) and the owner's decisions, as phrases the agent must carry
+COORDINATOR_DUTIES = {
+    "runs the loop in the written order": ("review -> `docs/plans/REVIEW_PLAN_<N>.md` -> planner amendment -> human approval",
+                                           "docs/process/REVIEW_CYCLE.md", "own session", "Amendment approved by"),
+    "does no one's work": ("no code, no plan and no review", "do not commit unless asked"),
+    "a human decides": ("never moves a PR out of draft", "never merges", "never accepts an intent",
+                        "never fills in **Approved by** or **Amendment approved by**", "never approves a plan or closes a phase"),
+    "no outward action without the owner": ("push", "only with the owner's go-ahead", "the repository the owner names"),
+    "ready check": ("docs/templates/PULL_REQUEST_TEMPLATE.md", "never says \"ready\" while a line is missing",
+                    "exact commit", "a human confirms"),
+    "reads CI of the exact commit": ("gh run list --commit <full hash> --json", "gh pr view <number> --json headRefOid,isDraft",
+                                     "treat red or missing CI as a finding", "unverified"),
+    "watches the guardrails": ("\"Rule exceptions\"", ".manifold/guard-log.jsonl", ".manifold/guard-allow.json",
+                               "docs/process/BREACH_PROCEDURE.md", "Record your own breaches"),
+    "collects process gaps and drafts an intent": ("process gaps", "status `draft`", "never `accepted`",
+                                                  "docs/templates/INTENT_TEMPLATE.md"),
+    "handles tests": ("failing-first", "Relay the question", "the owner's yes", "held-out", "separate from"),
+    "where it cannot start agents": ("ask the human to start the agent", "inputs"),
+    "is concise": ("short",),
+}
+
+
+@pytest.mark.parametrize("fmt", ["claude", "copilot"])
+def test_t33_coordinator_carries_every_intent_duty_and_the_owner_decisions(fmt):
+    out = _coordinator(fmt)
+    for duty, needles in COORDINATOR_DUTIES.items():
+        for needle in needles:
+            assert needle in out, (fmt, duty, needle)
+    assert "REVIEW_PLAN_" in out and "Rule exceptions" in out
+    assert out.index("## When you finish") < out.index("- **Rule exceptions:** `none` or each exception (command, file, reason).")
+
+
+def test_t33_coordinator_leaves_no_step_of_the_pull_request_to_an_agent():
+    """The owner's binding decisions: a human moves a pull request out of draft; the coordinator never marks ready."""
+    out = _coordinator("claude")
+    for forbidden in ("mark the pull request ready", "gh pr ready", "gh pr merge", "git push"):
+        assert forbidden not in out.replace("never " + forbidden, ""), forbidden
+
+
+# ------------------------------------------------------------- HOWTO (T34; INT-21, INT-22)
+
+def _doc(name):
+    return (ROOT / name).read_text(encoding="utf-8")
+
+
+def _howto():
+    return _doc("HOWTO.md")
+
+
+def _headings(text, prefix):
+    return [x[len(prefix):].strip() for x in text.splitlines() if x.startswith(prefix) and not x.startswith(prefix + "#")]
+
+
+def _cycle_step_names():
+    """The first column of the table under '## The sequence' in REVIEW_CYCLE.md (header and rule rows skipped)."""
+    section = _review_cycle().split("## The sequence\n")[1].split("\n## ")[0]
+    names = []
+    for line in section.splitlines():
+        if line.startswith("|"):
+            cell = line.split("|")[1].strip()
+            if cell and cell != "Step" and set(cell) != {"-"}:
+                names.append(cell)
+    return names
+
+
+def test_t34_howto_is_a_process_path_for_every_profile_and_ships_at_the_zip_root(built):
+    """Open question 9: installed to docs/process/HOWTO.md in every profile, and at the zip root like the README."""
+    target, profiles = build.PROCESS_PATHS["HOWTO.md"]
+    assert target == "docs/process/HOWTO.md" and tuple(profiles) == build.ALL_PROFILES
+    with zipfile.ZipFile(built) as zf:
+        (root_copy,) = [n for n in zf.namelist() if n.endswith("/HOWTO.md") and n.count("/") == 1]
+        assert zf.read(root_copy) == (ROOT / "HOWTO.md").read_bytes()
+        assert zf.read([n for n in zf.namelist() if n.endswith("payload/common/docs/process/HOWTO.md")][0]) == \
+            (ROOT / "HOWTO.md").read_bytes()
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+def test_t34_howto_is_installed_in_every_profile_and_uninstalls_cleanly(bundle_dir, repo, profile):
+    assert run(bundle_dir, repo, "--profile", profile, "--apply")[0] == 0
+    assert (repo / "docs/process/HOWTO.md").read_bytes() == (ROOT / "HOWTO.md").read_bytes()
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_t34_lint_requires_the_howto(tmp_path):
+    src = copy_source(tmp_path / "src")
+    assert build.lint(src) == []
+    (src / "HOWTO.md").unlink()
+    assert any("missing process document: HOWTO.md" in x for x in build.lint(src))
+    src = copy_source(tmp_path / "src2")
+    path = src / "HOWTO.md"
+    path.write_text(path.read_text() + "\nSee the " + build.FORBIDDEN_TERMS[0] + " site.\n")
+    assert any("HOWTO.md contains forbidden term" in x for x in build.lint(src))
+
+
+def test_t34_howto_names_every_role_and_every_step_of_the_review_cycle():
+    """K2: every role in build.ROLES, and every step name of the table in REVIEW_CYCLE.md, in order as headings."""
+    t = _howto()
+    for role in build.ROLES:
+        assert "`%s`" % role in t, role
+    steps = _cycle_step_names()
+    assert steps == ["Review", "Amendment", "Approval", "Repair", "Re-review", "Close"], steps
+    cycle = t.split("\n## The cycle in order\n")[1].split("\n## ")[0]
+    headings = _headings(cycle, "### ")
+    position = 0
+    for step in steps:
+        found = [i for i, h in enumerate(headings) if i >= position and step in h]
+        assert found, (step, headings)
+        position = found[0] + 1
+    for word in ("Intent", "Plan", "Build", "ready check", "Merge"):
+        assert any(word.lower() in h.lower() for h in headings), (word, headings)
+
+
+def test_t34_howto_has_its_sections_and_three_labels_for_every_step():
+    t = _howto()
+    sections = _headings(t, "## ")
+    expected = ["When to use each agent", "The cycle in order", "The human gates", "Breaches",
+                "Solo or team", "What differs by client", "How to start"]
+    positions = [sections.index(h) for h in expected]
+    assert positions == sorted(positions), sections
+    cycle = t.split("\n## The cycle in order\n")[1].split("\n## ")[0]
+    for block in cycle.split("\n### ")[1:]:
+        for label in ("**What usually happens.**", "**What you do.**", "**What the agents will not do.**"):
+            assert label in block, (block.splitlines()[0], label)
+    agents = t.split("\n## When to use each agent\n")[1].split("\n## ")[0]
+    assert "| Use it when | Do not use it when |" in agents
+
+
+def test_t34_howto_links_the_procedures_and_does_not_contradict_them():
+    t = _howto()
+    for path in ("docs/process/REVIEW_CYCLE.md", "docs/process/BREACH_PROCEDURE.md", "docs/templates/REVIEW_PLAN_TEMPLATE.md",
+                 "docs/templates/PULL_REQUEST_TEMPLATE.md", ".claude/agents/", ".github/agents/"):
+        assert path in t, path
+    assert "three runs" in t and "three runs" in _review_cycle()
+    assert "never moves a PR out of draft" in t or "never moves a pull request out of draft" in t
+    assert "fills in **Approved by**" in t and "**Amendment approved by**" in t
+
+
+def test_t34_howto_lists_the_human_gates_and_states_enforcement_per_client_as_far_as_verified():
+    t = _howto()
+    gates = t.split("\n## The human gates\n")[1].split("\n## ")[0]
+    for needle in ("status: accepted", "**Approved by**", "**Amendment approved by**", "out of draft", "merge",
+                   "guard-allow.json", "CI", "Pending human confirmation", "go-ahead"):
+        assert needle in gates, needle
+    client = t.split("\n## What differs by client\n")[1].split("\n## ")[0]
+    for needle in ("Claude Code", "Copilot", "unverified", "instruction only", "docs/agents/harness-capabilities.md",
+                   "main session", "skills"):
+        assert needle in client, needle
+    breach = t.split("\n## Breaches\n")[1].split("\n## ")[0]
+    for needle in (".manifold/guard-log.jsonl", "Rule exceptions", "docs/agents/", "docs/process/BREACH_PROCEDURE.md",
+                   ".manifold/guard-allow.json"):
+        assert needle in breach, needle
+    team = t.split("\n## Solo or team\n")[1].split("\n## ")[0]
+    assert "Review process" in team and "second approver" in team.lower()
+
+
+def test_t34_rendered_instructions_point_to_the_howto_in_every_profile_and_style():
+    """Owner's answer: the AGENTS.md block names docs/process/HOWTO.md; it is shipped in every profile, so no unshipped path."""
+    agents, rules = build.load_agents(ROOT), build.load_rules(ROOT)
+    for style in ("agents", "skills", "both"):
+        for profile in build.PROFILES:
+            block = build.render_instructions_block(agents, rules, style, profile)
+            assert len([x for x in block.splitlines() if "docs/process/HOWTO.md" in x]) == 1, (style, profile)
+            assert _unshipped_paths(block, profile) == [], (style, profile)
+
+
+def test_t34_howto_has_no_forbidden_term_and_no_bundle_version():
+    t = _howto().lower()
+    for term in build.FORBIDDEN_TERMS:
+        assert term not in t
+    assert (ROOT / "VERSION").read_text().strip() not in t
+
+
+# -------------------------------------------- README, INSTALL, MODELS, live protocol, CONTRIBUTING (T35)
+
+def test_t35_readme_has_eight_roles_one_install_table_and_the_whole_loop():
+    t = _doc("README.md")
+    assert "Seven" not in t and "seven" not in t.lower().replace("seventh", "")
+    assert t.startswith("# Manifold: base bundle\n\nEight focused agents")
+    roles = t.split("\n## The roles\n")[1].split("\n## ")[0]
+    for role in build.ROLES:
+        assert "| **%s** |" % role in roles, role
+    assert t.count("## What gets installed") == 1
+    loop = t.split("\n## How the roles fit the loop\n")[1].split("\n### ")[0]
+    for needle in ("REVIEW_PLAN_", "Amendment approved by", "Re-review", "Ready check", "Repair", "Amendment"):
+        assert needle in loop, needle
+    installed = t.split("\n## What gets installed\n")[1].split("\n## ")[0]
+    assert "| Path in your repo | Profiles | What |" in installed
+    for needle in (".manifold/hooks/guard.py", ".github/hooks/manifold-guard.json", ".manifold/scratch/", ".manifold/.gitignore",
+                   "docs/process/", "HOWTO.md", "REVIEW_PLAN_TEMPLATE", "PULL_REQUEST_TEMPLATE", "AGENT_FAILURES_TEMPLATE",
+                   "Review process", "coordinator"):
+        assert needle in installed, needle
+    skills = t.split("\n## Agent Skills (experimental)\n")[1].split("\n## ")[0]
+    for skill in build.SKILL_NAMES.values():
+        assert "`%s`" % skill in skills, skill
+    profiles = t.split("\n## Install profiles\n")[1].split("\n## ")[0]
+    assert "| planner, coder, bug-coder, reviewer, test-planner, test-coder, coordinator |" in profiles
+    assert "| scenario-writer, test-planner, test-coder, coordinator |" in profiles
+    assert "all eight" in profiles and "HOWTO.md" in t
+
+
+def test_t35_readme_describes_the_guard_and_its_residual_gap_and_drops_the_old_claims():
+    t = _doc("README.md")
+    section = t.split("\n### Rules are advice, not enforcement\n")[1].split("\n## ")[0].split("\n### ")[0]
+    for needle in ("guard", "Claude Code", "Copilot", "unverified", "main session", "script", "instruction", "INSTALL.md"):
+        assert needle in section, needle
+    assert "Nothing in this bundle stops an agent" not in t
+    assert "Optional hooks are on the" not in t
+    assert "the reviewer cannot edit files" not in t and "reviewer cannot edit" not in t
+    assert "writes exactly one file" in t or "one file" in t.split("| **reviewer** |")[1].split("\n")[0]
+
+
+def test_t35_user_documents_link_nothing_outside_the_zip_and_name_no_bundle_version():
+    """Open links into the source repository do not resolve in the zip; the version is read from VERSION, not typed."""
+    import re
+    version = (ROOT / "VERSION").read_text().strip()
+    for name in ("README.md", "INSTALL.md", "MODELS.md", "HOWTO.md", "CONTRIBUTING.md"):
+        text = _doc(name)
+        for target in re.findall(r"\]\(([^)\s]+)\)", text):
+            assert not target.startswith("../"), (name, target)
+        assert version not in text, name
+    assert "manifold-base-<version>" in _doc("INSTALL.md") and "manifold-base-<version>" in _doc("README.md")
+
+
+def test_t35_install_states_the_guard_per_client_and_how_a_human_grants_an_exception():
+    t = _doc("INSTALL.md")
+    for needle in ("Claude Code", "Copilot", "unverified", ".manifold/hooks/guard.py", ".github/hooks/manifold-guard.json",
+                   ".manifold/guard-allow.json", '"scope": "path"', "expires", ".manifold/guard-log.jsonl",
+                   ".manifold/scratch/", "instruction only", "docs/process/", "HOWTO.md", "docs/agents/harness-capabilities.md"):
+        assert needle in t, needle
+    manual = t.split("\n## Without Python\n")[1].split("\n## ")[0]
+    assert "payload/common/.manifold/" in manual and "guard" in manual
+    assert "git add" in t and "docs/process" in t.split("git add", 1)[1].split("\n")[0]
+
+
+def test_t35_models_says_phase_2_content_is_not_run_on_any_model():
+    t = _doc("MODELS.md")
+    assert "Phase 2 content (guard, coordinator, loop) is not run on any model" in t
+
+
+def test_t35_live_protocol_has_rows_for_the_guard_the_route_the_review_file_a_stop_and_the_coordinator():
+    t = (ROOT / "tests" / "live-protocol.md").read_text()
+    assert "six roles" not in t and "all seven" not in t and "**edits nothing**" not in t
+    rows = {}
+    for line in t.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if line.startswith("| ") and cells[0].isdigit():
+            assert len(cells) == 5, line
+            rows[int(cells[0])] = line.lower()
+    assert sorted(rows) == list(range(1, 14)), sorted(rows)
+    for number, needles in {9: ("guard", "refus"), 10: (".manifold/scratch/", "write"), 11: ("review_plan_", "one file"),
+                            12: ("checkpoint", "stop"), 13: ("coordinator", "draft")}.items():
+        for needle in needles:
+            assert needle in rows[number], (number, needle)
+    header = [x for x in t.splitlines() if x.startswith("| # |")][0]
+    assert "Claude Code" in header and "Copilot" in header
+
+
+def test_t35_contributing_says_how_the_hook_is_tested_and_lists_the_coordinator_role():
+    t = _doc("CONTRIBUTING.md")
+    for needle in ("tests/test_guard.py", "hooks/guard.py", "standard library", "exit code", "coordinator"):
+        assert needle in t, needle
+
+
+# ------------------------------------------------ INT-25: a skeptical test planner (T44 to T52)
+
+def _rule_text(rule_id):
+    """One rule source on one line, the way render_rules joins it."""
+    return " ".join((ROOT / "rules" / "core" / ("%s.md" % rule_id)).read_text().split())
+
+
+def test_int25_test_planner_reads_the_intent_judges_existing_tests_asks_and_never_approves():
+    """INT-25 S2, S3, S4, S6, S7 (T50): the planner is skeptical of the builders' tests and asks before it pads."""
+    for out in _both_flavors("test-planner"):
+        assert "so you do not duplicate coverage" not in out
+        for needle in ("originating intent", "adequate, thin or absent", "no gap found",
+                       "Questions for the human", "Unconfirmed: owner to confirm", "no quality repository",
+                       "never fill in **Approved by**"):
+            assert needle in out, needle
+
+
+def test_int25_test_coder_stops_on_approval_and_blocking_questions_and_keeps_a_failing_check_red():
+    """INT-25 S5 (T51): approval first, a blocking question stops the work, a failing check is a defect and stays red."""
+    for out in _both_flavors("test-coder"):
+        for needle in ("Approved by", "blocking question", "stays red", "call shape", "bug-coder"):
+            assert needle in out, needle
+
+
+def test_int25_test_plan_template_has_the_skeptical_sections_and_fields():
+    """INT-25 S2, S3, S4, S6 (T49)."""
+    t = (ROOT / "templates" / "PHASE_TEST_PLAN_TEMPLATE.md").read_text()
+    for heading in ("## Source intents", "## Coverage judgement", "## Gaps found", "## Questions for the human"):
+        assert heading in t, heading
+    for field in ("**Approved by:**", "**Derived from:**", "**Existing or new:**", "**Blocking:**", "**Answer:**"):
+        assert field in t, field
+
+
+def test_int25_rule_derive_tests_names_the_intent_and_asks_for_a_source_per_case():
+    """INT-25 S2 (T47): the old sentence that made the plan the only source is gone."""
+    t = _rule_text("derive-tests-from-plan")
+    assert "Test cases come from the phase plan's objective, file inventory and acceptance lines" not in t
+    for needle in ("originating intent", "gap check", "cites a source"):
+        assert needle in t, needle
+    for role in ("test-planner", "test-coder"):
+        for out in _both_flavors(role):
+            assert "Test cases come from the phase plan's objective, file inventory and acceptance lines" not in out
+            assert "cites a source" in out, role
+
+
+def test_int25_rule_black_box_limits_the_pseudo_holdout_to_repositories_without_a_quality_repository():
+    """INT-25 S7 (T48)."""
+    assert "no quality repository" in _rule_text("quality-side-is-black-box")
+
+
+def test_int25_test_planner_modes_say_who_is_held_out_from_what():
+    """INT-25 S7 (T50 follow-up, owner 2026-11-08): the scenario-mode planner is the quality side and reads
+    its own scenarios by design; the local-check planner never reads held-out scenarios and has no pseudo
+    hold-out where a quality repository exists."""
+    for out in _both_flavors("test-planner"):
+        local = out.split("- **Local-check mode**")[1].split("- **Scenario mode**")[0]
+        scenario = out.split("- **Scenario mode**")[1].split("\n\n")[0]
+        assert "you never read them" in local and "only where there is no quality repository" in local
+        assert "you are the quality side" in scenario
+        assert "read this repository's scenarios by design" in scenario
+        assert "the pseudo hold-out is not used" in scenario
+        assert "held-out scenarios are never read" not in scenario
+
+
+def test_int25_rule_builders_say_what_a_gap_check_is():
+    """INT-25 S2 (T48): a gap check is a local integration check the builders do not write."""
+    assert "gap check" in _rule_text("builders-dont-write-acceptance-tests")
+
+
+def test_int25_reviewer_checks_a_test_plan_for_reflection_inside_the_tests_pass_and_never_approves_it():
+    """INT-25 S1, S8 (T52, Open question 18 option A): a named section under the existing Tests pass, no new pass."""
+    for out in _both_flavors("reviewer"):
+        assert "## When the change includes a test plan" in out
+        section = out.split("## When the change includes a test plan")[1].split("\n## ")[0]
+        for sign in ("no intent cited", "every automated case pre-ticked", "no gaps", "no questions", "a case with no source"):
+            assert sign in section, sign
+        assert "**Tests**" in section and "PHASE_<N>_TEST_PLAN.md" in section
+        assert "never approve the test plan" in section
+        assert "no new pass" in section
+
+
+@pytest.mark.parametrize("role", ["test-planner", "test-coder"])
+def test_int25_both_flavors_carry_the_same_body(role):
+    """INT-25 S8 (T44): one source, so the two rendered bodies are identical."""
+    bodies = [out.split("\n---\n", 1)[1] for out in _both_flavors(role)]
+    assert bodies[0] == bodies[1]
+
+
+# The optional marker {{name?:role}} (owner's decision, 2026-11-08): names a role that some profile
+# may not install. Patterned on test_unknown_role_in_a_reference_is_rejected and
+# test_lint_rejects_a_reference_to_a_role_the_profile_lacks.
+
+@pytest.mark.parametrize("fmt,expected", [("claude", "`bug-coder`"), ("copilot", "`bug-coder`"), ("skills", "`fix-bug`")])
+def test_optional_name_marker_expands_like_name_per_flavor(fmt, expected):
+    assert build.expand_refs("see {{name?:bug-coder}}.", fmt, "x") == "see %s." % expected
+
+
+def test_optional_marker_with_an_unknown_role_is_rejected_when_expanded():
+    with pytest.raises(build.BuildError):
+        build.expand_refs("see {{name?:wizard}}", "skills", "x")
+
+
+def test_lint_passes_a_quality_role_that_names_the_optional_bug_coder(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "agents" / "scenario-writer.agent.md"
+    p.write_text(p.read_text().replace("## What you do not do", "Hand a defect to the {{name?:bug-coder}} where installed.\n\n## What you do not do", 1))
+    assert build.lint(src) == []
+
+
+def test_lint_still_rejects_an_optional_marker_naming_a_nonexistent_role(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "agents" / "scenario-writer.agent.md"
+    p.write_text(p.read_text().replace("## What you do not do", "Ask the {{name?:bug-coderr}}.\n\n## What you do not do", 1))
+    assert build.lint(src) != []
+
+
+def test_lint_still_rejects_the_plain_ref_to_bug_coder_from_test_coder(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "agents" / "test-coder.agent.md"
+    p.write_text(p.read_text().replace("## What you do not do", "See the {{ref:bug-coder}}.\n\n## What you do not do", 1))
+    assert any("test-coder refers to 'bug-coder'" in x and "quality" in x for x in build.lint(src))
+
+
+def test_test_coder_names_bug_coder_per_flavor():
+    fragments, rules = build.load_fragments(), build.load_rules()
+    text = _agent_text("test-coder")
+    assert "{{name?:bug-coder}}" in text
+    for fmt in ("claude", "copilot"):
+        out = build.render_agent("test-coder", text, fmt, fragments, rules)
+        assert "`bug-coder`" in out and "fix-bug" not in out and "{{" not in out
+    out = build.render_skill("test-coder", text, fragments, rules, build.read_version(ROOT))
+    assert "`fix-bug`" in out and "bug-coder" not in out and "{{" not in out

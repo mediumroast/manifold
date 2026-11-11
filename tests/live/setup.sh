@@ -16,8 +16,13 @@ case "$CLIENT" in
 esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PRODUCT_SRC="${PRODUCT_SRC:?set PRODUCT_SRC to the product repository to copy (see tests/live/README.md)}"
+LIVE_REPOS="${LIVE_REPOS:-product quality manifold}"            # LIVE_REPOS=manifold builds only the clone of this repository
+has() { case " $LIVE_REPOS " in *" $1 "*) return 0 ;; esac; return 1; }
+if has product; then
+  PRODUCT_SRC="${PRODUCT_SRC:?set PRODUCT_SRC to the product repository to copy (see tests/live/README.md)}"
+fi
 PUBLIC_SRC="${PUBLIC_SRC:-$(cd "$HERE/../.." && pwd)}"          # this repository, on the branch under test
+VERSION="$(tr -d '[:space:]' < "$PUBLIC_SRC/bundles/base/VERSION")"   # the bundle version; never written here by hand
 PRODUCT_BRANCH="${PRODUCT_BRANCH:-main}"
 ROOT="${LIVE_ROOT:-$HOME/manifold-live}/$CLIENT"
 
@@ -29,11 +34,12 @@ git_id() { git -C "$1" config user.name "Live Protocol"; git -C "$1" config user
 
 echo "== 1/6 Build the bundle zip from $PUBLIC_SRC ($(git -C "$PUBLIC_SRC" branch --show-current))"
 python3 "$PUBLIC_SRC/bundles/base/tools/build.py" --out "$ROOT/download" >/dev/null
-unzip -q "$ROOT/download/manifold-base-0.1.0.zip" -d "$ROOT/unzipped"
+unzip -q "$ROOT/download/manifold-base-$VERSION.zip" -d "$ROOT/unzipped"
 # the zip may or may not wrap everything in one folder; normalize to $ROOT/bundle
 if [ -f "$ROOT/unzipped/install.py" ]; then mv "$ROOT/unzipped" "$ROOT/bundle"
 else mv "$ROOT/unzipped/$(ls "$ROOT/unzipped" | head -1)" "$ROOT/bundle"; fi
 
+if has product; then
 echo "== 2/6 Product repository (scratch clone of the product repository, branch $PRODUCT_BRANCH)"
 git clone -q --branch "$PRODUCT_BRANCH" "$PRODUCT_SRC" "$ROOT/product"
 git -C "$ROOT/product" remote remove origin
@@ -58,29 +64,35 @@ echo "== 3/6 Python environment for the product tests (needs network)"
 python3 -m venv "$ROOT/product/.venv"
 "$ROOT/product/.venv/bin/pip" install -q -r "$ROOT/product/mcp-server/requirements.txt" -r "$ROOT/product/mcp-server/requirements-dev.txt" 2>&1 | grep -v 'notice' || true
 ( cd "$ROOT/product/mcp-server" && ../.venv/bin/python -m pytest -q 2>&1 | tail -1 )
+fi
 
+if has quality; then
 echo "== 4/6 Quality repository (empty on purpose)"
 git init -q -b main "$ROOT/quality"
 git_id "$ROOT/quality"
 printf '# quality-scratch\n\nBehavior scenarios for the protocol product.\n' > "$ROOT/quality/README.md"
 git -C "$ROOT/quality" add -A
 git -C "$ROOT/quality" commit -q -m "chore: initial commit"
+fi
 
+if has manifold; then
 echo "== 5/6 Dogfood repository (scratch clone of manifold itself)"
 git clone -q --branch "$(git -C "$PUBLIC_SRC" branch --show-current)" "$PUBLIC_SRC" "$ROOT/manifold"
 git -C "$ROOT/manifold" remote remove origin
 git_id "$ROOT/manifold"
 git -C "$ROOT/manifold" checkout -q -b live-protocol
 python3 -m venv "$ROOT/manifold/.venv"
-"$ROOT/manifold/.venv/bin/pip" install -q pytest 2>&1 | grep -v notice || true
+"$ROOT/manifold/.venv/bin/pip" install -q -r "$ROOT/manifold/server/requirements-dev.txt" -c "$ROOT/manifold/server/requirements.lock" 2>&1 | grep -v notice || true
 ( cd "$ROOT/manifold" && .venv/bin/python -m pytest -q bundles/base/tests 2>&1 | tail -1 )
+( cd "$ROOT/manifold/server" && ../.venv/bin/python -m pytest -q 2>&1 | tail -1 ) || true   # report the result; a known flaky test must not stop the setup
 mkdir -p "$ROOT/manifold/intent"
 cp "$HERE/fixtures/INT-1-installer-json-plan.md" "$ROOT/manifold/intent/"
 git -C "$ROOT/manifold" add -A
 git -C "$ROOT/manifold" commit -q -m "chore: plant protocol intent"
+fi
 
 echo "== 6/6 Tag the starting point of each repository"
-for r in product quality manifold; do git -C "$ROOT/$r" tag protocol-start; done
+for r in $LIVE_REPOS; do git -C "$ROOT/$r" tag protocol-start; done
 
 echo
 echo "Ready: $ROOT"

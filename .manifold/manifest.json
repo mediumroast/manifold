@@ -1,8 +1,8 @@
 {
   "name": "manifold",
   "bundle": "base",
-  "version": "0.1.0",
-  "installed_at": "2026-11-01T05:18:14Z",
+  "version": "0.2.0",
+  "installed_at": "2026-11-09T03:04:06Z",
   "formats": [
     "claude"
   ],
@@ -10,18 +10,28 @@
     "build"
   ],
   "files": {
-    ".claude/agents/bug-coder.md": "74f12963eda6149b73aee32aa9f6a751053d069c3838534fd76fb17be0cbe954",
-    ".claude/agents/coder.md": "09f6df9068a6a92d828e0031b884ef0efa0dfe99cfd36fd42d3b910aa8e13aed",
-    ".claude/agents/planner.md": "62faf8b5e0bbbe264c77adf86d9f6671d091131966079b21859e8b54fcd22824",
-    ".claude/agents/reviewer.md": "8eb8481169fc09aaa91bc31704bcbfcb908497ebe00deb89e150ea128f6f5cf8",
-    ".claude/agents/test-coder.md": "5dd9f53b5eecaa5a3d6684b63d71f0d6126e36ddef87c1356d6b3102ebad6f25",
-    ".claude/agents/test-planner.md": "bc0aa2e95358e37dc105ac37cb6db55a8f3ab548d104f939ce5c39fb4f4c7768",
+    ".claude/agents/bug-coder.md": "74b2655d97804f4de98b745aef42589d98f3c7583b1b67c74cc883e854cca534",
+    ".claude/agents/coder.md": "095f97261dec7b4ea3cebc2bc0972be83f295c27449294ed7f8f74c7505199b1",
+    ".claude/agents/coordinator.md": "602cc21a14eabdf9fd0f27d7cd4b28f282f54d79e8f5bfe674753009ebcc1f19",
+    ".claude/agents/planner.md": "942b19ba2eb8f87977f18c11b8d41b6441392e761b4d4a5b954e72d1c5adc03a",
+    ".claude/agents/reviewer.md": "39d6c141799705e2ec3075364800cdbedd9f0b6c9fc9d8055594b6d991a41d60",
+    ".claude/agents/test-coder.md": "9bc647fcfd90ed24ba1c03328860895dc2783011ced91901d16903d4d44b827d",
+    ".claude/agents/test-planner.md": "811f51fd35ad5837aec3c5316768cce865811c3230e25c5aeb6bbc0cb44138cb",
+    ".manifold/.gitignore": "c42ebf9d1d28a44836f4c3322fcb833f765066f5794023452780fe9d0ba8686c",
     ".manifold/LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     ".manifold/NOTICE": "ceb5dd17a271ae545ba0af0da2bfc651df569b602993948538a8a215a4a27867",
+    ".manifold/hooks/guard.py": "77ed4d1b270e1a5c509e470ef04ef452cb7f2bfd9e2bec7305fd6f44f357ed9d",
+    ".manifold/scratch/.gitignore": "240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d",
+    "docs/process/BREACH_PROCEDURE.md": "33486e8835b06c272644bb19b70fe4169afeebe3282ddc342c774dd89dc3da9b",
+    "docs/process/HOWTO.md": "dde61df3293d6f66261d6f196fb81472cfd849c200a3cfeebe56f2aea8b065ae",
+    "docs/process/REVIEW_CYCLE.md": "a7323f83daac792994a225d2755c039210ddea08bdc4e6133dfc60e011ccad87",
+    "docs/templates/AGENT_FAILURES_TEMPLATE.md": "ce71c64535898789c60cc5a36bcf31935de06353b8f3e2a60affdf4f2d2e7987",
     "docs/templates/INTENT_TEMPLATE.md": "6b1d9f2c279a8ef71197949dc0ebff64b1b6f1a60ebb6a7a754e358eec868ab6",
-    "docs/templates/PHASE_PLAN_TEMPLATE.md": "ae83ed50fc8ead4c1e87218cc6cbc6f02e8862ea2ab134a2ce5839c37da909ee",
-    "docs/templates/PHASE_TEST_PLAN_TEMPLATE.md": "21fe2ca30359836035bd33d7256d8c2a85ecd192219fc17d62538f4fb080a73e",
-    "docs/templates/REVIEW_TEMPLATE.md": "64e3f686f4c59502c5ee6c8b9e3f6d405c645ecc622a2ce5dd8980adfd61937d",
+    "docs/templates/PHASE_PLAN_TEMPLATE.md": "7d28bac9d15c5e73708713672fc6bef74e877af24f6f4453c99bbe9f66bf4502",
+    "docs/templates/PHASE_TEST_PLAN_TEMPLATE.md": "edd58e73333072cf87e37b9d06ecae6d498c58cb168f5bb7db2917d9a70921c6",
+    "docs/templates/PULL_REQUEST_TEMPLATE.md": "76b7a1f06762a9a2e4429737ac0c9b07e5dbe30778419208778e32cbb71df566",
+    "docs/templates/REVIEW_PLAN_TEMPLATE.md": "c68573b432b2874e85beedc0c84a60a29617b2ba3f18d5baa584aa5cc92b9072",
+    "docs/templates/REVIEW_TEMPLATE.md": "f0df02fc2a82706b1fab75501c28bf35f9a7f18de61208a5415fa6189c1434d8",
     "docs/templates/WT_TEMPLATE.md": "6a8b50f86a14651c8ecf0b51db87b68ccbd8313c6ebc5bee60883b724a5e9af9"
   },
   "instructions": {

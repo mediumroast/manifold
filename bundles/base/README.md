@@ -1,20 +1,21 @@
 # Manifold: base bundle
 
-Seven focused agents, the document templates they use, and a small library of **rules** ("don't do this, and here is what to do instead") that every agent carries. They give a product repository a consistent loop (intent, plan, build, local checks, review) and give a separate **quality repository** the means to judge product behavior independently. Drop it into any repository, in any language.
+Eight focused agents, the document templates they use, a small library of **rules** ("don't do this, and here is what to do instead") that every agent carries, and a **guard hook** that refuses the most common rule breaches where the client lets it. They give a product repository a consistent loop (intent, plan, build, local checks, review, repair, re-review) and give a separate **quality repository** the means to judge product behavior independently. Drop it into any repository, in any language.
 
-The roadmap is in [ROADMAP.md](../../ROADMAP.md).
+How the agents and the cycle work together is in [HOWTO.md](HOWTO.md), which is installed as `docs/process/HOWTO.md`. The roadmap (`ROADMAP.md`) is kept at the root of the Manifold source repository and is not part of this bundle.
 
 ## The roles
 
 | Agent | Use it to | It does not |
 |---|---|---|
-| **planner** | Turn an intent (or a request, issue or bug report) into a sequenced `PHASE_<N>_PLAN.md` in `docs/plans/`. Given an intent it asks the analyst questions and **flags concerns it cannot resolve** | write production code, accept its own plan |
-| **coder** | Execute an approved plan task by task, verifying each step and keeping the plan truthful | refactor outside the task, write behavior scenarios |
+| **planner** | Turn an intent (or a request, issue or bug report) into a sequenced `PHASE_<N>_PLAN.md` in `docs/plans/`, and amend a plan from a review. Given an intent it asks the analyst questions and **flags concerns it cannot resolve** | write production code, accept its own plan, fill in an approval line |
+| **coder** | Execute an approved plan one checkpoint at a time, task by task, verifying each step and keeping the plan truthful | refactor outside the task, write behavior scenarios |
 | **bug-coder** | Triage walkthrough notes (`WT_<NNN>_<slug>.md`), write a **failing test first**, then fix, root cause first | build new features, edit the failing test to make it pass |
-| **reviewer** | Review a change against the plan, the intent and `REVIEW.md`; report findings by severity | edit, fix or approve anything |
-| **test-planner** | Plan tests. In a product repository: the repository's own unit and integration checks, from a phase plan. In a quality repository: automation of behavior scenarios | write test code |
-| **test-coder** | Implement the automated cases of a test plan | change production code, edit scenarios, run the full suite |
+| **reviewer** | Review a change against the plan, the intent and the review policy; write the findings by pass and severity to `docs/plans/REVIEW_PLAN_<N>.md` (the one file it writes) | edit code or the plan, fix findings, approve or block anything |
+| **test-planner** | Plan tests. In a product repository: the repository's own unit and integration checks, from a phase plan and its intent, looking for gaps before it reads the existing tests and asking the human what it cannot decide. In a quality repository: automation of behavior scenarios | write test code |
+| **test-coder** | Implement the automated cases of a human-approved test plan; it stops on a blocking question and leaves a failing check red | change production code, edit scenarios, run the full suite |
 | **scenario-writer** | Expand an accepted intent's **scenario seeds** into behavior scenarios for the quality repository, from the intent and public behavior only | read the product's source code, approve its own scenarios |
+| **coordinator** | Run the review-to-repair cycle by starting the other agents with named inputs, write the pull request's ready check, record breaches and list process gaps | do any agent's work, approve, move a pull request out of draft, merge |
 
 ## How the roles fit the loop
 
@@ -24,16 +25,22 @@ Every step ends by writing an artifact, and a human accepts it before the next s
 |---|---|---|---|
 | 1. Intent | A person with the AI as a drafting partner | `intent/INT-<n>-<slug>.md` from `INTENT_TEMPLATE.md`, with public **scenario seeds** | A person sets `status: accepted` |
 | 2. Plan | planner | `docs/plans/PHASE_<N>_PLAN.md` (source intent, concerns flagged) | A person fills in **Approved by** |
-| 3. Build | coder (with test-planner and test-coder for local checks) | The change, local unit and integration tests, a completion summary in the plan | The reviewer reports; a person approves |
-| 4. Review | reviewer | Findings by pass and severity | A person decides |
-| 5. Scenarios | scenario-writer, in the quality repository | `scenarios/*.md`, citing the intent and its seeds | A person marks them `approved` |
-| 6. Behavior run | test-planner and test-coder (scenario mode), then people | A satisfaction report per seed, against thresholds | A person reads it |
-| 7. Fix | bug-coder | Failing test, fix, triage row | The person who reported it confirms |
+| 3. Build | coder, one checkpoint at a time (with test-planner and test-coder for local checks) | The change, local unit and integration tests, a completion summary in the plan | A person reads each checkpoint report, approves the test plan and answers its questions |
+| 4. Review | reviewer, in its own session | The review document `docs/plans/REVIEW_PLAN_<N>.md`: findings by pass and severity | A person decides what to repair, defer or reject |
+| 5. Amendment | planner | A `## Review amendment (round <n>)` section in the plan: a repair checkpoint, what is not repaired and why | A person fills in **Amendment approved by** |
+| 6. Repair | coder, not the agent that reviewed | The repair checkpoint's tasks, with failing tests first | A person reads the report |
+| 7. Re-review | reviewer, in a new session | A new revision of the same review document | A person says the cycle is done |
+| 8. Ready check | coordinator | The "Ready check" in the pull request, from `PULL_REQUEST_TEMPLATE.md` | A person confirms CI, moves the pull request out of draft and merges |
+| 9. Scenarios | scenario-writer, in the quality repository | `scenarios/*.md`, citing the intent and its seeds | A person marks them `approved` |
+| 10. Behavior run | test-planner and test-coder (scenario mode), then people | A satisfaction report per seed, against thresholds | A person reads it |
+| 11. Fix | bug-coder | Failing test, fix, triage row | The person who reported it confirms |
+
+The procedure for steps 4 to 8 is `docs/process/REVIEW_CYCLE.md`; [HOWTO.md](HOWTO.md) walks through it.
 
 ### Two layers of testing
 
 - **Local checks** (unit, integration) live **in the product repository**, are written alongside the code, and are maintained there.
-- **Behavior scenarios** (end-to-end user stories) live in a **separate quality repository**, are written from the intent rather than the implementation, and are never shown to the builder in full. The idea is the same as a holdout set in machine learning: the AI that builds the code must not be the AI that writes the tests that judge it, or the two can quietly agree with each other instead of with what the user wanted.
+- **Behavior scenarios** (end-to-end user stories) live in a **separate quality repository**, are written from the intent rather than the implementation, and are never shown to the builder in full. The idea is the same as a holdout set in machine learning: the AI that builds the code must not be the AI that writes the tests that judge it, or the two can quietly agree with each other instead of with what the user wanted. Where no quality repository exists, the test planner's reading of the originating intent and its questions to the human act as a pseudo hold-out; that does not replace a quality repository.
 
 Four things have to be separate for that to be real:
 
@@ -72,15 +79,24 @@ Use Claude Sonnet for every role. Smaller models (Claude Haiku 4.5 and MAI-Code-
 
 ### Rules are advice, not enforcement
 
-Agent definitions and rules are **instructions that a model is likely, not certain, to follow**. Nothing in this bundle stops an agent from breaking a rule. Where a rule must always hold, back it with something deterministic: branch protection, required reviews, separate credentials, or (in Claude Code) hooks. Each rule's *Enforce* line names the mechanism where one exists. Optional hooks are on the [roadmap](../../ROADMAP.md).
+Agent definitions and rules are **instructions that a model is likely, not certain, to follow**. The bundle adds one deterministic check, the **guard hook** (`.manifold/hooks/guard.py`), which a client runs before a tool call. It refuses a shell command that writes a file (heredocs, `sed -i`, `tee`, `>`, writes to `/tmp`), a write by the `reviewer` or the `coordinator` outside what each may write (the review document; the breach record and new draft intents), and a write to the guard, its log, the exception file or an agent definition. A blocked agent is pointed to the sanctioned route: the client's Write or Edit tool, or a snippet written to `.manifold/scratch/` and run.
+
+What it does not cover:
+
+- **It reads commands, not scripts.** A script that writes when it is run from a file is not read, so a snippet in `.manifold/scratch/` can write what the guard refuses to write directly. The limits are listed in the header of `.manifold/hooks/guard.py`; the coordinator compares each agent's "Rule exceptions" line with the diff and the guard log to find what got through.
+- **Claude Code** runs the hook from each agent's definition: in subagents, and in a session started with `claude --agent <name>`. The ordinary main session and agents from plugins are not covered.
+- **GitHub Copilot.** The installer adds `.github/hooks/manifold-guard.json` with `--format copilot`. Whether VS Code Copilot Chat runs it, and how it names the agent that is running, is unverified, so treat Copilot as instruction only until you have seen a refusal. The same rules, the same route and the same report line are in the agent text either way. [INSTALL.md](INSTALL.md) states this per client.
+- **Agent Skills** carry no hook.
+
+For rules that must always hold, back them with something outside the agent too: branch protection, required reviews, separate credentials. Each rule's *Enforce* line names the mechanism where one exists.
 
 ## Install profiles
 
 | Profile | Install it in | Roles |
 |---|---|---|
-| `build` (default) | A product repository | planner, coder, bug-coder, reviewer, test-planner, test-coder |
-| `quality` | A **separate** repository for behavior scenarios | scenario-writer, test-planner, test-coder |
-| `single` | One repository that holds both (a way to start) | all seven, with a warning that verification is **not independent** |
+| `build` (default) | A product repository | planner, coder, bug-coder, reviewer, test-planner, test-coder, coordinator |
+| `quality` | A **separate** repository for behavior scenarios | scenario-writer, test-planner, test-coder, coordinator |
+| `single` | One repository that holds both (a way to start) | all eight, with a warning that verification is **not independent** |
 
 ```bash
 ./install.sh --target /path/to/product-repo --apply                    # build
@@ -91,11 +107,11 @@ The test agents work in two modes, decided by their input: from a phase plan (lo
 
 ## Install
 
-You need Python 3.8 or newer (standard library only). It is tested on 3.10 and 3.11; 3.8 compatibility is checked statically.
+You need Python 3.10 or newer (standard library only). The CI matrix tests it on 3.10 and 3.12; 3.11 was run by hand.
 
 ```bash
-unzip manifold-base-0.1.0.zip
-cd manifold-base-0.1.0
+unzip manifold-base-<version>.zip
+cd manifold-base-<version>
 ./install.sh --target /path/to/your/repo            # shows the plan; writes nothing
 ./install.sh --target /path/to/your/repo --apply    # installs
 ```
@@ -104,28 +120,21 @@ The installer is a **dry run by default** and never overwrites a file you have e
 
 ## What gets installed
 
-| Path in your repo | What |
-|---|---|
-| `.claude/agents/{planner,coder,bug-coder,test-planner,test-coder}.md` | The agents, in Claude Code format (default) |
-| `.github/agents/{planner,coder,bug-coder,test-planner,test-coder}.agent.md` | The same agents in GitHub Copilot format (`--format copilot` or `both`) |
-| `.claude/skills/{plan-change,execute-plan,fix-bug,plan-tests,write-tests}/SKILL.md` | The same roles as Agent Skills (`--format skills`, experimental; see below) |
-| `docs/templates/{PHASE_PLAN_TEMPLATE,PHASE_TEST_PLAN_TEMPLATE,WT_TEMPLATE}.md` | Document templates the agents follow |
-| `AGENTS.md` (managed block) | Which agents exist, where plans live, and the working rules. Created if you have neither `AGENTS.md` nor `CLAUDE.md` |
-| `.manifold/` | A manifest of what was installed (with hashes), the license, and archived copies of anything replaced |
-
-## What gets installed
-
 | Path in your repo | Profiles | What |
 |---|---|---|
-| `.claude/agents/<role>.md` | by role | The agents, in Claude Code format (default) |
+| `.claude/agents/<role>.md` | by role | The agents, in Claude Code format (default). Each carries the guard hook in its definition |
 | `.github/agents/<role>.agent.md` | by role | The same agents in GitHub Copilot format (`--format copilot` or `both`) |
-| `.claude/skills/<skill>/SKILL.md` | by role | The same roles as Agent Skills (`--format skills`, experimental; see below) |
-| `docs/templates/INTENT_TEMPLATE.md`, `WT_TEMPLATE.md`, `PHASE_TEST_PLAN_TEMPLATE.md` | all | Intent (with scenario seeds), walkthrough notes, test plan |
-| `docs/templates/PHASE_PLAN_TEMPLATE.md`, `REVIEW_TEMPLATE.md` | build, single | Phase plan; the review policy to copy to `REVIEW.md` |
-| `REVIEW.md` | build, single | A generic starter review policy for the reviewer agent. Created only if you have no `REVIEW.md`; a different `REVIEW.md` of yours is reported as a conflict and left untouched unless you use `--force` (which archives it first) |
+| `.github/hooks/manifold-guard.json` | all, Copilot format only | The guard hook for Copilot; whether VS Code Copilot Chat runs it is unverified (see INSTALL.md) |
+| `.claude/skills/<skill>/SKILL.md` | by role | The same roles as Agent Skills (`--format skills`, experimental; see below). No hook |
+| `.manifold/hooks/guard.py` | all | The guard hook script (standard library only). Every format installs it |
+| `.manifold/scratch/` | all | The sanctioned place for a throwaway snippet an agent runs; git-ignored by a `.gitignore` inside it |
+| `.manifold/.gitignore` | all | Keeps the guard's local refusal log `.manifold/guard-log.jsonl` out of git |
+| `docs/process/REVIEW_CYCLE.md`, `BREACH_PROCEDURE.md`, `HOWTO.md` | all | The review-to-repair loop; how breaches are found and recorded; the guide to the whole cycle |
+| `docs/templates/INTENT_TEMPLATE.md`, `WT_TEMPLATE.md`, `PHASE_TEST_PLAN_TEMPLATE.md`, `AGENT_FAILURES_TEMPLATE.md` | all | Intent (with scenario seeds), walkthrough notes, test plan, breach record |
+| `docs/templates/PHASE_PLAN_TEMPLATE.md`, `REVIEW_TEMPLATE.md`, `REVIEW_PLAN_TEMPLATE.md`, `PULL_REQUEST_TEMPLATE.md` | build, single | Phase plan (with checkpoints); the review policy to copy to `REVIEW.md` if you want one; the review document the reviewer writes; the pull request description the coordinator fills in |
 | `docs/templates/SCENARIO_TEMPLATE.md`, `SATISFACTION_REPORT_TEMPLATE.md` | quality, single | Behavior scenario; run report |
 | `.manifold/quality-settings.json` | quality, single | Thresholds, visibility and gate mode (yours to edit) |
-| `AGENTS.md` (managed block) | all | Which agents exist, where documents live, and the working rules. Created if you have neither `AGENTS.md` nor `CLAUDE.md` |
+| `AGENTS.md` (managed block) | all | Which agents exist, where documents live, and the working rules. Created if you have neither `AGENTS.md` nor `CLAUDE.md`. Outside the block the installer adds two empty sections for you: `Project commands` and `Review process` (repository type and second approver); agents read `Review process` and never fill it in |
 | `.manifold/` | all | A manifest of what was installed (with hashes), the license, and archived copies of anything replaced. **Always inside the repository you install into, never in your home folder** |
 
 ## Using the agents
@@ -136,16 +145,17 @@ A typical flow in a product repository:
 
 1. **You**: write an intent from `docs/templates/INTENT_TEMPLATE.md` (or ask the planner to interview you), including scenario seeds. Set `status: accepted` when you are satisfied.
 2. **planner**: "Plan intent/INT-1-claim-status.md." It asks what the intent leaves open, flags any concerns, and writes `docs/plans/PHASE_1_PLAN.md`. You review it and fill in **Approved by**.
-3. **coder**: "Execute docs/plans/PHASE_1_PLAN.md." It works task by task, runs each acceptance check, and ticks the task off (`[x]`, or `[~]` if blocked) with the command and result.
+3. **coder**: "Execute docs/plans/PHASE_1_PLAN.md." It works one checkpoint at a time, task by task, runs each acceptance check, and ticks the task off (`[x]`, or `[~]` if blocked) with the command and result. It stops at the end of each checkpoint.
 4. **test-planner** and **test-coder**: write the repository's own unit and integration checks from the plan.
-5. **reviewer**: "Review this branch against docs/plans/PHASE_1_PLAN.md." It reports findings; you decide.
-6. **bug-coder**: after a walkthrough, or when a quality run reports a failure, it writes a failing test, fixes the code without touching that test, and asks you to confirm before closing.
+5. **reviewer**: "Review this branch against docs/plans/PHASE_1_PLAN.md." It writes `docs/plans/REVIEW_PLAN_1.md`; you decide what to repair, defer or reject. Then the **planner** amends the plan from that file, you fill in **Amendment approved by**, the **coder** runs the repair checkpoint, and the **reviewer** re-reviews the same file.
+6. **coordinator**: "Run the review cycle for docs/plans/PHASE_1_PLAN.md." It starts the agents above in turn, stops where you must decide, and writes the pull request's ready check. You move the pull request out of draft and merge.
+7. **bug-coder**: after a walkthrough, or when a quality run reports a failure, it writes a failing test, fixes the code without touching that test, and asks you to confirm before closing.
 
 And in the quality repository: **scenario-writer** expands the intent's seeds into scenarios; you approve them; **test-planner** and **test-coder** automate them against a deployed environment; a satisfaction report is written per seed.
 
 ## Agent Skills (experimental)
 
-The same seven roles can be installed as [Agent Skills](https://agentskills.io), an open format for portable instructions that many tools support, instead of (or alongside) agent files:
+The same eight roles can be installed as [Agent Skills](https://agentskills.io), an open format for portable instructions that many tools support, instead of (or alongside) agent files:
 
 ```bash
 ./install.sh --target /path/to/your/repo --format skills --apply
@@ -160,6 +170,7 @@ The same seven roles can be installed as [Agent Skills](https://agentskills.io),
 | `write-tests` | test-coder |
 | `review-change` | reviewer |
 | `write-scenarios` | scenario-writer |
+| `coordinate-cycle` | coordinator |
 
 - **Where they go.** `.claude/skills/<name>/SKILL.md`, the directory Claude Code reads. Other tools that support the standard may look elsewhere: check their documentation and pass `--skills-dir`. GitHub Copilot supports skills, but its repository path is not confirmed here.
 - **How to run one.** In Claude Code, type `/plan-change` or ask for it by name.
@@ -173,7 +184,7 @@ Each agent carries the rules that apply to its role, and the same rules are summ
 
 ## Customizing
 
-**Tool restrictions are advice, not a sandbox.** In Claude Code the reviewer cannot edit files and the planning roles cannot use web tools, because the installed agent files list those tools as disallowed. That removes the tool from the agent itself. An agent can still hand work to a subagent that has the tool, and a model can choose to ignore a rule, so keep your client's own permission prompts on.
+**Tool restrictions are advice, not a sandbox.** In Claude Code the planning roles cannot use web tools, because the installed agent files list those tools as disallowed. That removes the tool from the agent itself. The reviewer and the coordinator do have an edit tool, because each must write one kind of file; what they may write is limited by the guard hook, where the client runs it, and by their instructions otherwise. An agent can still hand work to a subagent that has the tool, and a model can choose to ignore a rule, so keep your client's own permission prompts on.
 
 **Hold-out data needs a real boundary.** The rule that keeps builders away from the quality side's scenarios is written text. In a live run, a smaller model read them anyway with shell `cat` and `find`, and the client's default sandbox did not block reads outside the repository. If the scenarios must stay hidden, deny reads to their path in your client's sandbox settings, or keep the quality repository on another account or machine.
 

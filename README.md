@@ -35,7 +35,7 @@ cd manifold-base-<version>
 ./install.sh --target /path/to/your/repo --apply    # installs
 ```
 
-It needs Python 3.8 or newer and uses only the standard library.
+It needs Python 3.10 or newer and uses only the standard library.
 
 ## What is coming
 

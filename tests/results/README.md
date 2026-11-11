@@ -9,6 +9,8 @@ Run ids are the client and a sequence number, so they carry no dates. A re-test 
 |---|---|---|---|---|
 | [claude-code-1](claude-code-1/summary.md) | Claude Code 2.1.312 | Sonnet 5.5 | `70615bf` | 58 Pass, 7 Partial, 2 Fail, of 67 |
 | [copilot-1](copilot-1/summary.md) | GitHub Copilot in VS Code (Local) | Sonnet 4.6, Haiku 4.5, MAI-Code-1.1-Flash | `8ed7b20` | 43 Pass, 10 Partial, 8 Fail, 6 Not run, of 67 |
+| [claude-code-2](claude-code-2/summary.md) | Claude Code (version not recorded) | Sonnet family (exact model not recorded) | `f2120f4` (0.2.0) | 10 Pass, of 10 (testset only) |
+| [copilot-2](copilot-2/summary.md) | GitHub Copilot in VS Code (Local) | Sonnet 4.6 (planner) | `f2120f4` (0.2.0) | 9 Pass, 1 Fail, of 10 (testset only) |
 
 Planned next: the guardrail probes on the hardened bundle for Sonnet, Haiku and MAI, and the sandbox-boundary probe (see [`docs/plans/design/testing-protocol.md`](../../docs/plans/design/testing-protocol.md)). The model recommendation that follows from these runs is [`bundles/base/MODELS.md`](../../bundles/base/MODELS.md).
 

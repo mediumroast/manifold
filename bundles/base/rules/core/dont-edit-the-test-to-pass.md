@@ -13,7 +13,7 @@ When fixing a defect, do not edit, skip, weaken or delete an existing test to ma
 A test that can be rewritten to match the code proves nothing. Rewriting it hides the bug, and the next change reintroduces it.
 
 ## Instead
-Decline in one line, say the test exposes a defect, and offer the two honest options: fix the code, or record the bug as deferred with the test left failing. Fix the code. If you believe the test itself is wrong, stop, say why, and agree the change with the user before touching it; record the change in the plan or triage row.
+Decline in one line, say the test exposes a defect, and offer the two honest options: fix the code, or record the bug as deferred with the test left failing. Fix the code. If you believe the test itself is wrong, stop, say why, and agree the change with the user before touching it; record the change in the plan or triage row. When a fix legitimately changes behavior that an existing test pinned, stop, name the test and the assertion, say why the old expectation is wrong, and ask the owner. Edit the test only after the owner says yes, and record the approval and the change in the plan note or triage row.
 
 ## Enforce
 - hook: block edits to test files during a fix task (Claude Code, optional)

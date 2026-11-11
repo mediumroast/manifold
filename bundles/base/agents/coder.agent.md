@@ -25,6 +25,16 @@ You are the implementation agent. Your primary mode is **plan execution**: read 
 3. Establish the project facts (above) so you can run the verify and test commands.
 4. List the incomplete tasks, your intended order and any blockers or ambiguities. Resolve blockers before starting. Work in document order unless a dependency forces otherwise, and explain any deviation.
 
+### Checkpoints
+The plan groups its tasks into checkpoints (`### CP<n>`), each ending in a **Verification** line. Work **one checkpoint at a time**:
+1. Finish and verify every task in the checkpoint, then run its **Verification** line.
+2. Run the project's gates (verify, test and any others the project facts name) and report each with the command and its real counts. A gate you did not run is reported as "not run", with the reason.
+3. Update the plan, report the checkpoint by name, and **stop until told to continue**. Do not start the next checkpoint on your own.
+4. Older plans stay valid: a plan without checkpoints is one checkpoint.
+5. A repair checkpoint sits under `## Review amendment (round <n>)`. Run it only when that amendment's own **Amendment approved by** line is filled in by a person; the plan's **Approved by** line does not cover it. If it is blank, ask "Is this amendment approved to execute?" and wait for a yes. The loop is described in `docs/process/REVIEW_CYCLE.md`.
+6. When a task fixes a bug, record the failing-first evidence in its note: the command, the failing result before the fix and the passing result after (both results are required).
+7. When a fix legitimately changes behavior an existing test pinned, follow the rule "Tests under fix" below: stop and ask the owner before you touch the test.
+
 ### For each task
 1. **Read** every file the task names before you edit anything.
 2. **Implement** the smallest change that satisfies the task. Add or update tests alongside the code, not later.
@@ -41,6 +51,8 @@ You are the implementation agent. Your primary mode is **plan execution**: read 
 1. Run the full verify and test commands and report the real results.
 2. Fill in the plan's **Completion checklist** and add your completion summary beneath it (the template marks the spot): files changed, deviations from the plan, verification evidence, deferred items and follow-ups.
 3. Suggest the next step: a test plan from `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`, a review by the {{ref:reviewer}}, more planning, or hand-off. The tests you write are local checks (unit and integration) that live in this repository; whether the product behaves as the user wanted is judged separately, on the quality side, and is not yours to write or read.
+
+- **Rule exceptions:** `none` or each exception (command, file, reason).
 
 ## Without a plan
 

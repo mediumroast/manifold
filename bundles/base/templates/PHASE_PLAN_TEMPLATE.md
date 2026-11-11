@@ -54,13 +54,23 @@
 ## Tasks
 
 > **Instructions for the coder:**
-> Work tasks in the order listed. For each task: read the named files first,
-> implement the described change, run the verify command and the task's
-> acceptance check, then update the todo marker `[ ]` → `[x]` and add a
-> one-line completion note directly beneath the task header: what changed, the
-> command run, the result. If a task is blocked, mark it `[~]` with a note and
-> surface it immediately; do not skip ahead. When all tasks are complete, fill
-> in the completion summary under the Completion checklist.
+> Work one checkpoint at a time, tasks in the order listed. For each task: read
+> the named files first, implement the described change, run the verify command
+> and the task's acceptance check, then update the todo marker `[ ]` → `[x]` and
+> add a one-line completion note directly beneath the task header: what changed,
+> the command run, the result. At the end of a checkpoint run its Verification,
+> report the gates with command and real counts, and stop until told to
+> continue. If a task is blocked, mark it `[~]` with a note and surface it
+> immediately; do not skip ahead. When all tasks are complete, fill in the
+> completion summary under the Completion checklist.
+
+<!--
+  Group the tasks into numbered checkpoints, in dependency order, every task in
+  exactly one. Each checkpoint ends in a demonstrable result (its Verification).
+  Older plans stay valid: a plan without checkpoints is one checkpoint.
+-->
+
+### CP1 — <name>
 
 ### Task 1 — <imperative short title>
 **Files:**
@@ -83,6 +93,10 @@
 
 <!-- Copy the task block above for each additional task. Put a test task next to the code task it verifies. -->
 
+**Verification:** <!-- A demonstrable result that ends this checkpoint: a command and the output that shows it. -->
+
+<!-- Copy the checkpoint heading and the Verification line for each additional checkpoint. -->
+
 ## Completion checklist
 <!-- Replace <verify command> and <test command> with the real commands from the project facts. -->
 - [ ] All tasks marked [x] by the coder
@@ -96,5 +110,39 @@
   - Files changed
   - Deviations from the plan, and why ("None." if none)
   - Verification evidence: command and result for each check; anything not run, and why
+  - Gates run: each command with its real counts, or "not run" and why
+  - Rule exceptions: none, or each (command, file, reason)
   - Deferred items and follow-ups
 -->
+
+<!--
+  Review amendment (planner, from a review document). Delete this whole section
+  in a plan that has none. Add one section per review round, below the checklist.
+  The planner adds the repair checkpoint; a human fills in the approval line;
+  the coder runs the checkpoint only after that. Do not change completed tasks
+  or the original acceptance lines.
+-->
+
+## Review amendment (round <n>)
+**Source:** <!-- `docs/plans/REVIEW_PLAN_<N>.md`, revision <r> -->
+**Amendment approved by:** <!-- name and YYYY-MM-DD; blank until a human fills it in. The planner never fills in this line. The coder will not run the repair checkpoint without it. -->
+
+### CP<n> — Repairs from review round <n>
+
+### Task <n> — <imperative short title>
+**Source:** `REVIEW_PLAN_<N>.md F<id>`
+**Files:**
+**Action:** CREATE | MODIFY | DELETE
+**Change:**
+**Acceptance:**
+**Todo:** [ ]
+
+**Verification:** <!-- A demonstrable result that ends the repair checkpoint. -->
+
+**Findings not repaired:**
+
+| Finding | End | Reason |
+|---|---|---|
+| `F<id>` | deferred \| rejected | |
+
+**Open questions:** <!-- For the human, or "None." -->

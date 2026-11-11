@@ -1,9 +1,13 @@
 # Review instructions
 <!--
-  Template for the review policy of a repository.
-  Copy this file to REVIEW.md at the repository root and edit it. The reviewer agent
-  reads it before every review. Findings never approve or block a change on their
-  own: a human approves, informed by the findings. Delete these comments when done.
+  Template for the optional review policy of a repository, REVIEW.md.
+  You do not need this file: the reviewer agent has built-in defaults (the passes, Important versus
+  Nit, a nit cap of 5). Copy this file to REVIEW.md at the repository root only to add to them or
+  exclude from them: additions and exclusions, such as repository-specific rules under a pass or
+  paths not to report. When REVIEW.md exists, the reviewer uses it instead of the defaults, so keep
+  anything you still want from the defaults. Who approves a change is not stated here: it is in the
+  "Review process" section of AGENTS.md. Findings never approve or block a change on their own.
+  Delete these comments when done.
 -->
 
 ## Passes
@@ -28,6 +32,6 @@ Report at most **5** nits per review; summarize the rest as a count.
 - Generated files and anything the continuous integration already enforces
 - <!-- add paths or topics specific to this repository -->
 
-## Human threshold
+## Who approves
 
-<!-- Who must approve before merge, and which kinds of change need a second person (for example migrations, public interfaces, security-sensitive code). -->
+Stated in `AGENTS.md`, section "Review process". Do not repeat or add an approval rule here.

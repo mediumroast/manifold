@@ -13,21 +13,25 @@ deterministic: building twice produces identical bytes.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
+import importlib.util
 import json
 import re
 import sys
+import sysconfig
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ROLES = ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer")
+ROLES = ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "scenario-writer", "coordinator")
 # Which roles each install profile gets. build: a product repository. quality: a separate
 # repository for behavior scenarios. single: one repository holding both (verification is
-# not independent there, and the installer says so).
+# not independent there, and the installer says so). The coordinator is in every profile
+# (owner's answer, INT-22 Open questions); its text uses no {{ref:...}} markers for that reason.
 PROFILES = {
-    "build": ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder"),
-    "quality": ("scenario-writer", "test-planner", "test-coder"),
+    "build": ("planner", "coder", "bug-coder", "reviewer", "test-planner", "test-coder", "coordinator"),
+    "quality": ("scenario-writer", "test-planner", "test-coder", "coordinator"),
     "single": ROLES,
 }
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
@@ -42,12 +46,14 @@ CLAUDE_AGENT_PATH = ".claude/agents/{name}.md"
 COPILOT_AGENT_PATH = ".github/agents/{name}.agent.md"
 SKILL_NAMES = {"planner": "plan-change", "coder": "execute-plan", "bug-coder": "fix-bug",
                "reviewer": "review-change", "test-planner": "plan-tests", "test-coder": "write-tests",
-               "scenario-writer": "write-scenarios"}
+               "scenario-writer": "write-scenarios", "coordinator": "coordinate-cycle"}
 SKILL_ROOT = ".claude/skills"
 SKILL_PATH = SKILL_ROOT + "/{name}/SKILL.md"
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SKILL_ALLOWED_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
-REF_RE = re.compile(r"\{\{(ref|name):([a-z-]+)\}\}")
+# {{name?:role}} is like {{name:role}} but names a role some profile may not install (lint skips
+# the "profile does not install it" check for this kind only; an unknown role still fails).
+REF_RE = re.compile(r"\{\{(ref|name\??):([a-z-]+)\}\}")
 ALL_PROFILES = tuple(PROFILES)
 # template file -> (installed path, profiles that receive it)
 TEMPLATE_PATHS = {
@@ -56,13 +62,39 @@ TEMPLATE_PATHS = {
     "PHASE_TEST_PLAN_TEMPLATE.md": ("docs/templates/PHASE_TEST_PLAN_TEMPLATE.md", ALL_PROFILES),
     "WT_TEMPLATE.md": ("docs/templates/WT_TEMPLATE.md", ALL_PROFILES),
     "REVIEW_TEMPLATE.md": ("docs/templates/REVIEW_TEMPLATE.md", ("build", "single")),
-    "REVIEW_STARTER.md": ("REVIEW.md", ("build", "single")),
+    "REVIEW_PLAN_TEMPLATE.md": ("docs/templates/REVIEW_PLAN_TEMPLATE.md", ("build", "single")),
+    "PULL_REQUEST_TEMPLATE.md": ("docs/templates/PULL_REQUEST_TEMPLATE.md", ("build", "single")),
+    "AGENT_FAILURES_TEMPLATE.md": ("docs/templates/AGENT_FAILURES_TEMPLATE.md", ALL_PROFILES),
     "SCENARIO_TEMPLATE.md": ("docs/templates/SCENARIO_TEMPLATE.md", ("quality", "single")),
     "SATISFACTION_REPORT_TEMPLATE.md": ("docs/templates/SATISFACTION_REPORT_TEMPLATE.md", ("quality", "single")),
+}
+# process document (in process/) -> (installed path, profiles)
+PROCESS_PATHS = {
+    "process/REVIEW_CYCLE.md": ("docs/process/REVIEW_CYCLE.md", ALL_PROFILES),
+    "process/BREACH_PROCEDURE.md": ("docs/process/BREACH_PROCEDURE.md", ALL_PROFILES),
+    # The guide lives at the bundle root (it is also copied to the zip root, like the README) and installs next to the procedures.
+    "HOWTO.md": ("docs/process/HOWTO.md", ALL_PROFILES),
 }
 # config file (in config/) -> (installed path, profiles). User-editable after install.
 SETTINGS_FILES = {
     "quality-settings.json": (".manifold/quality-settings.json", ("quality", "single")),
+}
+# Hook scripts, path relative to the bundle root -> (installed path, profiles). Standard library only.
+HOOK_FILES = {
+    "hooks/guard.py": (".manifold/hooks/guard.py", ALL_PROFILES),
+}
+# Copilot hook file (shape per docs/agents/harness-capabilities.md: `version: 1`, `hooks.preToolUse`),
+# path relative to the bundle root -> (installed path, profiles). Shipped for the copilot format only.
+# Whether VS Code Local enforces it is unverified (the owner chose to ship it and observe, plan task 7).
+COPILOT_HOOK_FILES = {
+    "hooks/copilot-guard.json": (".github/hooks/manifold-guard.json", ALL_PROFILES),
+}
+# Small support files, path relative to the bundle root -> (installed path, profiles).
+# scratch.gitignore keeps the scratch folder out of git without touching the repository's own .gitignore;
+# manifold.gitignore keeps the guard's local refusal log out of git (hooks/guard.py writes it).
+SUPPORT_FILES = {
+    "config/scratch.gitignore": (".manifold/scratch/.gitignore", ALL_PROFILES),
+    "config/manifold.gitignore": (".manifold/.gitignore", ALL_PROFILES),
 }
 QUALITY_SETTINGS_KEYS = (
     "satisfaction.minimum_overall", "satisfaction.minimum_per_seed", "failures.critical_max_rate",
@@ -218,7 +250,7 @@ def expand_refs(text: str, fmt: str, who: str) -> str:
         if role not in ROLES:
             raise BuildError("%s: unknown role %r in a reference" % (who, role))
         name, noun = (SKILL_NAMES[role], "skill") if fmt == "skills" else (role, "agent")
-        return "`%s`" % name if kind == "name" else "`%s` %s" % (name, noun)
+        return "`%s`" % name if kind in ("name", "name?") else "`%s` %s" % (name, noun)
     return REF_RE.sub(sub, text)
 
 
@@ -227,6 +259,39 @@ def expand_refs(text: str, fmt: str, who: str) -> str:
 CLAUDE_DENY = (("edit", ("Edit", "Write", "NotebookEdit")),
                ("execute", ("Bash",)),
                ("web", ("WebFetch", "WebSearch")))
+
+
+# The guard hook every Claude Code agent gets in its frontmatter (docs/agents/harness-capabilities.md,
+# rows "Frontmatter hooks per agent" and the `$CLAUDE_PROJECT_DIR` item). The matcher has only letters
+# and `|`, so Claude Code reads it as an exact list of tool names. The command uses ${CLAUDE_PROJECT_DIR}
+# in double quotes (shell form) because the hook's working directory is not stated by the source.
+GUARD_MATCHER = "Bash|Edit|Write|MultiEdit|NotebookEdit"
+#
+# The command fails closed (CP2a T14b, owner decision of 2026-11-07): Claude Code treats every exit code
+# except 2 as a non-blocking error, which is a silent allow, so a missing script, a missing python3, or a
+# guard that dies with any other code must end in exit 2 with a plain message. The EXIT trap does the
+# mapping so that the command still ends with the guard call itself. Whether the shell Claude Code runs
+# the string through accepts this form is unverified: confirm with the hooks page (shell form) and T37c.
+# The Copilot hook file (hooks/copilot-guard.json) carries the same sentence; a test compares the two.
+GUARD_MISSING_MESSAGE = ("The Manifold guard script .manifold/hooks/guard.py is missing, so this tool call is blocked. "
+                         "Restore it by re-running the installer from the Manifold bundle "
+                         "(install.py --apply; see INSTALL.md), or ask a human to.")
+GUARD_COMMAND = (
+    'g="${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py"; '
+    "test -f \"$g\" || { echo '%s' >&2; exit 2; }; "
+    "command -v python3 >/dev/null 2>&1 || { echo '%s' >&2; exit 2; }; "
+    "trap 'c=$?; if [ $c -ne 0 ] && [ $c -ne 2 ]; then "
+    "echo \"Manifold guard failed (exit code $c), so this tool call is blocked; tell a human.\" >&2; exit 2; fi' EXIT; "
+    'python3 "${CLAUDE_PROJECT_DIR}/.manifold/hooks/guard.py" --client claude'
+) % (GUARD_MISSING_MESSAGE, GUARD_MISSING_MESSAGE)
+GUARD_HOOKS_CLAUDE = (
+    "hooks:",
+    "  PreToolUse:",
+    "    - matcher: %s" % yaml_str(GUARD_MATCHER),
+    "      hooks:",
+    "        - type: command",
+    "          command: %s" % yaml_str(GUARD_COMMAND),
+)
 
 
 def claude_disallowed(blocks) -> list:
@@ -254,6 +319,7 @@ def render_agent(role: str, text: str, fmt: str, fragments: dict, rules) -> str:
         denied = claude_disallowed(blocks)
         if denied:
             fm.append("disallowedTools: %s" % ", ".join(denied))
+        fm.extend(GUARD_HOOKS_CLAUDE)
     elif fmt == "copilot":
         fm = []
         for key, raw in blocks:
@@ -360,9 +426,13 @@ def render_instructions_block(agents: dict, rules, style: str = "agents", profil
     docs = ["- Intents (what and why, with scenario seeds) follow `docs/templates/INTENT_TEMPLATE.md`."]
     if profile in ("build", "single"):
         docs += ["- Plans live in `docs/plans/PHASE_<N>_PLAN.md`. Start from `docs/templates/PHASE_PLAN_TEMPLATE.md`; the coder records its completion summary in the plan.",
-                 "- Review policy lives in `REVIEW.md`, written from `docs/templates/REVIEW_TEMPLATE.md`."]
-    docs += ["- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
-             "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`."]
+                 "- Review: the passes and severity defaults are built into the `reviewer`; `REVIEW.md` (from `docs/templates/REVIEW_TEMPLATE.md`) is optional and adds repository-specific passes or exclusions; who approves is stated in the `Review process` section below.",
+                 "- Each review leaves `docs/plans/REVIEW_PLAN_<N>.md`, written from `docs/templates/REVIEW_PLAN_TEMPLATE.md`.",
+                 "- Pull requests follow `docs/templates/PULL_REQUEST_TEMPLATE.md`; only a human moves a pull request out of draft."]
+    docs += ["- The review-to-repair loop (who does each step, how it ends, the ready check) is written in `docs/process/REVIEW_CYCLE.md`; `docs/process/HOWTO.md` is the guide to the whole cycle.",
+             "- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
+             "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`.",
+             "- Rule breaches by agents are recorded from `docs/templates/AGENT_FAILURES_TEMPLATE.md` by the procedure in `docs/process/BREACH_PROCEDURE.md`."]
     if profile in ("quality", "single"):
         docs += ["- Behavior scenarios follow `docs/templates/SCENARIO_TEMPLATE.md`; run results follow `docs/templates/SATISFACTION_REPORT_TEMPLATE.md`; thresholds and visibility are settings in `.manifold/quality-settings.json`."]
     lines += ["", "## Plans and templates", ""] + docs + ["", "## Working rules", ""]
@@ -385,6 +455,44 @@ def flatten_settings(data, prefix=""):
         else:
             out[name] = value
     return out
+
+
+def is_stdlib(name: str) -> bool:
+    names = getattr(sys, "stdlib_module_names", None)  # Python 3.10 and later
+    if names is not None:
+        return name in names
+    try:
+        spec = importlib.util.find_spec(name)
+    except (ImportError, ValueError):
+        return False
+    if spec is None:
+        return False
+    origin = spec.origin or ""
+    return origin in ("built-in", "frozen") or (origin.startswith(sysconfig.get_paths()["stdlib"])
+                                                 and "site-packages" not in origin)
+
+
+def lint_hook(path: Path, rel: str) -> list:
+    """A hook script must compile and import only the standard library (it runs on a machine with nothing installed)."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+        compile(tree, rel, "exec")
+    except (SyntaxError, ValueError) as exc:
+        return ["%s does not compile: %s" % (rel, exc)]
+    problems = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [a.name.split(".")[0] for a in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                problems.append("%s: relative import; a hook script must stand alone" % rel)
+                continue
+            names = [(node.module or "").split(".")[0]]
+        else:
+            continue
+        problems.extend("%s imports %r, which is not in the standard library" % (rel, n)
+                        for n in names if n and not is_stdlib(n))
+    return problems
 
 
 def lint(root: Path = ROOT):
@@ -423,7 +531,9 @@ def lint(root: Path = ROOT):
             for style in INSTRUCTION_STYLES:
                 guard(render_instructions_block, agents, rules, style, profile)
         for role, text in agents.items():
-            for _kind, ref in REF_RE.findall(text):
+            for kind, ref in REF_RE.findall(text):
+                if kind == "name?":
+                    continue  # optional: may name a role the profile lacks; an unknown role fails in expand_refs
                 for profile, roles in PROFILES.items():
                     if role in roles and ref not in roles:
                         problems.append("%s refers to %r, which the %s profile does not install" % (role, ref, profile))
@@ -437,6 +547,22 @@ def lint(root: Path = ROOT):
     for name in TEMPLATE_PATHS:
         if not (root / "templates" / name).exists():
             problems.append("missing template: %s" % name)
+    for name in PROCESS_PATHS:
+        if not (root / name).exists():
+            problems.append("missing process document: %s" % name)
+    for rel in list(HOOK_FILES) + list(COPILOT_HOOK_FILES) + list(SUPPORT_FILES):
+        if not (root / rel).exists():
+            problems.append("missing file: %s" % rel)
+        elif rel in HOOK_FILES and rel.endswith(".py"):
+            problems.extend(lint_hook(root / rel, rel))
+        elif rel in COPILOT_HOOK_FILES:
+            try:
+                data = json.loads((root / rel).read_text(encoding="utf-8"))
+            except ValueError as exc:
+                problems.append("%s is not valid JSON: %s" % (rel, exc))
+                continue
+            if data.get("version") != 1 or not isinstance(data.get("hooks", {}).get("preToolUse"), list):
+                problems.append("%s must have version 1 and a hooks.preToolUse list" % rel)
     for name in SETTINGS_FILES:
         path = root / "config" / name
         if not path.exists():
@@ -453,7 +579,10 @@ def lint(root: Path = ROOT):
                 if key not in flat:
                     problems.append("%s: missing setting %s" % (name, key))
     for path in list((root / "agents").glob("*.md")) + list((root / "rules").rglob("*.md")) + \
-            list((root / "templates").glob("*.md")) + list((root / "fragments").glob("*.md")):
+            list((root / "templates").glob("*.md")) + list((root / "fragments").glob("*.md")) + \
+            list((root / "process").glob("*.md")) + [root / "HOWTO.md"]:
+        if not path.exists():
+            continue  # a missing HOWTO.md is reported above, with the other process documents
         text = path.read_text(encoding="utf-8").lower()
         for term in FORBIDDEN_TERMS:
             if term in text:
@@ -489,6 +618,11 @@ def build_payload(root: Path = ROOT):
             src = "payload/%s/%s" % (fmt, target)
             files[src] = data
             bucket.append({"path": target, "src": src, "sha256": sha256(data), "role": role})
+    for fname, (target, profiles) in COPILOT_HOOK_FILES.items():
+        data = (root / fname).read_bytes()
+        src = "payload/copilot/%s" % target
+        files[src] = data
+        copilot.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
     for role in ROLES:
         name = SKILL_NAMES[role]
         data = render_skill(role, agents[role], fragments, rules, version).encode("utf-8")
@@ -501,8 +635,18 @@ def build_payload(root: Path = ROOT):
         src = "payload/common/%s" % target
         files[src] = data
         common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
+    for fname, (target, profiles) in PROCESS_PATHS.items():
+        data = (root / fname).read_bytes()
+        src = "payload/common/%s" % target
+        files[src] = data
+        common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
     for fname, (target, profiles) in SETTINGS_FILES.items():
         data = (root / "config" / fname).read_bytes()
+        src = "payload/common/%s" % target
+        files[src] = data
+        common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
+    for fname, (target, profiles) in list(HOOK_FILES.items()) + list(SUPPORT_FILES.items()):
+        data = (root / fname).read_bytes()
         src = "payload/common/%s" % target
         files[src] = data
         common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
@@ -540,7 +684,7 @@ def build_zip(root: Path = ROOT, out_dir: Path = None) -> Path:
     zip_path = out_dir / ("%s.zip" % top)
     entries = dict(files)
     entries["bundle.json"] = (json.dumps(bundle, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    for fname in ("README.md", "INSTALL.md", "MODELS.md", "LICENSE", "NOTICE", "install.py", "install.sh"):
+    for fname in ("README.md", "INSTALL.md", "MODELS.md", "HOWTO.md", "LICENSE", "NOTICE", "install.py", "install.sh"):
         entries[fname] = (root / fname).read_bytes()
     executable = {"install.py", "install.sh"}
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:

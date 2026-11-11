@@ -14,11 +14,24 @@ CLIENT="${1:-}"; CMD="${2:-}"; ARG="${3:-}"
 case "$CLIENT" in claude|copilot) ;; *) echo "usage: $0 claude|copilot ready|reset <repo>|evidence <label>|where" >&2; exit 2 ;; esac
 ROOT="${LIVE_ROOT:-$HOME/manifold-live}/$CLIENT"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-[ -d "$ROOT" ] || { echo "$ROOT does not exist. Run setup.sh $CLIENT first." >&2; exit 1; }
+# LIVE_REPOS: which repositories the tree holds (default product quality manifold; setup.sh uses the same variable).
+LIVE_REPOS="${LIVE_REPOS:-product quality manifold}"
+# MANIFOLD_DIR: read the real checkout instead of $ROOT/manifold. Only `evidence` and `where` may run then; ready and reset refuse.
+MANIFOLD_DIR="${MANIFOLD_DIR:-}"
+has() { case " $LIVE_REPOS " in *" $1 "*) return 0 ;; esac; return 1; }
+repo_dir() { if [ "$1" = manifold ] && [ -n "$MANIFOLD_DIR" ]; then echo "$MANIFOLD_DIR"; else echo "$ROOT/$1"; fi; }
+if [ -n "$MANIFOLD_DIR" ]; then
+  case "$CMD" in ready|reset) echo "$CMD is not allowed while MANIFOLD_DIR is set: it commits, tags or resets with git reset --hard and git clean." >&2; exit 1 ;; esac
+  [ -d "$MANIFOLD_DIR" ] || { echo "MANIFOLD_DIR $MANIFOLD_DIR is not a folder." >&2; exit 1; }
+  export MANIFOLD_DIR
+else
+  [ -d "$ROOT" ] || { echo "$ROOT does not exist. Run setup.sh $CLIENT first." >&2; exit 1; }
+fi
+export LIVE_REPOS LIVE_ROOT="${LIVE_ROOT:-$HOME/manifold-live}"
 
 case "$CMD" in
   where)
-    ls -d "$ROOT"/*/ ;;
+    for r in $LIVE_REPOS; do echo "$(repo_dir "$r")/"; done ;;
 
   ready)
     # Every reset returns a repository to this baseline and wipes whatever an agent wrote after it. An
@@ -35,9 +48,11 @@ if "(confirmed for the protocol)" not in text:
     open(path, "w").write(text)
 PY
     }
-    seed product "cd mcp-server && ../.venv/bin/python -m pytest -q ." none
-    seed manifold ".venv/bin/python -m pytest -q bundles/base/tests" ".venv/bin/python bundles/base/tools/build.py --check"
-    for r in product quality manifold; do
+    if [ "${LIVE_SEED:-}" != none ]; then   # LIVE_SEED=none: leave AGENTS.md "Project commands" as the repository has it
+      has product && seed product "cd mcp-server && ../.venv/bin/python -m pytest -q ." none
+      has manifold && seed manifold ".venv/bin/python -m pytest -q bundles/base/tests" ".venv/bin/python bundles/base/tools/build.py --check"
+    fi
+    for r in $LIVE_REPOS; do
       cd "$ROOT/$r"
       if [ -n "$(git status --porcelain)" ]; then
         git add -A
@@ -46,12 +61,14 @@ PY
       git tag -f protocol-ready >/dev/null
       echo "$r: baseline is $(git rev-parse --short HEAD) on $(git branch --show-current)"
     done
-    cd "$ROOT/product"
-    git checkout -q review-target
-    git rebase -q live-protocol                 # the review branch must carry the installed agents too
-    git tag -f protocol-review-target >/dev/null
-    git checkout -q live-protocol
-    echo "product: review-target rebased onto the baseline" ;;
+    if has product; then
+      cd "$ROOT/product"
+      git checkout -q review-target
+      git rebase -q live-protocol               # the review branch must carry the installed agents too
+      git tag -f protocol-review-target >/dev/null
+      git checkout -q live-protocol
+      echo "product: review-target rebased onto the baseline"
+    fi ;;
 
   reset)
     case "$ARG" in product|quality|manifold) ;; *) echo "reset needs: product | quality | manifold" >&2; exit 2 ;; esac
@@ -65,9 +82,10 @@ PY
 
   evidence)
     [ -n "$ARG" ] || { echo "evidence needs a label, for example task2" >&2; exit 2; }
+    mkdir -p "$ROOT"                             # with MANIFOLD_DIR the evidence folder is outside the repository
     OUT="$ROOT/evidence/$ARG"; mkdir -p "$OUT"
-    for r in product quality manifold; do
-      cd "$ROOT/$r"
+    for r in $LIVE_REPOS; do
+      cd "$(repo_dir "$r")"
       { echo "# branch: $(git branch --show-current)"; git status --short; } > "$OUT/$r.status.txt"
       git diff HEAD > "$OUT/$r.diff.patch" || true
       git log --oneline --decorate -12 > "$OUT/$r.log.txt"
