@@ -15,10 +15,10 @@ standard input. The guard enforces three rules and refuses the call when one is 
 2. Write allowlist (rules `write-allowlist` and `protected-file`): the `reviewer` may write only
    `docs/plans/REVIEW_PLAN_<N>.md`; the `coordinator` may write `docs/agents/*-failures.md`
    and create (not replace) `intent/INT-*.md`. The identity is normalised (`Reviewer`,
-   `manifold:reviewer` are `reviewer`). A file inside a git worktree under the project directory is judged for
-   these two allowlists relative to that worktree (its nearest ancestor with a `.git` entry), because the hook's
-   project directory can be the main checkout while the agent works in `.claude/worktrees/<name>/`; the protected
-   files and definitions below are still judged relative to the project directory, by the end of the path.
+   `manifold:reviewer` are `reviewer`). A file inside any checkout (the main checkout or a linked worktree, wherever
+   it sits on disk) of the same git repository as the project directory is judged for these two allowlists relative
+   to that checkout's root, because the hook's project directory can be the main checkout or one worktree while the
+   agent works in another; the protected files and definitions below are still judged by the end of the path.
 3. Protected files (rule `protected-file`), for every agent including one with no identity, against
    Write/Edit and the shell, after resolving `./`, `..`, case and symlinks:
    - always, with no exception route: `.manifold/guard-allow.json`, `.manifold/guard-log.jsonl`,
@@ -79,7 +79,7 @@ Residual gaps (stated, not fixed), one per line:
 - `sed` with a `w` command (it cannot be told from text without parsing sed);
 - other languages, editors and tools than the ones named in the shell rule;
 - a `cd` in an earlier call followed by a bare file name;
-- worktrees: a git checkout (a directory with a `.git` entry) is recognised only under the project directory, so the reviewer and coordinator allowlists judge a file there relative to that checkout; a worktree outside the project directory is judged as a path outside the project and matches no allowlist; `.manifold/guard-allow.json` and `.manifold/guard-log.jsonl` are always the project directory's own, never a worktree's;
+- worktrees: a checkout counts as part of the project's repository only when its `.git` proves it (a `.git` directory, or a `.git` file whose git directory sits in the common directory's `worktrees/` folder, holds `commondir` and points back at that `.git` file); a checkout of another repository, a forged or unreadable `.git`, or a path in no checkout is judged as a path outside the project and matches no allowlist; whoever can write inside the repository's own `.git` directory can forge that proof; `.manifold/guard-allow.json` and `.manifold/guard-log.jsonl` are always the project directory's own, never another checkout's, so every checkout that can be a project directory needs its own installed guard;
 - tools the guard does not look at;
 - clients and sessions the hook does not cover: the main session under per-agent hooks, plugin agents, and
   Copilot, where enforcement is unverified;
@@ -1101,7 +1101,7 @@ def run(args):
         exists = os.path.exists(full)
         used = None
         # Judge the path as written and the path after symlinks are resolved: both must pass.
-        for shown, local in write_spellings(project_dir, path):
+        for shown, local in write_spellings(project_dir, path, agent_type):
             allowed, message = classify_write(agent_type, shown, exists, allow, local)
             if not allowed:
                 if problem:
@@ -1130,35 +1130,83 @@ def real_target(full):
     return os.path.join(os.path.realpath(head), *tail) if tail else os.path.realpath(head)
 
 
-def checkout_relative(target, base):
-    """The path of `target` relative to the nearest directory between it and `base` that holds a `.git` entry (a
-    worktree has a `.git` file), or None when there is none. `base` itself is not looked at: the main checkout is the
-    project. An error here propagates, and main() turns it into a refusal."""
-    d = os.path.dirname(target)
-    while d != base and not os.path.relpath(d, base).startswith(".."):
+def find_checkout(start):
+    """The nearest directory at or above `start` that holds a `.git` entry (file or directory), or None. An error
+    here propagates, and main() turns it into a refusal."""
+    d = os.path.abspath(start)
+    while True:
         if os.path.lexists(os.path.join(d, ".git")):
-            return os.path.relpath(target, d)
+            return d
         parent = os.path.dirname(d)
         if parent == d:
-            break
+            return None
         d = parent
-    return None
 
 
-def write_spellings(project_dir, path):
+def _read_line(path):
+    """The first line of a small text file, stripped, or None when it cannot be read (it then proves nothing)."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.readline().strip() or None
+    except (OSError, ValueError):
+        return None
+
+
+def repository_id(root):
+    """The real path of the git common directory of the checkout at `root`, or None when `root` does not prove it.
+    A main checkout has a `.git` directory, which is its common directory. A linked worktree has a `.git` file
+    `gitdir: <common>/worktrees/<name>`; that directory holds `commondir` and a `gitdir` file that must point back at
+    this checkout's `.git` file. A forged `.git` entry (a file that names another checkout's git directory, a
+    `commondir` that names a repository the git directory does not sit in) has no matching back-link and gives None."""
+    dot = os.path.join(root, ".git")
+    if os.path.isdir(dot):
+        return os.path.realpath(dot)
+    line = _read_line(dot) if os.path.isfile(dot) else None
+    if not line or not line.startswith("gitdir:"):
+        return None
+    gitdir = os.path.realpath(os.path.join(root, line[len("gitdir:"):].strip()))
+    common_text = _read_line(os.path.join(gitdir, "commondir"))
+    back_text = _read_line(os.path.join(gitdir, "gitdir"))
+    if not common_text or not back_text:
+        return None
+    common = os.path.realpath(os.path.join(gitdir, common_text))
+    if os.path.dirname(gitdir) != os.path.join(common, "worktrees"):
+        return None
+    if os.path.realpath(os.path.join(gitdir, back_text)) != os.path.realpath(dot):
+        return None
+    return common
+
+
+def checkout_relative(target, project_repo):
+    """The path of `target` relative to the root of the checkout that holds it, when that checkout belongs to the
+    same git repository as the project directory (`project_repo` is its repository_id); else None. The checkout can
+    be the main checkout or any linked worktree, wherever it sits on disk."""
+    if project_repo is None:
+        return None
+    root = find_checkout(os.path.dirname(target))
+    if root is None or repository_id(root) != project_repo:
+        return None
+    return os.path.relpath(target, root)
+
+
+def write_spellings(project_dir, path, agent_type=None):
     """(project-relative spelling, checkout-relative spelling or None) pairs to judge for a written path: as written,
     and after resolving symlinks in the path and in the project directory. A path outside the project is judged as
-    given. The checkout-relative spelling is set only for a path inside a worktree under the project directory."""
+    given. The checkout-relative spelling is looked up only for the reviewer and the coordinator, whose allowlists
+    use it, and is set only when the file lies in a checkout of the project directory's own repository."""
     full = os.path.abspath(path if os.path.isabs(path) else os.path.join(project_dir, path))
+    project_repo = None
+    if normalise_agent(agent_type) in ("reviewer", "coordinator"):
+        root = find_checkout(os.path.realpath(project_dir))
+        project_repo = repository_id(root) if root else None
     out = []
     for target, base, resolved in ((full, os.path.abspath(project_dir), False),
                                    (real_target(full), os.path.realpath(project_dir), True)):
         rel = os.path.relpath(target, base)
         # Outside the project: the path as given, and for the resolved spelling the resolved absolute path, so a
         # symlink that points at another checkout's definitions is judged by where it lands (CP2b R1).
-        outside = rel.startswith("..")
-        shown = (target if resolved else path) if outside else rel
-        pair = (shown, None if outside else checkout_relative(target, base))
+        shown = (target if resolved else path) if rel.startswith("..") else rel
+        pair = (shown, checkout_relative(target, project_repo))
         if pair not in out:
             out.append(pair)
     return out
