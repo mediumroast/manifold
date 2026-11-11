@@ -1078,7 +1078,7 @@ Note (2026-11-08): the table is under "Traceability (T43)" after the Completion 
 - [ ] CP2a: **Amendment approved by** is filled by a human; T14a to T14g are marked [x]; each CP2 review finding F1 to F10 is repaired, deferred or rejected as the table under CP2a says; the CP2a re-review is in the CP2b table (R1 to R12), not in a separate review file
 - [ ] CP2b: **Amendment approved by** is filled by a human; T14h to T14m are marked [x]; each re-review point R1 to R12 is repaired, deferred or rejected as the table under CP2b says; the residuals are stated once in the `guard.py` docstring and in "Guard limits and exit codes"; the review of the final commit in `REVIEW_PLAN_2.md` confirms it
 - [ ] A review of the final commit exists as `docs/plans/REVIEW_PLAN_2.md`, written by the `reviewer` in its own session using the standard above; each finding is repaired, deferred or rejected with a reason; the owner has approved the agent-behavior text (K5)
-- [x] CI on the pushed commit is green and read by a human (owner, 2026-11-10: all 7 jobs green on `ea1ee23`, run 42836756250 `server` and 42836756260 `ci`; read again if a later commit is pushed)
+- [x] CI on the pushed commit is green and read by a human (owner, 2026-11-10: all 7 jobs green on `ea1ee23`, run 42836756250 `server` and 42836756260 `ci`; and again on `4e44022`, the head reviewed after `REVIEW_PLAN_2.md`, run 42956741701 `server` and 42956741849 `ci`; PR #29 on `c9bdf17`, run 42957504629 `server` and 42957504609 `ci`; the owner confirmed in chat. Plan-only commits after `4e44022` are not covered; read again if code changes)
 - [ ] No [~] blocked items outstanding except those waiting on a human run
 - [ ] Summary note added by the coder below this line
 
