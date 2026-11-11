@@ -2,7 +2,7 @@
   "name": "manifold",
   "bundle": "base",
   "version": "0.2.0",
-  "installed_at": "2026-11-09T03:04:06Z",
+  "installed_at": "2026-11-11T20:08:15Z",
   "formats": [
     "claude"
   ],
@@ -20,7 +20,7 @@
     ".manifold/.gitignore": "c42ebf9d1d28a44836f4c3322fcb833f765066f5794023452780fe9d0ba8686c",
     ".manifold/LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     ".manifold/NOTICE": "ceb5dd17a271ae545ba0af0da2bfc651df569b602993948538a8a215a4a27867",
-    ".manifold/hooks/guard.py": "77ed4d1b270e1a5c509e470ef04ef452cb7f2bfd9e2bec7305fd6f44f357ed9d",
+    ".manifold/hooks/guard.py": "5ca3c4fcc759451b4578e1414c035e5b44d58e5e4a0ceeafdf803744a1c1c855",
     ".manifold/scratch/.gitignore": "240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d",
     "docs/process/BREACH_PROCEDURE.md": "33486e8835b06c272644bb19b70fe4169afeebe3282ddc342c774dd89dc3da9b",
     "docs/process/HOWTO.md": "dde61df3293d6f66261d6f196fb81472cfd849c200a3cfeebe56f2aea8b065ae",
