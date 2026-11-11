@@ -1122,6 +1122,15 @@ The coder's per-checkpoint reports were not committed, so this summary is assemb
 - Record the worktree and `CLAUDE_PROJECT_DIR` guard limit in `INSTALL.md` or the guard documents; template fixes from the breach findings; tests for the guard classifier's false positives (F10); watch the 0.05 s flood-test bound over several CI runs.
 - Real use of the agents, recorded by the coordinator and the owner after this phase (T40).
 
+### Owner decisions on `REVIEW_PLAN_2.md` (revision 1, commit `53df8cf`)
+
+The review file is the reviewer's and is not edited; its States stay `open` until a reviewer writes a revision. The owner's decisions are recorded here as they are made.
+
+| Finding | Decision (owner, 2026-11-10) | Reason and evidence |
+|---|---|---|
+| F2 (Important) no coder completion summary | repaired | The "Completion summary" above, written by the coordinating session from the task notes and records (commit `648f9e6`); it says it is not the coder's own report. |
+| F3 (Important) the T57 sample departs from T57 and INT-25 | deferred | The owner accepted the departures on 2026-11-10 (T57 Todo line). Follow-up: when the sample is quoted, repeat the departures; a real-use run has a person write **Approved by**. |
+
 ## Traceability (T43)
 
 One row per "We will know when" line: 5 (INT-20) + 12 (INT-21) + 10 (INT-22) + 4 (INT-23) + 8 (INT-25) = 39. Paths are under `bundles/base/` unless rooted. Check: K1 build and lint, K2 tests, K3 every path, command and format read or run, K5 the owner reads the text. A row whose behavior has not been seen in real use says "no evidence yet", as the review standard requires; real use is recorded after Phase 2 (T40).
