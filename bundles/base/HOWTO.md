@@ -62,7 +62,7 @@ The sequence is the one in `docs/process/REVIEW_CYCLE.md`: review, `docs/plans/R
 **What the agents will not do.** Edit the review document (only the `reviewer` writes it), or start the next checkpoint unasked.
 
 ### 9. Re-review
-**What usually happens.** The `reviewer` runs again in a new session, never the agent that made the repair, on the same review file and the new commit. The file gets a new revision: each earlier finding is shown as repaired, deferred or rejected with evidence, and new findings are added.
+**What usually happens.** The `reviewer` runs again in a new session, never the agent that made the repair, on the same review file and the new commit. The file gets a new revision: each earlier finding is shown as repaired, with evidence, or still `open`, and new findings are added.
 **What you do.** Read the new revision. If something Important is still open, go back to step 6.
 **What the agents will not do.** Delete or rewrite an earlier finding.
 

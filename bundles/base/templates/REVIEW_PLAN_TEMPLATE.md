@@ -24,10 +24,12 @@
 
 ## Counts by severity
 
-| Severity | Open | Repaired | Deferred | Rejected |
-|---|---|---|---|---|
-| Important | | | | |
-| Nit | | | | |
+| Severity | Open | Repaired |
+|---|---|---|
+| Important | | |
+| Nit | | |
+
+Deferred and rejected findings are a human's decision and are counted in the pull request, not here.
 
 ## Findings
 
@@ -45,7 +47,7 @@ Order by pass, then by severity. One block per finding, ids never reused (`F1`, 
 - **Location:** `path:line`, or the plan line it contradicts
 - **Evidence:** how you know (the command and its output, or the lines compared)
 - **Direction:** what to change, as a direction and not a patch
-- **State:** `open`, `repaired`, `deferred` or `rejected`; the reason, and the evidence for it (the repair task and the command that shows it). A finding ends `repaired`, `deferred` or `rejected`; it is never closed without evidence.
+- **State:** `open` or `repaired`; for `repaired`, the evidence (the repair task and the command that shows it). A finding is never marked `repaired` without evidence. The reviewer never writes `deferred` or `rejected`: a human decides those and records the decision in the pull request.
 -->
 
 ## Rule exceptions compared

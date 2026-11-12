@@ -399,7 +399,8 @@ The repairs below keep every phrase listed. If a repair cannot keep one, the cod
 **Action:** MODIFY (add one function; edit no existing test)
 **Change:** Add `test_review_cycle_round2_repairs` after `test_review_cycle_names_homes_levels_and_light_path`. It reads `bundles/base/process/REVIEW_CYCLE.md` and asserts: (F5) item 3 of "The ready check" contains neither "no second confirmation" nor "changes no code", and still contains "never a commit" and "run for an older commit is not the result"; (F6) the file contains the sentence Task 24 writes, "The reviewer's file records only `open` and `repaired`", and the string "as repaired, deferred or rejected with evidence" is absent from the file; (F7) the "Light path for text fixes" section contains "the human who ticks judges" and "ready check". Use the exact strings of Tasks 23 to 25.
 **Acceptance:** failing first: before Tasks 23 to 25, `.venv/bin/python -m pytest bundles/base/tests -q -k round2_repairs` shows 1 failed; after them, 1 passed. Record both counts and the command in the note.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-12): added `test_review_cycle_round2_repairs` after `test_review_cycle_names_homes_levels_and_light_path`; no existing test edited. Failing first, before Tasks 23 to 26 touched any source: `.venv/bin/python -m pytest bundles/base/tests -q -k round2_repairs` -> 1 failed, 2036 deselected (first failing assertion: "no second confirmation" still in item 3). After Tasks 23 to 25 (and 26): same command is covered by `-k "round2_repairs or review_cycle or ready_check or t34"` -> 23 passed, 2014 deselected; full suite 2036 passed, 1 skipped (one more than CP2's 2035).
 
 ---
 
@@ -410,7 +411,8 @@ The repairs below keep every phrase listed. If a repair cannot keep one, the cod
 **Action:** MODIFY
 **Change:** Replace item 3 with: "CI of that exact commit has been read by the `coordinator` and ticked by a human in the pull request (the tick is in the pull request, never a commit). Every commit gets its own read and tick, including a commit that changes only text: the light path saves review effort, not the CI check. A run for an older commit is not the result." Change no other item.
 **Acceptance:** `grep -n "second confirmation\|changes no code" bundles/base/process/REVIEW_CYCLE.md` prints nothing; `grep -n "never a commit" bundles/base/process/REVIEW_CYCLE.md` finds item 3 and the table row; `.venv/bin/python -m pytest bundles/base/tests -q -k "ready_check or review_cycle_names"` passes with no test edited.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-12): item 3 of "The ready check" replaced as written; no other item changed. `grep -n "second confirmation\|changes no code" bundles/base/process/REVIEW_CYCLE.md` -> nothing; `grep -n "never a commit"` -> line 47 (table row) and line 57 (item 3); `-k "ready_check or review_cycle_names"` passed (inside the 23 passed above), no test edited.
 
 ---
 
@@ -429,7 +431,8 @@ The repairs below keep every phrase listed. If a repair cannot keep one, the cod
 - Row "What was decided about a finding": replace its first cell text so it reads "the decision on each finding that is not repaired (deferred or rejected, with the reason), in a comment or checklist in the pull request that links the finding; the amendment's table of findings not repaired is the planner's proposal, not a second home; the amendment still carries the repair tasks". Keep the "Who writes it" cell.
   Keep "in place", "A finding is never deleted", "nothing open, or only Nits", "three runs" and the first column of the sequence table unchanged. Edit no other file (the review template, `HOWTO.md` and `planner.agent.md` also use the three-state wording; see Open question 2).
   **Acceptance:** `grep -n "as repaired, deferred or rejected with evidence\|changes the state of each earlier finding" bundles/base/process/REVIEW_CYCLE.md` prints nothing; `grep -c "file records only" bundles/base/process/REVIEW_CYCLE.md` prints 1; `.venv/bin/python -m pytest bundles/base/tests -q -k "review_cycle or t34"` passes with no existing test edited.
-  **Todo:** [ ]
+  **Todo:** [x]
+  Note (2026-11-12): the six replacements applied as worded (re-review row, paragraph after the table, "Where the output goes", "What stops a pull request from being marked ready", amendment row, fact-table row). `grep -n "as repaired, deferred or rejected with evidence\|changes the state of each earlier finding"` -> nothing; `grep -c "file records only"` -> 1; `-k "round2_repairs or review_cycle or ready_check or t34"` -> 23 passed, no existing test edited. "in place", "A finding is never deleted", "nothing open, or only Nits", "three runs" untouched.
 
 ---
 
@@ -440,13 +443,47 @@ The repairs below keep every phrase listed. If a repair cannot keep one, the cod
 **Action:** MODIFY
 **Change:** Keep the section's intro and its four conditions as they are. Add a closing paragraph: "What it skips: the planner amendment and the repair checkpoint. What it keeps: a review of the final commit by the `reviewer` (a revision of `docs/plans/REVIEW_PLAN_<N>.md`), the four lines of the ready check, with CI of every commit read and ticked, and the human's tick of the diff. Who judges \"text only\": the human who ticks judges whether the change is only text and changes no behavior; the author's word does not count, and when the human doubts it, the full amendment round applies." The section must still contain "solo" and "never code".
 **Acceptance:** `grep -n "the human who ticks judges" bundles/base/process/REVIEW_CYCLE.md` finds one line in the light-path section; `.venv/bin/python -m pytest bundles/base/tests -q -k "round2_repairs or review_cycle_names"` passes.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-12): closing paragraph added to "Light path for text fixes" (intro and four conditions unchanged; "solo" and "never code" still present). `grep -n "the human who ticks judges"` -> line 81, in the light-path section; the round-2 test and `review_cycle_names` pass (in the 23 passed above).
 
 ---
 
-**Verification:** `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes (counts reported, expected one more than before this checkpoint); `git diff --stat` lists only `bundles/base/process/REVIEW_CYCLE.md`, `bundles/base/tests/test_bundle.py` and this plan; `git diff -U0 bundles/base/tests/test_bundle.py` shows added lines only (0 removed). Task 18 then refreshes the installed copy; its acceptance (`cmp bundles/base/process/REVIEW_CYCLE.md docs/process/REVIEW_CYCLE.md`) covers these changes.
+### Task 26 — Apply Task 24's rule to the review template, HOWTO and the planner agent
 
-Rule exceptions (Tasks 22 to 25): (the coder fills in: `none`, or each exception with the command, the file and the reason)
+**Source:** `REVIEW_PLAN_3.md F6` (Open question 2, answered "Agree with recommendation")
+**Files:** `bundles/base/templates/REVIEW_PLAN_TEMPLATE.md`, `bundles/base/HOWTO.md`, `bundles/base/agents/planner.agent.md`
+**Action:** MODIFY
+**Change:** Apply the rule of Task 24: the reviewer's file records only `open` and `repaired`; deferred and rejected are a human's decision, recorded in the pull request. Paths and lines were checked and are as the owner named them. The wording is named by content; the line numbers are only a guide.
+
+- `bundles/base/templates/REVIEW_PLAN_TEMPLATE.md`, "Counts by severity" table (about line 27): replace the header and rule rows `| Severity | Open | Repaired | Deferred | Rejected |` and `|---|---|---|---|---|` with `| Severity | Open | Repaired |` and `|---|---|---|`, and the two rows `| Important | | | | |` and `| Nit | | | | |` with `| Important | | |` and `| Nit | | |`. Add one line under the table: "Deferred and rejected findings are a human's decision and are counted in the pull request, not here."
+- `bundles/base/templates/REVIEW_PLAN_TEMPLATE.md`, the **State** line inside the findings comment (about line 48): replace "`open`, `repaired`, `deferred` or `rejected`; the reason, and the evidence for it (the repair task and the command that shows it). A finding ends `repaired`, `deferred` or `rejected`; it is never closed without evidence." with "`open` or `repaired`; for `repaired`, the evidence (the repair task and the command that shows it). A finding is never marked `repaired` without evidence. The reviewer never writes `deferred` or `rejected`: a human decides those and records the decision in the pull request." The words `` `deferred` `` and `` `rejected` `` stay in the template (in this sentence), because an existing test needs them. Leave the comment at the top of the file ("change the State of each earlier finding with its evidence") as it is: it still holds.
+- `bundles/base/HOWTO.md`, step "9. Re-review", the sentence "each earlier finding is shown as repaired, deferred or rejected with evidence" (line 65): replace with "each earlier finding is shown as repaired, with evidence, or still `open`". Keep the rest of the paragraph.
+- `bundles/base/agents/planner.agent.md`, "Amending a plan from a review", step 2, the bullet "a table of the deferred and rejected findings (Nits, and any Important finding not repaired), each with a reason: every finding ends repaired, deferred or rejected, and none is dropped silently;" (line 78): replace with "a table of the deferred and rejected findings (Nits, and any Important finding not repaired), each with the end you propose and a reason: you propose, a human decides and records the decision in the pull request, and none is dropped silently;". Keep "deferred and rejected findings" in the bullet; the test below needs it.
+
+**Not changed:** `bundles/base/HOWTO.md` line 75 (step "Ready check", "each finding repaired, deferred or rejected") describes the ready check, where Task 24 kept all three ends, and `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` keeps its counts table with Deferred and Rejected, which is the pull request's record.
+
+**Existing tests that pin this wording (the coder edits none of them; if one fails, stop and ask):**
+- `test_review_plan_template_has_every_section_of_the_review_document` (`bundles/base/tests/test_bundle.py`, about line 1475) asserts the strings `**State:**`, `` `open` ``, `` `repaired` ``, `` `deferred` ``, `` `rejected` `` and `## Counts by severity` in the template. The new State sentence and the heading keep all six. It does not pin the counts table header, so removing the two columns breaks no test.
+- the same function's planner checks (about lines 1660 to 1668, run for both flavors) assert "deferred and rejected", "open questions", "one task per Important finding", "completed tasks" and "original acceptance lines" in the planner output. The new bullet keeps all of them.
+- `test_pull_request_template_has_every_section_in_the_order_of_the_intent` pins the table header `| Severity | Open | Repaired | Deferred | Rejected |` in the pull request template, not in the review template; do not touch that file.
+- `test_t34_howto_names_every_role_and_every_step_of_the_review_cycle`, `test_t34_howto_has_its_sections_and_three_labels_for_every_step` and `test_deferred_text_fixes_f1_f4_f5` read HOWTO headings, the three bold labels per step and forbidden terms; the edit changes none of them. No test pins the step 9 sentence itself (search: `grep -n "with evidence" bundles/base/tests/*.py` prints nothing).
+
+If an existing test fails because of this task, the coder stops and asks the owner; it does not edit, skip or weaken the test (see Open question 1).
+
+**Planner agent: one source.** `bundles/base/agents/planner.agent.md` is the only canonical file. `bundles/base/tools/build.py` (`load_agents`, `render_agent`, `CLAUDE_AGENT_PATH`, `COPILOT_AGENT_PATH`) renders it to the Claude Code flavor (`.claude/agents/planner.md`), the Copilot flavor (`.github/agents/planner.agent.md`) and the skill form, so one edit reaches both flavors. Do not edit `.claude/agents/planner.md` (this repository's installed copy, line 83) by hand; Task 18 refreshes it and the manifest hash. Task 18 also adds a line to `bundles/base/HOWTO.md`: apply Task 18 on top of this edit and do not undo it.
+
+**Acceptance:** `grep -n "repaired, deferred or rejected with evidence\|ends .repaired., .deferred. or .rejected" bundles/base/HOWTO.md bundles/base/templates/REVIEW_PLAN_TEMPLATE.md bundles/base/agents/planner.agent.md` prints nothing; `grep -c "| Deferred | Rejected |" bundles/base/templates/REVIEW_PLAN_TEMPLATE.md` prints 0; `grep -c "never writes .deferred. or .rejected." bundles/base/templates/REVIEW_PLAN_TEMPLATE.md` prints 1; `grep -c "you propose, a human decides" bundles/base/agents/planner.agent.md` prints 1; `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes with no existing test edited (`git diff -U0 bundles/base/tests/test_bundle.py` still shows added lines only).
+**Note:** Task 22's test covers `REVIEW_CYCLE.md` only and is not changed. The grep lines above are the check for this task; if the owner wants a test line for these three files, the coder adds it as a new function after `test_review_cycle_round2_repairs` and asks first. Not planned here.
+**Todo:** [x]
+Note (2026-11-12): review template (counts table now Severity/Open/Repaired plus the one-line note; State sentence replaced), `HOWTO.md` step 9 sentence and the planner bullet replaced as worded; installed copies not touched. Acceptance: the first grep prints nothing; `grep -c "| Deferred | Rejected |"` -> 0; `grep -c "never writes .deferred. or .rejected."` -> 1; `grep -c "you propose, a human decides"` -> 1; `build.py --check` -> `lint ok`; full bundle suite 2036 passed, 1 skipped, no existing test failed or edited; `git diff -U0 bundles/base/tests/test_bundle.py` shows 0 removed lines.
+
+---
+
+**Verification:** `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes (counts reported, expected one more than before this checkpoint); `git diff --stat` lists only `bundles/base/process/REVIEW_CYCLE.md`, `bundles/base/templates/REVIEW_PLAN_TEMPLATE.md`, `bundles/base/HOWTO.md`, `bundles/base/agents/planner.agent.md`, `bundles/base/tests/test_bundle.py` and this plan; the grep lines of Task 26 give the stated output; `git diff -U0 bundles/base/tests/test_bundle.py` shows added lines only (0 removed). Task 18 then refreshes the installed copy; its acceptance (`cmp bundles/base/process/REVIEW_CYCLE.md docs/process/REVIEW_CYCLE.md`) covers these changes.
+
+Gates (2026-11-12): `.venv/bin/python -m pytest bundles/base/tests -q` -> 2036 passed, 1 skipped; `python3 bundles/base/tools/build.py --check` -> `lint ok`; `build.py --out <scratchpad>/cp6a` and `--out <scratchpad>/cp6b` -> same size (334301 bytes) and sha256 (70a6475447702bd5), `cmp` equal; `git diff --name-only` lists only the five bundle files named in the Verification line and this plan; the Task 26 greps give the stated output; 0 removed lines in `test_bundle.py`. Task 18 (installed copy refresh) not run, as planned.
+
+Rule exceptions (Tasks 22 to 26): none. No file written from a shell command, no commit, push or staging, no installed copy edited, no existing test edited.
 
 **Findings not repaired:**
 

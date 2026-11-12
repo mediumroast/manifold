@@ -9,22 +9,22 @@ In one line: review -> `docs/plans/REVIEW_PLAN_<N>.md` -> planner amendment -> h
 | Step | Who | Input | Output |
 |---|---|---|---|
 | Review | the `reviewer`, in its own session (started by the `coordinator`, or by the owner when there is none) | the change, the approved plan with its completion notes, the intent, the review policy, the `coder`'s "Rule exceptions" line | `docs/plans/REVIEW_PLAN_<N>.md`, revision 1 |
-| Amendment | the `planner` | the review file and the plan | a `## Review amendment (round <n>)` section in `PHASE_<N>_PLAN.md`: a repair checkpoint, the findings not repaired with a reason, open questions. **Amendment approved by** stays blank |
+| Amendment | the `planner` | the review file and the plan | a `## Review amendment (round <n>)` section in `PHASE_<N>_PLAN.md`: a repair checkpoint, the findings not repaired, each with the planner's proposed end and a reason (the planner proposes; the decision is the human's, in the pull request), open questions. **Amendment approved by** stays blank |
 | Approval | a human (the owner) | the amendment | name and date on **Amendment approved by**, and answers to the open questions, recorded in the plan |
 | Repair | the `coder`, not the agent that reviewed | the approved repair checkpoint | the checkpoint's tasks checked off with evidence, gates reported with real counts, then a stop |
-| Re-review | the `reviewer`, in a new session, never the agent that made the repair | the same review file, the new commit | a new revision of the same file: each earlier finding shown as repaired, deferred or rejected with evidence, and any new findings |
+| Re-review | the `reviewer`, in a new session, never the agent that made the repair | the same review file, the new commit | a new revision of the same file: each earlier finding shown as repaired, with evidence, or still `open`, and any new findings |
 | Close | a human | the last revision | the human says the cycle is done, or accepts the remainder in writing |
 
-Nobody approves their own work in this sequence: the `planner` never fills in an approval line, the `reviewer` never approves or blocks, and the `coder` does not start a repair checkpoint before a human has approved the amendment. Every finding ends in one of three states: repaired, deferred (with a reason) or rejected (with a reason). Every repair task names the finding it answers (**Source:** `REVIEW_PLAN_<N>.md F<id>`).
+Nobody approves their own work in this sequence: the `planner` never fills in an approval line, the `reviewer` never approves or blocks, and the `coder` does not start a repair checkpoint before a human has approved the amendment. Every finding ends in one of three states: repaired, deferred (with a reason) or rejected (with a reason). The reviewer's file records only `open` and `repaired` (with the evidence); a human decides deferred and rejected, and the decision is recorded in the pull request (see "Where each fact is recorded"). Every repair task names the finding it answers (**Source:** `REVIEW_PLAN_<N>.md F<id>`).
 
 ## How a review is handled
 
 - **Who runs it, and in which session.** The `reviewer`, in its own session and never in the session of the agent that wrote the change. The `coordinator` starts it; where there is none, the owner does.
 - **What it reads.** The change (a diff, a branch or a pull request), the approved `PHASE_<N>_PLAN.md` with its completion notes, the intent, the review policy (`REVIEW.md` if the repository has one, otherwise the reviewer's built-in defaults), the `Review process` section of `AGENTS.md`, and the "Rule exceptions" line of the agent that made the change.
-- **Where the output goes.** `docs/plans/REVIEW_PLAN_<N>.md`, next to the plan, the only file the `reviewer` writes. The chat reply is a pointer to it with the counts by severity. A re-review revises the same file in place: it raises the revision number, adds a row to the revision log with a timestamp, and changes the state of each earlier finding with its evidence. A finding is never deleted.
+- **Where the output goes.** `docs/plans/REVIEW_PLAN_<N>.md`, next to the plan, the only file the `reviewer` writes. The chat reply is a pointer to it with the counts by severity. A re-review revises the same file in place: it raises the revision number, adds a row to the revision log with a timestamp, and moves each earlier finding from `open` to `repaired` with its evidence, or leaves it `open`. A finding is never deleted.
 - **Who consumes it.** The `planner`, which amends the plan; the owner, who decides what to repair, defer or reject; the `coordinator`, which checks it before a pull request is called ready.
 - **How findings become plan tasks.** Each Important finding to be repaired becomes one task in a repair checkpoint of the amendment, tracing back to the finding. Nits and deferred items are listed with a reason and are not turned into tasks unless the owner asks. The amendment adds to the plan: completed tasks keep their notes and the original acceptance lines stay as written.
-- **What stops a pull request from being marked ready.** A pull request is not marked ready, and not merged, until a review of the final commit exists, each of its findings is repaired, deferred or rejected, and a human has said so. The `coordinator` states the result of this check (see "The ready check"); only a human moves a pull request out of draft or merges it.
+- **What stops a pull request from being marked ready.** A pull request is not marked ready, and not merged, until a review of the final commit exists, each of its findings is repaired or has a decision (deferred or rejected) recorded in the pull request, and a human has said so. The `coordinator` states the result of this check (see "The ready check"); only a human moves a pull request out of draft or merges it.
 - **How cycles end.** The ideal end is a re-review with nothing open, or only Nits. The limit is three runs (the first review is run 1, each re-review the next) or until the human says enough. After the third run with an Important finding still open, the owner decides; the human may set another limit.
 
 ## How tests are handled
@@ -43,7 +43,7 @@ Each kind of fact has one home. Every other document links here and never copies
 | Fact | Its single home | Who writes it |
 |---|---|---|
 | What was found | `docs/plans/REVIEW_PLAN_<N>.md` | only the `reviewer` |
-| What was decided about a finding | a comment or checklist in the pull request that links the finding; a plan's amendment still carries the repair tasks | a human decides; the `coordinator` may record the decision |
+| What was decided about a finding | the decision on each finding that is not repaired (deferred or rejected, with the reason), in a comment or checklist in the pull request that links the finding; the amendment's table of findings not repaired is the planner's proposal, not a second home; the amendment still carries the repair tasks | a human decides; the `coordinator` may record the decision |
 | The CI confirmation | a tick in the pull request, never a commit | a human |
 | Approval of a plan | its **Approved by** line | a human |
 | Approval of the pull request | the checkbox in the pull request | a human |
@@ -54,7 +54,7 @@ Before a pull request is called ready, the `coordinator` writes, in the pull req
 
 1. A review of the final commit exists: the latest revision of `docs/plans/REVIEW_PLAN_<N>.md` names the commit at the head of the branch.
 2. Each finding has a decision recorded in the pull request (the reviewer's file keeps it `open`): repaired, deferred or rejected.
-3. CI of that exact commit has been read by the `coordinator` and ticked by a human in the pull request; a commit that changes no code needs no second confirmation, a commit that changes code does. A run for an older commit is not the result.
+3. CI of that exact commit has been read by the `coordinator` and ticked by a human in the pull request (the tick is in the pull request, never a commit). Every commit gets its own read and tick, including a commit that changes only text: the light path saves review effort, not the CI check. A run for an older commit is not the result.
 4. Approval follows the `Review process` section of `AGENTS.md` (the repository type and, for a team, the second-approver rule written there). No other approval rule is invented.
 
 Then a human decides. The `coordinator` does not move a pull request out of draft and does not merge.
@@ -77,6 +77,8 @@ A shorter route for small text fixes, so they do not need a full amendment round
 - the change is only text in documents and agent instructions, and it changes no behavior; a comment or docstring qualifies only when the diff shows no other changed line;
 - never code, rules, agent permissions, hooks or tests;
 - the diff is shown in the pull request and a human ticks it.
+
+What it skips: the planner amendment and the repair checkpoint. What it keeps: a review of the final commit by the `reviewer` (a revision of `docs/plans/REVIEW_PLAN_<N>.md`), the four lines of the ready check, with CI of every commit read and ticked, and the human's tick of the diff. Who judges "text only": the human who ticks judges whether the change is only text and changes no behavior; the author's word does not count, and when the human doubts it, the full amendment round applies.
 
 ## What earlier cycles taught
 

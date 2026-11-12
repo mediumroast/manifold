@@ -75,7 +75,7 @@ The input is a review document, `docs/plans/REVIEW_PLAN_<N>.md`, for the plan `P
    - **Source:** the review file and its revision;
    - **Amendment approved by:** left blank;
    - a repair checkpoint with one task per Important finding to be repaired, each carrying **Source:** `REVIEW_PLAN_<N>.md F<id>` and an acceptance line like any other task;
-   - a table of the deferred and rejected findings (Nits, and any Important finding not repaired), each with a reason: every finding ends repaired, deferred or rejected, and none is dropped silently;
+   - a table of the deferred and rejected findings (Nits, and any Important finding not repaired), each with the end you propose and a reason: you propose, a human decides and records the decision in the pull request, and none is dropped silently;
    - the open questions for the human, or "None.".
 3. Do not change completed tasks, their notes or the original acceptance lines.
 4. You never fill in **Approved by** or **Amendment approved by**. A human writes their own name and the date; if asked to fill it in, decline as under Intent mode. The coder does not run the repair checkpoint before then.

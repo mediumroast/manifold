@@ -2265,6 +2265,20 @@ def test_review_cycle_names_homes_levels_and_light_path():
     assert "run for an older commit is not the result" in ready
 
 
+def test_review_cycle_round2_repairs():
+    """Phase 3 CP6: ready-check item 3 asks a CI read and tick for every commit, the reviewer's file records only
+    open and repaired, and the light path says what it skips, what it keeps and who judges 'text only'."""
+    cycle = (ROOT / "process" / "REVIEW_CYCLE.md").read_text()
+    ready = cycle.split("## The ready check")[1].split("\n## ")[0]
+    item3 = [x for x in ready.splitlines() if x.startswith("3.")][0]
+    assert "no second confirmation" not in item3 and "changes no code" not in item3
+    assert "never a commit" in item3 and "run for an older commit is not the result" in item3
+    assert "The reviewer's file records only `open` and `repaired`" in cycle
+    assert "as repaired, deferred or rejected with evidence" not in cycle
+    light = cycle.split("## Light path for text fixes")[1].split("\n## ")[0]
+    assert "the human who ticks judges" in light and "ready check" in light
+
+
 def test_pr_template_has_remaining_steps_and_decisions_table():
     """Phase 3 CP2: the pull request template carries the human's remaining steps and one batch of decisions."""
     t = (ROOT / "templates" / "PULL_REQUEST_TEMPLATE.md").read_text()
