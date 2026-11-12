@@ -372,3 +372,93 @@ Rule exceptions (Tasks 19 to 21): none (the owner's decision on review finding 4
 | (none)  |     |        |
 
 **Open questions:** None.
+
+## Review amendment (round 2)
+
+**Source:** `docs/plans/REVIEW_PLAN_3.md`, revision 3 (reviewed commit `30e88bd`, CP2, Tasks 7 to 10; findings F5 to F10: two Important, four Nit)
+**Amendment approved by:** Michael Hay on November 12, 2026
+
+Owner decisions applied (chat, 2026-11-11: "Accept all recommendations"): F5, F6 and F7 are repaired in one repair checkpoint; F8, F9 and F10 are deferred, each with its reason in the table below. The completed CP2 tasks (7 to 10), their notes and acceptance lines are not changed; Tasks 7 and 8 prescribed the wording that F5 and F7 find faulty, so the repair corrects it in a later task. Edits are to bundle sources only; the installed copy `docs/process/REVIEW_CYCLE.md` and `.manifold/manifest.json` are refreshed by Task 18, which runs after this checkpoint.
+
+Existing tests that pin the wording this checkpoint changes (none may be edited without the owner's yes, in the owner's words, recorded in the task's note; see Open question 1):
+
+- `test_review_cycle_ready_check_leaves_the_decisions_to_a_human`: the ready-check section must keep "A review of the final commit exists", "repaired, deferred or rejected", "CI of that exact commit", "`Review process` section of `AGENTS.md`", "does not move a pull request out of draft", "does not merge".
+- `test_review_cycle_names_homes_levels_and_light_path`: the three headings; the light-path section keeps "solo" and "never code"; item 3 of the ready check contains "never a commit" or "no second confirmation"; the ready check keeps "run for an older commit is not the result".
+- `test_review_cycle_has_the_sequence_the_handling_and_the_ready_check`: the table columns and the five step rows of "The sequence" (first column unchanged); in "How a review is handled" the seven bold labels, and "three runs", "until the human says enough", "the human may set another limit", "in place", "A finding is never deleted", "nothing open, or only Nits".
+- `test_review_cycle_answers_the_five_test_handling_points` (the CI point keeps "exact commit"), and the table-of-steps tests at `bundles/base/tests/test_bundle.py` lines 2072 and 2113 (first column of "The sequence" and the step names in HOWTO).
+- `test_deferred_text_fixes_f1_f4_f5` (no "Phase 2", "CP2a", "CP2b", " his " in the file).
+
+The repairs below keep every phrase listed. If a repair cannot keep one, the coder stops and does not edit the test (Open question 1).
+
+### CP6 — Repairs from review round 2
+
+### Task 22 — Add a failing-first test for the three repairs
+
+**Source:** `REVIEW_PLAN_3.md F5, F6, F7`
+**Files:** `bundles/base/tests/test_bundle.py`
+**Action:** MODIFY (add one function; edit no existing test)
+**Change:** Add `test_review_cycle_round2_repairs` after `test_review_cycle_names_homes_levels_and_light_path`. It reads `bundles/base/process/REVIEW_CYCLE.md` and asserts: (F5) item 3 of "The ready check" contains neither "no second confirmation" nor "changes no code", and still contains "never a commit" and "run for an older commit is not the result"; (F6) the file contains the sentence Task 24 writes, "The reviewer's file records only `open` and `repaired`", and the string "as repaired, deferred or rejected with evidence" is absent from the file; (F7) the "Light path for text fixes" section contains "the human who ticks judges" and "ready check". Use the exact strings of Tasks 23 to 25.
+**Acceptance:** failing first: before Tasks 23 to 25, `.venv/bin/python -m pytest bundles/base/tests -q -k round2_repairs` shows 1 failed; after them, 1 passed. Record both counts and the command in the note.
+**Todo:** [ ]
+
+---
+
+### Task 23 — Drop the "no second confirmation" clause from ready-check item 3
+
+**Source:** `REVIEW_PLAN_3.md F5`
+**Files:** `bundles/base/process/REVIEW_CYCLE.md` (item 3 of "The ready check")
+**Action:** MODIFY
+**Change:** Replace item 3 with: "CI of that exact commit has been read by the `coordinator` and ticked by a human in the pull request (the tick is in the pull request, never a commit). Every commit gets its own read and tick, including a commit that changes only text: the light path saves review effort, not the CI check. A run for an older commit is not the result." Change no other item.
+**Acceptance:** `grep -n "second confirmation\|changes no code" bundles/base/process/REVIEW_CYCLE.md` prints nothing; `grep -n "never a commit" bundles/base/process/REVIEW_CYCLE.md` finds item 3 and the table row; `.venv/bin/python -m pytest bundles/base/tests -q -k "ready_check or review_cycle_names"` passes with no test edited.
+**Todo:** [ ]
+
+---
+
+### Task 24 — Give the reviewer's file only `open` and `repaired`; move the decision to the pull request
+
+**Source:** `REVIEW_PLAN_3.md F6`
+**Files:** `bundles/base/process/REVIEW_CYCLE.md` (sequence table rows "Amendment" and "Re-review"; the paragraph after the table; "Where the output goes"; "What stops a pull request from being marked ready"; the row "What was decided about a finding" in "Where each fact is recorded")
+**Action:** MODIFY
+**Change:** Make these replacements, each limited to the words named, so that the file has one rule: the reviewer's file says what was found and whether it is repaired; the decision to defer or reject is a human's and lives in the pull request.
+
+- "Re-review" row, Output: replace "each earlier finding shown as repaired, deferred or rejected with evidence" with "each earlier finding shown as repaired, with evidence, or still `open`".
+- Paragraph after the table: replace "Every finding ends in one of three states: repaired, deferred (with a reason) or rejected (with a reason)." with "Every finding ends in one of three states: repaired, deferred (with a reason) or rejected (with a reason). The reviewer's file records only `open` and `repaired` (with the evidence); a human decides deferred and rejected, and the decision is recorded in the pull request (see \"Where each fact is recorded\")."
+- "Where the output goes": replace "changes the state of each earlier finding with its evidence" with "moves each earlier finding from `open` to `repaired` with its evidence, or leaves it `open`".
+- "What stops a pull request from being marked ready": replace "each of its findings is repaired, deferred or rejected, and a human has said so" with "each of its findings is repaired or has a decision (deferred or rejected) recorded in the pull request, and a human has said so".
+- "Amendment" row, Output: replace "the findings not repaired with a reason" with "the findings not repaired, each with the planner's proposed end and a reason (the planner proposes; the decision is the human's, in the pull request)".
+- Row "What was decided about a finding": replace its first cell text so it reads "the decision on each finding that is not repaired (deferred or rejected, with the reason), in a comment or checklist in the pull request that links the finding; the amendment's table of findings not repaired is the planner's proposal, not a second home; the amendment still carries the repair tasks". Keep the "Who writes it" cell.
+  Keep "in place", "A finding is never deleted", "nothing open, or only Nits", "three runs" and the first column of the sequence table unchanged. Edit no other file (the review template, `HOWTO.md` and `planner.agent.md` also use the three-state wording; see Open question 2).
+  **Acceptance:** `grep -n "as repaired, deferred or rejected with evidence\|changes the state of each earlier finding" bundles/base/process/REVIEW_CYCLE.md` prints nothing; `grep -c "file records only" bundles/base/process/REVIEW_CYCLE.md` prints 1; `.venv/bin/python -m pytest bundles/base/tests -q -k "review_cycle or t34"` passes with no existing test edited.
+  **Todo:** [ ]
+
+---
+
+### Task 25 — State in the light path what is skipped, what is kept and who judges "text only"
+
+**Source:** `REVIEW_PLAN_3.md F7`
+**Files:** `bundles/base/process/REVIEW_CYCLE.md` (section "Light path for text fixes")
+**Action:** MODIFY
+**Change:** Keep the section's intro and its four conditions as they are. Add a closing paragraph: "What it skips: the planner amendment and the repair checkpoint. What it keeps: a review of the final commit by the `reviewer` (a revision of `docs/plans/REVIEW_PLAN_<N>.md`), the four lines of the ready check, with CI of every commit read and ticked, and the human's tick of the diff. Who judges \"text only\": the human who ticks judges whether the change is only text and changes no behavior; the author's word does not count, and when the human doubts it, the full amendment round applies." The section must still contain "solo" and "never code".
+**Acceptance:** `grep -n "the human who ticks judges" bundles/base/process/REVIEW_CYCLE.md` finds one line in the light-path section; `.venv/bin/python -m pytest bundles/base/tests -q -k "round2_repairs or review_cycle_names"` passes.
+**Todo:** [ ]
+
+---
+
+**Verification:** `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes (counts reported, expected one more than before this checkpoint); `git diff --stat` lists only `bundles/base/process/REVIEW_CYCLE.md`, `bundles/base/tests/test_bundle.py` and this plan; `git diff -U0 bundles/base/tests/test_bundle.py` shows added lines only (0 removed). Task 18 then refreshes the installed copy; its acceptance (`cmp bundles/base/process/REVIEW_CYCLE.md docs/process/REVIEW_CYCLE.md`) covers these changes.
+
+Rule exceptions (Tasks 22 to 25): (the coder fills in: `none`, or each exception with the command, the file and the reason)
+
+**Findings not repaired:**
+
+| Finding   | End      | Reason                                                                                                                                                                                                                                                                                                                   |
+| --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| F8 (Nit)  | deferred | The new process text is ahead of its installed copy, the coordinator definition and `HOWTO.md` until Tasks 11, 12 and 18; those tasks bring them in line. Check at the CP3 review that the coordinator text and `HOWTO.md` agree with `REVIEW_CYCLE.md` as repaired by Tasks 23 to 25.                                   |
+| F9 (Nit)  | deferred | A record note with no effect on behavior: `docs/agents/claude-desktop-failures.md` (entry F13) was added in the CP2 commit though it is not in the plan's inventory. Record it as an accepted addition in the completion summary; the entry needs no change.                                                             |
+| F10 (Nit) | deferred | A record note with no effect on behavior: the reviewer did not reproduce the Task 10 failing-first run (it rests on the coder's note) and one assertion was changed after the passing run. The test passes now and no existing test was changed. Not reproduced by the reviewer; optional first-hand check by the owner. |
+
+**Open questions:**
+
+1. If a repair needs an edit to an existing test (the ones listed above), the coder stops and asks. Nothing is decided here. None is expected: Task 23 keeps "never a commit" so that `test_review_cycle_names_homes_levels_and_light_path` still passes (its "or no second confirmation" alternative becomes unused but is not edited). Owner: confirm that leaving that alternative in the test is acceptable. Answer: Agree with task 23's approach.
+2. Task 24 changes `REVIEW_CYCLE.md` only, as decided. Three other bundle sources still describe all three states as the reviewer's: `bundles/base/templates/REVIEW_PLAN_TEMPLATE.md` (counts table with Deferred and Rejected columns; the **State** line), `bundles/base/HOWTO.md` line 65 ("each earlier finding is shown as repaired, deferred or rejected with evidence") and `bundles/base/agents/planner.agent.md` line 78. Owner: add a task for them to this checkpoint, or leave them and accept the inconsistency until a later phase? Recommended: add a task, because an agent reading the template will still write `deferred` in the reviewer's file. Answer: Agree with recommendation.
+3. The owner's instruction cited lines 24, 29 and 31 of `REVIEW_CYCLE.md`; in the current file those lines are "Where the output goes", a blank line and "How tests are handled". Task 24 therefore names the wording by content (the re-review row, the paragraph after the table, "Where the output goes", "What stops a pull request from being marked ready", the amendment row and the fact table row). Owner: confirm these are the places meant. Answer: They are the right places.
+4. Task 25 states that the light path keeps a review of the final commit and the full ready check, and that the human who ticks judges "text only". The review asked for a statement; this is the recommended content. Owner: confirm at approval. Answer: Agree task 25's approach and approve
