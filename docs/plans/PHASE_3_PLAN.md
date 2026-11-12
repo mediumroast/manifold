@@ -471,6 +471,7 @@ Note (2026-11-12): closing paragraph added to "Light path for text fixes" (intro
 **Not changed:** `bundles/base/HOWTO.md` line 75 (step "Ready check", "each finding repaired, deferred or rejected") describes the ready check, where Task 24 kept all three ends, and `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` keeps its counts table with Deferred and Rejected, which is the pull request's record.
 
 **Existing tests that pin this wording (the coder edits none of them; if one fails, stop and ask):**
+
 - `test_review_plan_template_has_every_section_of_the_review_document` (`bundles/base/tests/test_bundle.py`, about line 1475) asserts the strings `**State:**`, `` `open` ``, `` `repaired` ``, `` `deferred` ``, `` `rejected` `` and `## Counts by severity` in the template. The new State sentence and the heading keep all six. It does not pin the counts table header, so removing the two columns breaks no test.
 - the same function's planner checks (about lines 1660 to 1668, run for both flavors) assert "deferred and rejected", "open questions", "one task per Important finding", "completed tasks" and "original acceptance lines" in the planner output. The new bullet keeps all of them.
 - `test_pull_request_template_has_every_section_in_the_order_of_the_intent` pins the table header `| Severity | Open | Repaired | Deferred | Rejected |` in the pull request template, not in the review template; do not touch that file.
@@ -507,3 +508,86 @@ Rule exceptions (Tasks 22 to 26): none. No file written from a shell command, no
 2. Task 24 changes `REVIEW_CYCLE.md` only, as decided. Three other bundle sources still describe all three states as the reviewer's: `bundles/base/templates/REVIEW_PLAN_TEMPLATE.md` (counts table with Deferred and Rejected columns; the **State** line), `bundles/base/HOWTO.md` line 65 ("each earlier finding is shown as repaired, deferred or rejected with evidence") and `bundles/base/agents/planner.agent.md` line 78. Owner: add a task for them to this checkpoint, or leave them and accept the inconsistency until a later phase? Recommended: add a task, because an agent reading the template will still write `deferred` in the reviewer's file. Answer: Agree with recommendation.
 3. The owner's instruction cited lines 24, 29 and 31 of `REVIEW_CYCLE.md`; in the current file those lines are "Where the output goes", a blank line and "How tests are handled". Task 24 therefore names the wording by content (the re-review row, the paragraph after the table, "Where the output goes", "What stops a pull request from being marked ready", the amendment row and the fact table row). Owner: confirm these are the places meant. Answer: They are the right places.
 4. Task 25 states that the light path keeps a review of the final commit and the full ready check, and that the human who ticks judges "text only". The review asked for a statement; this is the recommended content. Owner: confirm at approval. Answer: Agree task 25's approach and approve
+
+## Review amendment (round 3)
+
+**Source:** `docs/plans/REVIEW_PLAN_3.md`, revision 4 (reviewed commit `db37ef6`, CP3, Tasks 11 to 14, with the round 2 repair `815baa3` re-checked; open findings F8 to F13: one Important (F11), five Nits)
+**Amendment approved by:** Michael Hay on November 12, 2026
+
+Owner decisions applied (chat, 2026-11-12: "Accept all recommendations"): F11 and F13 are repaired in one repair checkpoint; F12 is deferred (and F8, F9, F10 stay deferred as in round 2), each with its reason in the table below. The completed tasks, their notes and acceptance lines are not changed. Edits are to bundle sources only (and the unshipped `docs/process/BRANCH_RULES.md` for F13); the installed coordinator `.claude/agents/coordinator.md` and `.manifold/manifest.json` are refreshed by Task 18, which runs after this checkpoint; do not edit them by hand.
+
+F11, the decision: the coordinator gets a standing permission to write the CI result for the exact commit into the pull request's remaining-steps list ("What remains for you" in the pull request template) without asking each time. Reason: this phase exists so the human only ticks; the write is a reversible checklist line; the tick stays the human's. It is the one exception. Every other pull request write (the description, a comment, a push, opening the pull request) still needs the owner's go-ahead.
+
+Existing tests that pin the wording this checkpoint changes (the coder edits none of them; if one fails, it stops and asks the owner, and does not edit, skip or weaken it; see Open question 1):
+
+- `test_t33_coordinator_carries_every_intent_duty_and_the_owner_decisions` (both flavors; `COORDINATOR_DUTIES` in `bundles/base/tests/test_bundle.py`): the whole coordinator text must keep "push", "only with the owner's go-ahead" and "the repository the owner names" (duty "no outward action without the owner"); "never says \"ready\" while a line is missing", "exact commit" and "a human confirms" (duty "ready check"); "gh run list --commit <full hash> --json", "gh pr view <number> --json headRefOid,isDraft", "treat red or missing CI as a finding" and "unverified" (duty "reads CI of the exact commit").
+- `test_coordinator_reports_level_and_compares_branch_rules`: the "CI of the exact commit" section keeps "remaining-steps list" and "no commit".
+- `test_t33_coordinator_leaves_no_step_of_the_pull_request_to_an_agent`: the text must not contain "mark the pull request ready", "gh pr ready", "gh pr merge" or "git push" (other than after "never ").
+- `test_t33_coordinator_is_one_source_for_both_flavors_and_uses_no_role_references` (no `{{` in the source; both flavors have the same body; `build.lint` passes).
+- `test_t34_howto_lists_the_human_gates_and_states_enforcement_per_client_as_far_as_verified` pins "go-ahead" in the HOWTO gates section; this checkpoint does not edit `bundles/base/HOWTO.md` (see Open question 2).
+
+The repairs keep every phrase listed.
+
+### CP7 — Repairs from review round 3
+
+### Task 27 — Add a failing-first test for the F11 agreement
+
+**Source:** `REVIEW_PLAN_3.md F11`
+**Files:** `bundles/base/tests/test_bundle.py`
+**Action:** MODIFY (add one function; edit no existing test)
+**Change:** Add `test_coordinator_ci_write_is_the_one_standing_exception` after `test_coordinator_reports_level_and_compares_branch_rules`. It reads `_agent_text("coordinator")` and asserts, with the exact strings Task 28 writes: (a) the "CI of the exact commit" section contains "without asking each time" and "the one write"; (b) the "Ready check" section (from `## Ready check` to the next `\n## `) contains "only with the owner's go-ahead", "the one exception" and "remaining-steps list", and contains "Every other pull request write needs the go-ahead"; (c) the "Operating rules" bullet "No outward action without the owner" (the text from that bold label to the next line starting `- **`) contains "only with the owner's go-ahead" and "the one exception"; (d) the section "What you do not do" contains "the one exception". The test therefore fails while any of the three places lacks the exception and passes only when the CI section, the Ready check paragraph, the operating rule and the "What you do not do" bullet all name it.
+**Acceptance:** failing first: before Task 28, `.venv/bin/python -m pytest bundles/base/tests -q -k ci_write_is_the_one_standing` shows 1 failed; after Task 28, 1 passed. Record both counts and the command in the note.
+**Todo:** [ ]
+
+---
+
+### Task 28 — Make the coordinator's four statements about pull request writes agree
+
+**Source:** `REVIEW_PLAN_3.md F11` (owner decision: a standing permission for the one CI-result line)
+**Files:** `bundles/base/agents/coordinator.agent.md` (the operating rule "No outward action without the owner"; the last bullet of "CI of the exact commit" that starts "Write the result for that exact commit"; the last sentence of the "Ready check" paragraph; the bullet in "What you do not do" that starts "Push, open or comment on a pull request")
+**Action:** MODIFY
+**Change:** Make these four replacements, each limited to the words named, and change nothing else (wording is named by content; line numbers are only a guide):
+
+- Operating rule "No outward action without the owner": after "Show the text first." add: " The one exception is the CI result line that "CI of the exact commit" and "Ready check" name."
+- "CI of the exact commit", the bullet "Write the result for that exact commit into the pull request's remaining-steps list ...": keep it as it is and add at its end: " This is the one write to the pull request you make without asking each time: the owner has given a standing permission, because the line is a reversible checklist entry and the tick stays a human's. Write that line only; change nothing else in the pull request."
+- "Ready check" paragraph, the last sentence "Write the description or a comment to the pull request only with the owner's go-ahead.": replace with "Write the description or a comment to the pull request only with the owner's go-ahead; the one exception is the CI result line in the remaining-steps list, which you may write without asking each time (see "CI of the exact commit"). Every other pull request write needs the go-ahead."
+- "What you do not do", the bullet "Push, open or comment on a pull request, or post an issue without the owner's go-ahead.": replace with "Push, open or comment on a pull request, or post an issue without the owner's go-ahead (the one exception is the CI result line, see "CI of the exact commit")."
+
+Do not change "a human confirms it by a tick in the pull request (never a commit)" in the Ready check paragraph, the four lines of the ready check, or the `gh` commands. The checked sections "Operating rules", "CI of the exact commit", "Ready check" and "What you do not do" are the only places in the file that say when the coordinator may write to the pull request (checked by reading the file; `grep -n "go-ahead\|without asking" bundles/base/agents/coordinator.agent.md` lists them).
+**Acceptance:** `grep -c "the one exception" bundles/base/agents/coordinator.agent.md` prints 3; `grep -c "without asking each time" bundles/base/agents/coordinator.agent.md` prints 2; `grep -c "Every other pull request write needs the go-ahead" bundles/base/agents/coordinator.agent.md` prints 1; `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q -k "coordinator or ci_write_is_the_one_standing"` passes with no existing test edited (`git diff -U0 bundles/base/tests/test_bundle.py` shows added lines only).
+**Todo:** [ ]
+
+---
+
+### Task 29 — Add the missing parameter to the rules table of `BRANCH_RULES.md`
+
+**Source:** `REVIEW_PLAN_3.md F13`
+**Files:** `docs/process/BRANCH_RULES.md` (the table under "Rules on `main`")
+**Action:** MODIFY
+**Change:** Re-read the ruleset by GET only: `gh api --method GET repos/{owner}/{repo}/rulesets/26275761` (never another method, no `-f`, `-F` or `--input`, which would turn the call into a write; the command form is the one already recorded in the "How this was read" section). Add one row to the table, after the row "Code owner review" and before "Deletion of `main`", in the style of the other rows: `| Extra approval for unattributed changes | required (`require_extra_approval_for_unattributed_changes: true`) |`, only if the re-read shows that value. The meaning of the parameter is not explained in the file; add after the table, next to the existing "role 5" sentence: "What `require_extra_approval_for_unattributed_changes` means: unverified: confirm with the GitHub REST page "Rules" (https://docs.github.com/en/rest/repos/rules) or the ruleset page." Update the date in "How this was read" only if the re-read is repeated on a new day: add "Row added after a repeat read on <date>." and leave the first date. If the re-read cannot be made (`gh` missing or not signed in), do not add the row from memory: stop and ask the owner. `docs/process/BRANCH_RULES.md` is shown to the owner for a read: the coder prints the diff of this file in its report and stops for the owner's reading before the checkpoint is called done. Edit no other file, change no ruleset, setting or workflow.
+**Acceptance:** `grep -c "require_extra_approval_for_unattributed_changes" docs/process/BRANCH_RULES.md` prints 2 (the row and the unverified sentence); `git diff --stat docs/process/BRANCH_RULES.md` shows only this file with additions only; `git diff --stat .github` is empty; every `gh` call in the note is listed with its method (GET); the owner has read the diff (recorded in the note by the owner's words).
+**Todo:** [ ]
+
+---
+
+**Verification:** `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes (counts reported, expected one more than before this checkpoint); `git diff --stat` lists only `bundles/base/agents/coordinator.agent.md`, `bundles/base/tests/test_bundle.py`, `docs/process/BRANCH_RULES.md` and this plan; the greps of Tasks 28 and 29 give the stated output; `git diff -U0 bundles/base/tests/test_bundle.py` shows added lines only (0 removed). Task 18 then refreshes the installed coordinator; its acceptance covers these changes (`cmp` of the installed coordinator with the build output).
+
+Rule exceptions (Tasks 27 to 29): <the coder fills in: none, or each exception with command, file and reason>
+
+**Findings not repaired:**
+
+| Finding   | End      | Reason                                                                                                                                                                                                                                                                                              |
+| --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F12 (Nit) | deferred | The reviewer did not reproduce the failing-first run of Task 14; it rests on the coder's note, and the arithmetic fits the full-suite count (2037 + 2 = 2038 passed + 1 skipped). No existing test was edited (0 removed lines in `test_bundle.py`). Optional first-hand reproduction by the owner. |
+| F8 (Nit)  | deferred | Unchanged from round 2: Task 18 refreshes the installed copies; the CP3 review found the same transitional state for the installed coordinator and the `AGENTS.md` managed block.                                                                                                                   |
+| F9 (Nit)  | deferred | Unchanged from round 2: a record note with no effect on behavior. The same pattern (a breach-record entry not in the inventory) recurs in the CP3 commit; record both as accepted additions in the completion summary.                                                                              |
+| F10 (Nit) | deferred | Unchanged from round 2: the failing-first run of Task 10 was not reproduced; the test passes and no existing test changed.                                                                                                                                                                          |
+
+The deferrals are the planner's proposal following the owner's decision above; the owner's decision is recorded in the pull request, not here.
+
+**Follow-ups (not tasks):** listing `docs/agents/claude-desktop-failures.md` (the breach record that coder commits add without an inventory row) in the plan template's standing inventory is for a later phase; it would stop F9 and its CP3 repeat from recurring.
+
+**Open questions:**
+
+1. If a repair needs an edit to an existing test (the ones listed above), the coder stops and asks. Nothing is decided here. None is expected: Task 28 keeps every phrase those tests pin and Task 27 adds one function only. Owner: confirm.
+2. `bundles/base/HOWTO.md` says in two places that the agents do not push, open or comment on a pull request "without your go-ahead" (the paragraph "What the agents will not do" and the list of what you give a go-ahead for). With the standing permission, these describe the general rule and do not name the CI result line. This amendment does not edit them (the instruction named the coordinator only, and Task 18 also edits `HOWTO.md`). Owner: add one task for a clause "except the CI result line the coordinator writes into the remaining-steps list" in both places, or accept the shorter text? Recommended: add the task, so the human reads the same rule everywhere. Answer:
