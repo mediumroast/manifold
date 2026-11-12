@@ -2252,6 +2252,27 @@ def test_deferred_text_fixes_f1_f4_f5():
     assert "curl -o" in docstring
 
 
+def test_review_cycle_names_homes_levels_and_light_path():
+    """Phase 3 CP2: one home per fact, a definition of done with three levels, and a light path for text fixes."""
+    cycle = (ROOT / "process" / "REVIEW_CYCLE.md").read_text()
+    for heading in ("## Where each fact is recorded", "## Definition of done", "## Light path for text fixes"):
+        assert heading in cycle, heading
+    light = cycle.split("## Light path for text fixes")[1].split("\n## ")[0]
+    assert "solo" in light and "never code" in light
+    ready = cycle.split("## The ready check")[1].split("\n## ")[0]
+    item3 = [x for x in ready.splitlines() if x.startswith("3.")][0]
+    assert "never a commit" in item3 or "no second confirmation" in item3
+    assert "run for an older commit is not the result" in ready
+
+
+def test_pr_template_has_remaining_steps_and_decisions_table():
+    """Phase 3 CP2: the pull request template carries the human's remaining steps and one batch of decisions."""
+    t = (ROOT / "templates" / "PULL_REQUEST_TEMPLATE.md").read_text()
+    assert "## What remains for you" in t and "## Decisions for you" in t
+    assert "| What | Why | Consequence | Default |" in t
+    assert "accept all" in t and "Where each fact is recorded" in t
+
+
 def test_t35_install_states_the_guard_per_client_and_how_a_human_grants_an_exception():
     t = _doc("INSTALL.md")
     for needle in ("Claude Code", "Copilot", "unverified", ".manifold/hooks/guard.py", ".github/hooks/manifold-guard.json",

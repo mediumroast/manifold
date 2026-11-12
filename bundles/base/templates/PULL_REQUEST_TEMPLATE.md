@@ -52,14 +52,27 @@
 ## Follow-ups
 <!-- Noticed and not done: each with where it should go (a plan task, an intent, an issue). -->
 
+## What remains for you
+<!-- Checkboxes for the human; a tick is a human act. One line per changed file: what to check and what the tick means. Then the CI line and the findings line. Levels of done: "Definition of done" in docs/process/REVIEW_CYCLE.md. -->
+- [ ] `<path>`: <what to check; ticking means you read the diff and accept it>
+- [ ] CI of commit <full hash> is green (read by the coordinator)
+- [ ] Findings: decisions below
+
+## Decisions for you
+<!-- One batch. Plain words, no bare IDs (never "F2" or "task 7" alone). Replying "accept all" settles every default; name any exception. Write "none" if nothing is open. -->
+
+| What | Why | Consequence | Default |
+|---|---|---|---|
+| | | | |
+
 ## Ready check
-<!-- Four lines, from docs/process/REVIEW_CYCLE.md. Mark each "met" or "missing" with its evidence. While any line is missing the description does not say the pull request is ready. -->
+<!-- Four lines, from docs/process/REVIEW_CYCLE.md. Mark each "met" or "missing" with its evidence. While any line is missing the description does not say the pull request is ready. Where each fact is recorded: see "Where each fact is recorded" in docs/process/REVIEW_CYCLE.md; link to it, do not restate it. -->
 
 | Line | State (met / missing) | Evidence |
 |---|---|---|
 | A review of the final commit exists | | |
-| Each finding is repaired, deferred or rejected | | |
-| CI of that exact commit was read and a human confirmed it | | |
+| Each finding has a decision recorded in the pull request | | |
+| CI of that exact commit was read and a human ticked it | | |
 | Approval follows the `Review process` section of `AGENTS.md` | | |
 
 **Human confirmation:** <!-- Name and date, written by the person who decides; only a human moves a pull request out of draft, and the coordinator leaves this blank. -->

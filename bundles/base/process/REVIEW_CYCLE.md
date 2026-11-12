@@ -36,16 +36,47 @@ Nobody approves their own work in this sequence: the `planner` never fills in an
 - **How gates are run and reported.** The project's gates (the commands under "Project commands" in `AGENTS.md`) are run by the `coder` at the end of each checkpoint and by the `reviewer` to confirm. Each result is reported with the command and the real output, as counts and not as "passed". A gate that could not be run is reported as "not run", with the reason.
 - **Who confirms CI on a pushed commit.** The `coordinator` reads the hosted CI result for the exact commit that was pushed and reports it; a human confirms it before the pull request is marked ready. A run for an older commit is not the result for this one. A red or missing CI result is a finding, not a note.
 
+## Where each fact is recorded
+
+Each kind of fact has one home. Every other document links here and never copies the fact.
+
+| Fact | Its single home | Who writes it |
+|---|---|---|
+| What was found | `docs/plans/REVIEW_PLAN_<N>.md` | only the `reviewer` |
+| What was decided about a finding | a comment or checklist in the pull request that links the finding; a plan's amendment still carries the repair tasks | a human decides; the `coordinator` may record the decision |
+| The CI confirmation | a tick in the pull request, never a commit | a human |
+| Approval of a plan | its **Approved by** line | a human |
+| Approval of the pull request | the checkbox in the pull request | a human |
+
 ## The ready check
 
 Before a pull request is called ready, the `coordinator` writes, in the pull request, what exists and what is missing. It refuses to say "ready" while any line is missing:
 
 1. A review of the final commit exists: the latest revision of `docs/plans/REVIEW_PLAN_<N>.md` names the commit at the head of the branch.
-2. Each finding is repaired, deferred or rejected: the counts table of that revision shows no open finding, or a human has accepted the remainder in writing.
-3. CI of that exact commit has been read, and a human has confirmed it.
+2. Each finding has a decision recorded in the pull request (the reviewer's file keeps it `open`): repaired, deferred or rejected.
+3. CI of that exact commit has been read by the `coordinator` and ticked by a human in the pull request; a commit that changes no code needs no second confirmation, a commit that changes code does. A run for an older commit is not the result.
 4. Approval follows the `Review process` section of `AGENTS.md` (the repository type and, for a team, the second-approver rule written there). No other approval rule is invented.
 
 Then a human decides. The `coordinator` does not move a pull request out of draft and does not merge.
+
+## Definition of done
+
+Three levels, each with its conditions. The `coordinator`'s closing report names the level reached and what the next level lacks; it never declares a change done.
+
+- **Mergeable:** the four lines of the ready check are met, and a human ticked the pull request.
+- **Releasable:** mergeable; merged; the gates listed under "Project commands" in `AGENTS.md` are green on the merge commit; and the owner chose a version.
+- **Done:** releasable; the plan's completion summary is written; and a human wrote the closure (the `human-confirms-closure` rule).
+
+The pull request's "What remains for you" list (see `docs/templates/PULL_REQUEST_TEMPLATE.md`) is the tickable form of the level the phase aims at.
+
+## Light path for text fixes
+
+A shorter route for small text fixes, so they do not need a full amendment round. All of these hold:
+
+- the repository's `Review process` section of `AGENTS.md` says solo; a team repository uses the full amendment round;
+- the change is only text in documents and agent instructions, and it changes no behavior; a comment or docstring qualifies only when the diff shows no other changed line;
+- never code, rules, agent permissions, hooks or tests;
+- the diff is shown in the pull request and a human ticks it.
 
 ## What earlier cycles taught
 

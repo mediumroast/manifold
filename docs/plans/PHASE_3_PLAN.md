@@ -166,7 +166,8 @@ Rule exceptions: not established: the coder session's shell commands and transcr
 **Action:** MODIFY
 **Change:** Add a section "Where each fact is recorded" with one row per kind of fact and its single home; every other document links to it and never copies it: what was found (`docs/plans/REVIEW_PLAN_<N>.md`, only the `reviewer` edits it); what was decided about a finding (a comment or checklist in the pull request, linking the finding; a plan's amendment still carries the repair tasks); the CI confirmation (a tick in the pull request, never a commit); approval of a plan (its **Approved by** line, written by a human; unchanged); approval of the pull request (the checkbox in the pull request). In the section "The ready check" change item 2 to "each finding has a decision recorded in the pull request (the reviewer's file keeps it `open`)" and item 3 to "CI of that exact commit has been read by the `coordinator` and ticked by a human in the pull request; a commit that changes no code needs no second confirmation, a commit that changes code does". Do not remove "a run for an older commit is not the result".
 **Acceptance:** `grep -n "Where each fact is recorded" bundles/base/process/REVIEW_CYCLE.md` finds the heading; the file's table has five rows; `grep -c "never a commit" bundles/base/process/REVIEW_CYCLE.md` prints 1 or more.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): section "Where each fact is recorded" (five-row table) added before "The ready check"; ready-check items 2 and 3 reworded as written, "A run for an older commit is not the result" kept. Item 2 also ends with ": repaired, deferred or rejected", because the existing test `test_review_cycle_ready_check_leaves_the_decisions_to_a_human` pins that phrase in the ready check (it failed once without it); no existing test was edited. Checks: `grep -n "Where each fact is recorded"` finds the heading; five table rows; `grep -c "never a commit"` -> 1.
 
 ---
 
@@ -176,7 +177,8 @@ Rule exceptions: not established: the coder session's shell commands and transcr
 **Action:** MODIFY
 **Change:** (Written for option A; follow the owner's choice under "Definition of done: approach".) Add "Definition of done" with three levels and their conditions: **mergeable** (the four ready-check lines met and a human ticked the pull request); **releasable** (mergeable, merged, the gates of `AGENTS.md` "Project commands" green on the merge commit, and the owner chose a version); **done** (releasable, the plan's completion summary written, a human wrote the closure; `human-confirms-closure`). Add "Light path for text fixes": only in a repository whose `Review process` says solo; only text in documents and agent instructions that changes no behavior (a comment or docstring qualifies only when the diff shows no other changed line); never code, rules, agent permissions, hooks or tests; the diff is shown in the pull request and a human ticks it; a team repository uses the full amendment round. State that the coordinator's closing report names the level reached and what the next level lacks.
 **Acceptance:** `grep -n "mergeable\|releasable\|Light path" bundles/base/process/REVIEW_CYCLE.md` finds each; reading the section shows each level with a list of conditions and the sentence "never code, rules, agent permissions, hooks or tests".
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): option A as written. Sections "Definition of done" (mergeable, releasable, done, each with its conditions; the coordinator's closing report names the level and what the next lacks) and "Light path for text fixes" (solo only; text only; docstring/comment only when no other line changed; "never code, rules, agent permissions, hooks or tests"; diff shown in the PR and ticked by a human; team uses the full amendment round) added after "The ready check". `grep -n "mergeable\|releasable\|Light path"` finds each.
 
 ---
 
@@ -186,7 +188,8 @@ Rule exceptions: not established: the coder session's shell commands and transcr
 **Action:** MODIFY
 **Change:** In the PR template add a section "What remains for you" of checkboxes: one line per changed file, saying what to check and what the tick means; one line "CI of commit <full hash> is green (read by the coordinator)"; one line "Findings: decisions below"; and a "Decisions for you" table whose columns are: what, why, consequence, default (no bare IDs; the reply "accept all" settles every default). Replace the template comment text so the Ready check lines link to "Where each fact is recorded" instead of restating it. In the plan template's Completion checklist add one line linking to "Definition of done" in `docs/process/REVIEW_CYCLE.md` and naming the level the plan aims at.
 **Acceptance:** `grep -n "What remains for you\|Decisions for you" bundles/base/templates/PULL_REQUEST_TEMPLATE.md` finds both; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): PR template gains "What remains for you" (per-file line, CI-of-commit line, findings line) and "Decisions for you" (columns What, Why, Consequence, Default; "accept all"); the Ready check comment links to "Where each fact is recorded" and its lines 2 and 3 follow the new wording. Plan template Completion checklist gains the "Level aimed at" line linking "Definition of done". `grep -n "What remains for you\|Decisions for you"` finds both; `build.py --check` -> `lint ok`.
 
 ---
 
@@ -196,11 +199,16 @@ Rule exceptions: not established: the coder session's shell commands and transcr
 **Action:** MODIFY
 **Change:** Add `test_review_cycle_names_homes_levels_and_light_path` (the three headings exist; the light-path section contains "solo" and "never code"; item 3 of the ready check contains "never a commit" or the equivalent sentence) and `test_pr_template_has_remaining_steps_and_decisions_table`. Failing first: run both before Tasks 7 to 9 are applied to the source, record the counts.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests -q -k "review_cycle_names or pr_template_has"` shows 2 passed.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-11): added both tests (after `test_deferred_text_fixes_f1_f4_f5`). Failing first, before Tasks 7 to 9 were applied: `.venv/bin/python -m pytest bundles/base/tests -q -k "review_cycle_names or pr_template_has"` -> 2 failed, 2034 deselected. After Tasks 7 to 9: same command -> 2 passed, 2034 deselected. (After that run I changed one assertion of the first test from the whole file to the ready-check section; both tests failed on their first assertion before, and still do on the old text.)
 
 ---
 
 **Verification:** `.venv/bin/python -m pytest bundles/base/tests -q` passes (counts reported); `python3 bundles/base/tools/build.py --check` prints `lint ok`; the built `claude` and `copilot` outputs both contain the new PR template text (`build.py --out` twice, `cmp` equal; deterministic).
+
+Gates (2026-11-11): `.venv/bin/python -m pytest bundles/base/tests -q` -> 2035 passed, 1 skipped; `python3 bundles/base/tools/build.py --check` -> `lint ok`; `build.py --out <scratchpad>/cp2a` and `--out <scratchpad>/cp2b` -> `manifold-base-0.2.0.zip` in each, same size and sha256, `cmp` equal. `build.py` has no flavor flag (`--help`: `--check`, `--out`): one zip carries both flavors, and the PR template and review cycle are in `payload/common/` for both, containing "What remains for you", "Decisions for you" and "Light path for text fixes" (read from the zip with Python).
+
+Rule exceptions (CP2, coder's own): none broken. One attempt was refused by the guard (rule `no-heredocs`): I started a pointless `python3 - <<EOF` snippet with no purpose and it was blocked before it ran; nothing was written, and I did not retry or work around it. No file was written from a shell command; no commit, push or staging.
 
 ### CP3 — Coordinator, plain asks, branch rules
 
@@ -354,6 +362,8 @@ Note (2026-11-11): `git worktree add --detach <scratchpad>/old 3e2bbaf`; the tes
 ---
 
 **Verification:** in the repository root, `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes (counts reported); `cmp .manifold/hooks/guard.py bundles/base/hooks/guard.py` prints nothing; the grep in Task 19 prints nothing; `git diff --name-only` lists only `docs/agents/harness-capabilities.md`, `bundles/base/process/REVIEW_CYCLE.md`, `docs/process/REVIEW_CYCLE.md`, `.manifold/manifest.json` and this plan.
+
+Rule exceptions (Tasks 19 to 21): none (the owner's decision on review finding 4: they were none).
 
 **Findings not repaired:** none. F2 is accepted and addressed by Task 21 (evidence only, no code change); F1 and F3 are repaired by Tasks 19 and 20.
 

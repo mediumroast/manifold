@@ -236,6 +236,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F13 — The `coder` tried a heredoc during checkpoint 2 of Phase 3; refused, disclosed (2026-11-11)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While doing Tasks 7 to 10 of Phase 3, the `coder` started an empty `python3 - <<'EOF'` snippet. The live guard refused it before it ran, so nothing was written. The `coder` did not retry and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, last line (2026-11-11T23:48:04Z, rule `no-heredocs`, agent_type `coder`); the coder's report ("Rule exceptions"). The diff of the run touches only the five files the tasks name.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None; the guard held and the agent said so.
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
