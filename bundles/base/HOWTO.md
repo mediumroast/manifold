@@ -79,7 +79,7 @@ The sequence is the one in `docs/process/REVIEW_CYCLE.md`: review, `docs/plans/R
 ### 12. Merge
 **What usually happens.** The pull request waits for you.
 **What you do.** Move it out of draft and merge it, once the check is met and you agree.
-**What the agents will not do.** Merge, move a pull request out of draft, or push, open or comment on one without your go-ahead.
+**What the agents will not do.** Merge, move a pull request out of draft, or push, open or comment on one without your go-ahead. The one exception is the CI result line the `coordinator` writes into the remaining-steps list of the pull request without asking each time; the tick stays yours.
 
 ## The human gates
 
@@ -93,7 +93,7 @@ Only a person does each of these:
 - say the cycle is done, or accept the remainder in writing;
 - confirm a bug is fixed (a bug nobody can check yet stays `Pending human confirmation`);
 - mark behavior scenarios `approved` in the quality repository;
-- give a go-ahead for anything that leaves the machine: a push, a pull request or a comment on one, a posted issue;
+- give a go-ahead for anything that leaves the machine: a push, a pull request or a comment on one, a posted issue (the one exception is the CI result line the `coordinator` writes into the remaining-steps list of the pull request);
 - grant an exception to the guard (an entry in `.manifold/guard-allow.json`, below);
 - read CI of the exact commit and confirm it;
 - approve any text that changes how an agent behaves;

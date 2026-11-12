@@ -2291,6 +2291,22 @@ def test_coordinator_reports_level_and_compares_branch_rules():
     assert ".github/workflows/" in branch and "required check" in branch
 
 
+def test_coordinator_ci_write_is_the_one_standing_exception():
+    """Phase 3 CP7 (review round 3, F11): the four statements about pull request writes agree. The CI result line
+    is the one write the coordinator makes without asking each time; every other pull request write needs the go-ahead."""
+    text = _agent_text("coordinator")
+    ci = text.split("## CI of the exact commit")[1].split("\n## ")[0]
+    assert "without asking each time" in ci and "the one write" in ci
+    ready = text.split("## Ready check")[1].split("\n## ")[0]
+    for needle in ("only with the owner's go-ahead", "the one exception", "remaining-steps list",
+                   "Every other pull request write needs the go-ahead"):
+        assert needle in ready, needle
+    rule = text.split("**No outward action without the owner.**")[1].split("\n- **")[0]
+    assert "only with the owner's go-ahead" in rule and "the one exception" in rule
+    donot = text.split("## What you do not do")[1].split("\n## ")[0]
+    assert "the one exception" in donot
+
+
 def test_ask_rule_requires_self_contained_asks_for_coordinator():
     """Phase 3 CP3: every ask says what, why, consequence and default, never an internal ID alone, and the
     rule reaches the coordinator."""

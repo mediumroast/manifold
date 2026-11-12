@@ -29,11 +29,14 @@ Each row came from the `rulesets/26275761` read above.
 | Stale reviews | dismissed on a new push (`dismiss_stale_reviews_on_push: true`) |
 | Review conversations | must be resolved (`required_review_thread_resolution: true`) |
 | Code owner review | not required; last-push approval not required |
+| Extra approval for unattributed changes | required (`require_extra_approval_for_unattributed_changes: true`) |
 | Deletion of `main` | blocked (`deletion`) |
 | Force push to `main` | blocked (`non_fast_forward`) |
 | Bypass | `OrganizationAdmin` and `RepositoryRole` with `actor_id` 5, both with `bypass_mode: pull_request` (they may bypass only through a pull request) |
 
 What "role 5" is: unverified: confirm with the GitHub documentation on repository roles in rulesets, or the ruleset page `https://github.com/mediumroast/manifold/rules/26275761`.
+
+What `require_extra_approval_for_unattributed_changes` means: unverified: confirm with the GitHub REST page "Rules" (https://docs.github.com/en/rest/repos/rules) or the ruleset page.
 
 The review count of 1 and the solo repository (`AGENTS.md`, "Review process") are both facts; how the owner's approval is met under it is not stated by the ruleset and is not recorded here.
 
