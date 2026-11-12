@@ -103,6 +103,7 @@
 - [ ] `<verify command>` passes clean
 - [ ] `<test command>` passes clean (no regressions)
 - [ ] No [~] blocked items outstanding
+- [ ] Level aimed at: <mergeable | releasable | done> (see "Definition of done" in `docs/process/REVIEW_CYCLE.md`)
 - [ ] Summary note added by the coder below this line
 
 <!--
