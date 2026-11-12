@@ -248,6 +248,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F14 — The `coder` appended a heredoc snippet to a verification command during checkpoint 3 of Phase 3; refused, disclosed (2026-11-12)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While doing Tasks 11 to 14 of Phase 3, the `coder` added a stray `python3 - <<'X'` snippet to a verification command. The live guard refused the command before it ran, so nothing was written. The `coder` re-ran the check without the snippet, did not work around the block, and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, last line (2026-11-12T13:47:17Z, rule `no-heredocs`, agent_type `coder`); the coder's report ("Rule exceptions"). The diff of the run touches only the files the tasks name; `.github`, the installed copy and `.manifold` are unchanged.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. Second heredoc attempt by a `coder` in this phase (see F13).
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None; the guard held. The repeat suggests agents reach for a heredoc as a habit when checking a build; the owner may want the coder definition to name `Write` to the scratchpad for such snippets (an intent, not an edit here).
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |

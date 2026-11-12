@@ -218,7 +218,8 @@ Rule exceptions (CP2, coder's own): none broken. One attempt was refused by the 
 **Action:** CREATE
 **Change:** With the owner's go-ahead, read the ruleset on `main` with `gh` (read only). Verify the command first: `gh api --help` and the GitHub rulesets API page; mark anything not verified "unverified: confirm with <source>". Record only what was read: required checks (by job name), squash only, linear history, review count, bypass actors. Add the stacked-PR steps under squash-only (the rebase of the dependent branch onto `main` after the base PR is squashed; verify the exact `git rebase` form with `git rebase --help`), and the route for editing agent definitions from another worktree (delegate to a session in that worktree; the guard's protection of definitions is deliberate). Add a section "CI for docs-only changes" holding the investigated answer (path filters, how a required check behaves when its workflow is skipped), with the source for each statement; recommend, do not change `.github/workflows/`.
 **Acceptance:** each rule in the file shows the command or page it came from; `git diff --stat -- .github` is empty.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-12): read with `gh` 2.86.0 (signed in already, `gh auth status`; `gh api --help` read first), GET only: `gh api --method GET repos/{owner}/{repo}/rulesets`, `.../rulesets/26275761`, `.../rules/branches/main`; the endpoints were checked against https://docs.github.com/en/rest/repos/rules. `docs/process/BRANCH_RULES.md` created: required checks `test (3.10)` and `test (3.12)` (match `ci.yml` job `test` and its matrix), squash only, linear history, 1 approving review, stale reviews dismissed, threads resolved, strict up-to-date, no deletion or force push, bypass for OrganizationAdmin and RepositoryRole 5 via pull request only (what role 5 is: unverified; the tag ruleset `protect-release-tags` listed, not read: unverified). Stacked-PR steps use `git rebase --onto` (read in `git rebase --help`); the delegation route is documented. Docs-only CI finding: neither `ci.yml` nor `server.yml` has a path filter, so nothing is skipped today; a path filter on `ci.yml` would leave the required checks Pending and block the merge (GitHub "Workflow syntax" page, read 2026-11-12); behaviour of a job skipped by `if:` is unverified (the "Troubleshooting required status checks" URL tried gave HTTP 404). Recommendation only. `git diff --stat -- .github` -> empty.
 
 ---
 
@@ -228,7 +229,8 @@ Rule exceptions (CP2, coder's own): none broken. One attempt was refused by the 
 **Action:** MODIFY
 **Change:** In "CI of the exact commit" and "Ready check": the coordinator writes the CI result for the exact commit into the pull request's remaining-steps list for the human to tick, and records no commit for it; the closing report names the level reached (mergeable, releasable, done) and what the next level lacks, and never declares done; decisions are presented as one batch (what, why, consequence, default; "accept all" or named exceptions) with no bare IDs. Add a step "Branch rules": if the repository has a branch-rules document, compare its required check names with the job names in `.github/workflows/` and report a mismatch; never change the ruleset.
 **Acceptance:** `grep -n "Branch rules\|mergeable\|accept all" bundles/base/agents/coordinator.agent.md` finds each; both builds (`--out`) render the text for `claude` and `copilot`.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-12): in `coordinator.agent.md`: the "CI of the exact commit" section gains a bullet (result written into the PR's remaining-steps list for a human to tick, no commit, every commit its own read and tick); the "Ready check" paragraph names the decision in the PR and the tick; a batch-of-decisions paragraph (what, why, consequence, default; "accept all"; no bare IDs); new section "Branch rules" (compares required check names with workflow job names, never changes the ruleset); the closing report names the level reached and what the next lacks, never declares done. Two of my first wordings broke existing tests (`test_t33_coordinator_carries_every_intent_duty_and_the_owner_decisions` pins "a human confirms"; the reference check flagged a path to `docs/process/BRANCH_RULES.md`, which is not shipped); I changed my wording, edited no test. Built zip contains both flavor files `coordinator.md` and `coordinator.agent.md` with the text.
 
 ---
 
@@ -238,7 +240,8 @@ Rule exceptions (CP2, coder's own): none broken. One attempt was refused by the 
 **Action:** MODIFY
 **Change:** Under "Instead" add: every ask states what is asked, why, the consequence and the default, in plain words, and never names an item only by an internal ID (task, checkpoint, finding or open-question number) without saying what it is. Add `coordinator` to `applies_to`.
 **Acceptance:** `python3 bundles/base/tools/build.py --check` prints `lint ok`; the rendered `coordinator` agent contains the rule (`grep -n "internal ID"` on the built file).
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-12): `ask-on-ambiguity.md`: `coordinator` added to `applies_to`; the "Instead" text gains the self-contained-ask sentence (what, why, consequence, default, no bare internal ID). No existing test pins this rule's `applies_to` or text (grep found none). `build.py --check` -> `lint ok`; `unzip -p` of both rendered coordinator files -> "internal ID" 2 hits (one per flavor).
 
 ---
 
@@ -248,11 +251,16 @@ Rule exceptions (CP2, coder's own): none broken. One attempt was refused by the 
 **Action:** MODIFY
 **Change:** Add `test_coordinator_reports_level_and_compares_branch_rules` and `test_ask_rule_requires_self_contained_asks_for_coordinator`. Failing first, counts recorded. If an existing test pins the managed rules block or a rule's `applies_to`, stop, name the test and assertion, and ask the owner before editing it.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests -q -k "coordinator_reports_level or self_contained_asks"` shows 2 passed.
-**Todo:** [ ]
+**Todo:** [x]
+Note (2026-11-12): added `test_coordinator_reports_level_and_compares_branch_rules` and `test_ask_rule_requires_self_contained_asks_for_coordinator` (before `test_pr_template_has_remaining_steps_and_decisions_table`). Failing first, before Tasks 12 and 13: `.venv/bin/python -m pytest bundles/base/tests -q -k "coordinator_reports_level or self_contained_asks"` -> 2 failed, 2037 deselected. After: same command -> 2 passed, 2037 deselected. No existing test pinned the rule's `applies_to` or text; `git diff -U0 bundles/base/tests/test_bundle.py` -> 0 removed lines.
 
 ---
 
 **Verification:** full bundle tests pass with counts; `docs/process/BRANCH_RULES.md` read by the owner (the only first-hand statement of the ruleset); the owner confirms the docs-only CI finding before any workflow change is planned.
+
+Gates (2026-11-12): `.venv/bin/python -m pytest bundles/base/tests -q` -> 2038 passed, 1 skipped; `python3 bundles/base/tools/build.py --check` -> `lint ok`; `build.py --out <scratchpad>/cp3a` and `--out <scratchpad>/cp3b` -> same size (339016 bytes), `cmp` equal. Server tests, live checker tests and vendor check: not run (CP3 changes no server code). Verification status: the full tests pass; the owner's reading of `docs/process/BRANCH_RULES.md` and confirmation of the docs-only CI finding are pending. Task 18 (installed copy refresh) not run, as planned.
+
+Rule exceptions (CP3): one attempt refused by the guard (rule `no-heredocs`): I appended a stray `python3 - <<'X'` snippet to a verification command; it was blocked before it ran, nothing was written, and I re-ran the command without it. Every `gh` call was GET: `gh --version`, `gh auth status`, `gh api --help`, `gh repo view --json ...`, `gh api --method GET repos/{owner}/{repo}/rulesets`, `gh api --method GET repos/{owner}/{repo}/rulesets/26275761`, `gh api --method GET repos/{owner}/{repo}/rules/branches/main`. No ruleset, setting or workflow changed; no commit, push or staging; no installed copy edited.
 
 ### CP4 — `/phase-status`
 

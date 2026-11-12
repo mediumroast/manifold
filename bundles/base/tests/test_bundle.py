@@ -2279,6 +2279,32 @@ def test_review_cycle_round2_repairs():
     assert "the human who ticks judges" in light and "ready check" in light
 
 
+def test_coordinator_reports_level_and_compares_branch_rules():
+    """Phase 3 CP3: the coordinator writes the CI result into the pull request for a human to tick (no commit),
+    reports the level of the definition of done, batches decisions, and compares branch rules with the workflows."""
+    text = _agent_text("coordinator")
+    for needle in ("## Branch rules", "mergeable", "releasable", "accept all", "never declare", "never change the ruleset"):
+        assert needle in text, needle
+    ci = text.split("## CI of the exact commit")[1].split("\n## ")[0]
+    assert "remaining-steps list" in ci and "no commit" in ci
+    branch = text.split("## Branch rules")[1].split("\n## ")[0]
+    assert ".github/workflows/" in branch and "required check" in branch
+
+
+def test_ask_rule_requires_self_contained_asks_for_coordinator():
+    """Phase 3 CP3: every ask says what, why, consequence and default, never an internal ID alone, and the
+    rule reaches the coordinator."""
+    rules = build.load_rules(ROOT)
+    rule = [r for r in rules if r["id"] == "ask-on-ambiguity"][0]
+    assert "coordinator" in rule["applies_to"]
+    for needle in ("internal ID", "the consequence", "the default"):
+        assert needle in rule["instead"], needle
+    fragments = build.load_fragments(ROOT)
+    for fmt in ("claude", "copilot"):
+        rendered = build.render_agent("coordinator", _agent_text("coordinator"), fmt, fragments, rules)
+        assert "internal ID" in rendered, fmt
+
+
 def test_pr_template_has_remaining_steps_and_decisions_table():
     """Phase 3 CP2: the pull request template carries the human's remaining steps and one batch of decisions."""
     t = (ROOT / "templates" / "PULL_REQUEST_TEMPLATE.md").read_text()
