@@ -1,11 +1,11 @@
 # REVIEW_PLAN_3.md
 
-**Phase:** `docs/plans/PHASE_3_PLAN.md`, checkpoint CP1 only (Tasks 1 to 6)
+**Phase:** `docs/plans/PHASE_3_PLAN.md`, checkpoints CP1 (Tasks 1 to 6, revisions 1 and 2), the repair of round 1 (Tasks 19 to 21, revision 2) and CP2 (Tasks 7 to 10, revision 3)
 **Intent:** INT-26, `intent/INT-26-finishing-a-phase-clear-and-light.md`
 **Commit reviewed:** `aabccb3e4949de4de5cdaeedcff03cfd9212451d` (Task 6; with `996bcbd0774b7fdf4f902d95b1b006417e5a7461`, Tasks 1 to 5; diff `3e2bbaf..aabccb3`), branch `claude/intent-phase3-streamline`. The checkout's HEAD is the merge `7a79d22d2c87e2b683e81516ce0893f3091bcac6` (context only; it brings in #32, not reviewed). The working tree also holds one uncommitted edit to `docs/plans/PHASE_3_PLAN.md`: the "Rule exceptions:" line in the CP1 notes (line 146). That line is not in the commit reviewed.
 **Plan version:** **Approved by:** Michael Hay on November 11, 2026; no amendment. Plan file has the uncommitted edit named above.
 **Policy used:** `REVIEW.md` (repository root, present) plus the built-in defaults and the documents/agent-instructions standard. The `Review process` approval rule of `AGENTS.md` (solo repository, no second approver) applies; this change touches nothing that section says needs a second approver.
-**Revision:** 2, 2026-11-11 (time not recorded by the reviewer). Revision 2 re-reviews the repair checkpoint `eea54246c0c3bc957387e9215d881018f940dc7f` (parent `e68312f`; Tasks 19 to 21 of "Review amendment (round 1)", approved by Michael Hay on November 11, 2026). The sections below that describe revision 1 (header lines above, "Checks that found nothing", "Rule exceptions compared" for CP1) are kept as written; revision 2 additions are marked "Rev 2".
+**Revision:** 3, 2026-11-11 (time not recorded by the reviewer). Revision 3 reviews CP2, commit `30e88bd7f5d32fcd03c001fc1635dbca75c5611e` (parent `cdc0362`; diff of that commit only: 6 files, 97 insertions, 9 deletions). Branch `claude/intent-phase3-streamline`; the working tree was clean and HEAD equals the commit at the start of this review. The plan is approved (Michael Hay, November 11, 2026) and the owner has settled: Task 8 follows option A; the coder's wording of ready-check item 2 (ending ": repaired, deferred or rejected", kept so an existing test is not edited) is approved; no test edit. Policy and approval rule are as above (`REVIEW.md` plus built-in defaults; solo repository, no second approver; approval rule applies as stated there, nothing in this change needs a second approver). Revision 2 re-reviews the repair checkpoint `eea54246c0c3bc957387e9215d881018f940dc7f` (parent `e68312f`; Tasks 19 to 21 of "Review amendment (round 1)", approved by Michael Hay on November 11, 2026). The sections below that describe revisions 1 and 2 (header lines above, "Checks that found nothing", "Rule exceptions compared" for CP1) are kept as written; revision 2 additions are marked "Rev 2" and revision 3 additions "Rev 3". Finding IDs F1 to F4 are unchanged; CP2 findings continue at F5.
 
 ## Revision log
 
@@ -13,18 +13,30 @@
 |---|---|---|---|
 | 1 | 2026-11-11 | `aabccb3e4949de4de5cdaeedcff03cfd9212451d` | First review, CP1 only |
 | 2 | 2026-11-11 | `eea54246c0c3bc957387e9215d881018f940dc7f` | Re-review of the repair (Tasks 19 to 21): F1 and F3 repaired, F2 repaired as accepted (evidence recorded, not reproduced by the reviewer); one new Nit (F4) |
+| 3 | 2026-11-11 | `30e88bd7f5d32fcd03c001fc1635dbca75c5611e` | Review of CP2 (Tasks 7 to 10): F4 repaired; two new Important (F5, F6) and four new Nits (F7 to F10) |
 
 ## Counts by severity
 
 | Severity | Open | Repaired | Deferred | Rejected |
 |---|---|---|---|---|
-| Important | 0 | 1 (F1) | 0 | 0 |
-| Nit | 1 (F4, new in rev 2) | 2 (F2, F3) | 0 | 0 |
+| Important | 2 (F5, F6, new in rev 3) | 1 (F1) | 0 | 0 |
+| Nit | 4 (F7 to F10, new in rev 3) | 3 (F2, F3, F4) | 0 | 0 |
 
 ## Findings
 
 ### Bugs
-(none)
+
+**F5 (Important, new in rev 3; pass: Bugs, consistency of documents) — Ready-check item 3 contradicts itself and drops the exact-commit rule for a commit "that changes no code"**
+- **Location:** `bundles/base/process/REVIEW_CYCLE.md:57` (plan Task 7, "Change" line 165, prescribed this wording)
+- **Evidence:** item 3 now reads "...ticked by a human in the pull request; a commit that changes no code needs no second confirmation, a commit that changes code does. A run for an older commit is not the result." The two sentences cannot both hold for a commit after the confirmed one: if a no-code commit needs no second confirmation, the CI result in force is the one for an older commit, which the last sentence says is not the result. Item 1 and the PR template line ("CI of that exact commit") also keep the exact-commit wording. "Code" is not defined: a commit that changes only agent instructions, rules, hooks configuration or `test_bundle.py` is not "text in documents" by the light path section of the same file, yet it could be read as "no code" here. Here the bundle lint and tests are the CI gate for exactly such text, so skipping a second confirmation could let a behavior-changing commit ride on an older green run. `docs/process/REVIEW_CYCLE.md` (installed) and `bundles/base/agents/coordinator.agent.md:61` still say "a human confirms it" for the exact commit (see F8).
+- **Direction:** Decide, as an owner or amendment question (the plan prescribed the wording), what "no second confirmation" covers: name the kinds of commit (for example only the review file or the pull request text) and say that any other commit gets its own CI read; or drop the clause. State once how it fits with "a run for an older commit is not the result".
+- **State:** open
+
+**F6 (Important, new in rev 3; pass: Bugs, consistency of documents) — Two homes for "what was decided about a finding", and an instruction that contradicts the reviewer's own re-review rule**
+- **Location:** `bundles/base/process/REVIEW_CYCLE.md:56` and the new table row at `:46` against `:24`, `:29`, `:31`, `:37` (all in that file)
+- **Evidence:** the new table says a decision about a finding lives in the pull request, and item 2 says "(the reviewer's file keeps it `open`)". Line 24 (Re-review row) still tells the `reviewer` to show each earlier finding "as repaired, deferred or rejected with evidence", line 29 says every finding ends in one of three states, and the plan's amendment carries a "Finding / End / Reason" table (Phase 3 plan, "Findings not repaired") that records the same decision. The review template also has a counts table with Deferred and Rejected columns. An agent reading line 56 would leave a deferred finding `open`; an agent reading line 24 would mark it `deferred`; the ready check (old wording, "the counts table shows no open finding") has been replaced, but the state vocabulary in the reviewer's file has not. The coder's note says the item 2 wording was kept so `test_review_cycle_ready_check_leaves_the_decisions_to_a_human` still passes; the owner approved that and I take it as settled, so the finding is about the other lines, not the ending of item 2.
+- **Direction:** Say in the home table which part of a finding's end is the reviewer's (repaired, with evidence; open otherwise) and which is the human's (deferred, rejected, kept in the pull request), and align lines 24, 29 and 31 with it; or note that the amendment's table is the plan's copy of the decision and the pull request is the home. One rule for the reviewer.
+- **State:** open
 
 ### Security
 (none)
@@ -47,7 +59,25 @@
 - **State:** repaired as accepted (rev 2): the owner accepted F2 on the condition that the evidence is recorded if it can be produced. Task 21's note records `git worktree add --detach ... 3e2bbaf`, the test added there with `Edit`, and "1 failed, 1955 deselected" on the old text, with no guard refusal and the worktree removed.
 - **Rev 2 evidence:** I did not reproduce the run (I did not rebuild a `3e2bbaf` worktree); the count rests on the coder's note. It is consistent with round 1: 1955 is the Task 6 count of the whole bundle tests at that time, and 1 failed plus 1955 deselected equals the old tree's 1956 tests. `git worktree list` shows no leftover worktree under the scratchpad, and `git status --short` in this checkout was clean at the start of this review. `git diff --stat e68312f eea5424 -- bundles/base/tests` is empty: no test edited by the repair.
 
-### Context files
+**F8 (Nit, new in rev 3) — Compliance / consistency: the new process text is ahead of the places that apply it, until Tasks 11, 12 and 18**
+- **Location:** `docs/process/REVIEW_CYCLE.md:44-45` and `docs/templates/PULL_REQUEST_TEMPLATE.md:62` (installed, old wording); `bundles/base/agents/coordinator.agent.md:61` and `.claude/agents/coordinator.md:72` ("a human confirms it"; no level named); `bundles/base/HOWTO.md:75`
+- **Evidence:** `cmp bundles/base/process/REVIEW_CYCLE.md docs/process/REVIEW_CYCLE.md` and the same for the PR template differ. The plan's inventory (line 74) says the install refresh is done later (Task 18) and the coordinator text changes in CP3 (Task 12). Until then, the coordinator in this repository reads the old installed ready check and its definition lacks the "closing report names the level" duty that the shipped `REVIEW_CYCLE.md` now states. Not a deviation; a transitional inconsistency that a reader of CP2 alone would see.
+- **Direction:** None for CP2; check at the CP3 review that the coordinator text, HOWTO and the refreshed install agree with this file (and with the resolution of F5 and F6).
+- **State:** open
+
+**F9 (Nit, new in rev 3; pass: Compliance) — `docs/agents/claude-desktop-failures.md` is changed but is not in the plan's inventory or Tasks 7 to 10**
+- **Location:** `docs/agents/claude-desktop-failures.md:239-249` (entry F13)
+- **Evidence:** the commit's file list has six files; five are named in Tasks 7 to 10, the sixth is the breach record. `docs/process/BREACH_PROCEDURE.md` says the `coordinator` (or the owner) records breaches, and the entry was added in the coder's CP2 commit. Earlier entries F11 and F12 were added in separate record commits (`cdc0362`, `e68312f`). The content checks out against the guard log (see "Rule exceptions compared, rev 3"), with one detail: the entry and the plan note call it an "empty" or "pointless" snippet, while the logged command is a compound one whose first 80 characters are the heredoc followed by a `grep` on the plan file.
+- **Direction:** Record the file as an accepted addition in the CP2 note or the completion summary, as was done for the earlier entries; no change to the entry required.
+- **State:** open
+
+### Context files (and Tests, Rev 3)
+
+**F10 (Nit, new in rev 3; pass: Tests) — Task 10 failing-first run not reproduced; one assertion was changed after the passing run**
+- **Location:** `docs/plans/PHASE_3_PLAN.md` Task 10 note; `bundles/base/tests/test_bundle.py` `test_review_cycle_names_homes_levels_and_light_path` (about line 2255)
+- **Evidence:** the note records "2 failed, 2034 deselected" before and "2 passed" after, and says one assertion of the first test was changed afterwards (whole file to the ready-check section). I ran the two new tests plus the existing ready-check test: `4 passed, 2032 deselected`. I did not reproduce the failing run on the old text (it needs a worktree of `cdc0362` plus the new tests; not rebuilt). The old text lacks all three headings and the PR template sections, so a failure there is certain for the first assertion of each test. The first test checks the three headings, "solo", "never code" and item 3, but not the level names or the full sentence "never code, rules, agent permissions, hooks or tests"; that is the plan's own scope for the test. No existing test was changed: `git diff 30e88bd~1 30e88bd -- bundles/base/tests` has 0 removed lines (`grep -c '^-[^-]'` printed 0).
+- **Direction:** None required; optional first-hand reproduction by the owner.
+- **State:** open
 
 **F3 (Nit) — The lessons paragraph keeps a pointer to history that no longer exists**
 - **Location:** `bundles/base/process/REVIEW_CYCLE.md:52` (also the installed copy `docs/process/REVIEW_CYCLE.md`)
@@ -60,6 +90,13 @@
 - **Location:** `docs/plans/PHASE_3_PLAN.md` Tasks 19 to 21 notes (the only "Rule exceptions:" line in the file is line 159, for CP1)
 - **Evidence:** the coder reported "none" for the repair, but `grep -n "Rule exceptions" docs/plans/PHASE_3_PLAN.md` finds no such line for Tasks 19 to 21. The working rule says every report from an agent that changed files or ran commands carries the line. Whether the report itself carried it is outside what I can see; the plan, which is the record, does not. Compared with the diff and guard log, "none" holds (see "Rule exceptions compared, rev 2").
 - **Direction:** Record the line in a later task's note or the completion summary (a completed task's note is not edited). Style and traceability only.
+- **State:** repaired (rev 3)
+- **Rev 3 evidence:** commit `30e88bd` adds, at `docs/plans/PHASE_3_PLAN.md` after the Tasks 19 to 21 verification line, "Rule exceptions (Tasks 19 to 21): none (the owner's decision on review finding 4: they were none)." It is in a later place than the completed notes, which were not edited. The "none" is the owner's, not the coder's observation; it matches what I compared in rev 2.
+
+**F7 (Nit, new in rev 3; pass: Compliance) — The light path does not say whether a review and the ready check still apply**
+- **Location:** `bundles/base/process/REVIEW_CYCLE.md` section "Light path for text fixes" (lines 72 to 79)
+- **Evidence:** the section says the route is "shorter" and "so they do not need a full amendment round", and lists four conditions, the last being a human tick on the diff. It does not say whether a `reviewer` pass, `REVIEW_PLAN_<N>.md` and the four ready-check lines are still required for such a change. The intent (S7, "Must never": skip the human's approval) is met by the tick; whether item 1 of the ready check (a review of the final commit exists) holds on this path is left to the reader. Who decides that a change "changes no behavior" is also not named (the diff reader, the author or the human who ticks).
+- **Direction:** One sentence: what is skipped (the amendment round) and what is kept (review, ready check, or neither), and who judges "text only".
 - **State:** open
 
 ## Checks that found nothing
@@ -78,6 +115,15 @@ The writer's line (plan line 146, uncommitted) says "not established": no coder 
 - **Guard log:** `.manifold/guard-log.jsonl` (gitignored) holds one line, a reviewer `write-allowlist` event at 2026-11-11T20:03:10Z for a path in another worktree. The commits are 07:41 -0800 (about 15:41Z), so the entry is later than CP1 and unrelated to it. Matches the writer's statement.
 - **Diff and log:** `git log 3e2bbaf..aabccb3` shows two commits by `mihay42`; the 12 changed files are all within Tasks 1 to 6 or their install output. Matches.
 - **Not matched or not checkable:** the guard log covers only this checkout and starts after the commits, so a CP1 breach (or the guard's refusal of one) could not be seen either way. The Task 6 note's "the guard did not block the install" cannot be verified. Status: not compared beyond the above; "not established" is the honest value and I agree with it.
+
+## Rule exceptions compared, rev 3
+
+The coder's CP2 line (plan, after the CP2 gates): "none broken", with one attempt refused by the guard (`no-heredocs`), not retried, nothing written, nothing staged or committed. The owner's line adds that the empty heredoc was logged as F13. Compared:
+- **Diff:** `git show --stat 30e88bd` lists six files: `bundles/base/process/REVIEW_CYCLE.md`, `bundles/base/templates/PHASE_PLAN_TEMPLATE.md`, `bundles/base/templates/PULL_REQUEST_TEMPLATE.md`, `bundles/base/tests/test_bundle.py`, `docs/agents/claude-desktop-failures.md`, `docs/plans/PHASE_3_PLAN.md`. The first four and the plan are named in Tasks 7 to 10; the breach record is not (F9). No hook, rule, agent or installed file changed. Matches "none broken".
+- **Guard log:** `.manifold/guard-log.jsonl` (gitignored, this checkout) now has four lines. Two are mine from earlier rounds (reviewer, `no-heredocs`, 20:18:44Z and 23:41:35Z). One is the coder's: 23:48:04Z, rule `no-heredocs`, agent_type `coder`, command beginning `python3 - <<'EOF' 2>&1 | head` followed by `EOF` and a `grep -n` on the plan file. That is the one refusal the coder reported; the count (1 refused, none through) matches. The command is slightly more than "an empty snippet" (a read-only `grep` after it), but it wrote nothing. No other coder line.
+- **Commit log:** one commit by `mihay42`, 19:21 -0800; the logged refusal (23:48Z on the same day is earlier than 03:21Z on the next) precedes the commit. Message names Tasks 7 to 10. Nothing staged beyond the task files is visible.
+- **Not compared:** the coder's transcript and shell history are not available to me, so a command that the guard did not see and the coder did not mention cannot be excluded. Status: matches; limited as stated.
+- **This review:** no refusal so far; I used no shell write.
 
 ## Rule exceptions compared, rev 2
 
@@ -105,6 +151,11 @@ The coder's line for the repair was "none". Compared:
 | Rev 2: `install.py --status` from the unzipped bundle | not run | the unzip step (a `python3 -c` zipfile call) was refused by the guard; I did not get the result another way. The coder's note (Task 20: 0 lines MODIFIED) is unverified by me; the hash and `cmp` checks above cover the one file that changed |
 | Rev 2: Task 19 and 20 acceptance greps (as written in the plan) | n/a | Task 20 grep prints nothing; Task 19 grep prints the two accepted test lines |
 | server tests, `tests/live`, `vendor_web.py --check` | not run | outside CP1 verification |
+| Rev 3: `python3 bundles/base/tools/build.py --check` at `30e88bd` | n/a | `lint ok` |
+| Rev 3: `.venv/bin/python -m pytest bundles/base/tests -q` at `30e88bd` | 2035 passed, 1 skipped | pass; equals the coder's count |
+| Rev 3: `.venv/bin/python -m pytest bundles/base/tests -q -k "review_cycle_names or pr_template_has or ready_check"` | 4 passed, 2032 deselected | pass (the two new tests and the existing ready-check tests) |
+| Rev 3: Task 7 to 9 greps (headings, five table rows, `never a commit`, `mergeable`, `releasable`, `Light path`, `What remains for you`, `Decisions for you`) | n/a | read in the diff of `30e88bd`: all present; table has five rows |
+| Rev 3: build twice with `build.py --out` and `cmp`; `install.py --status`; server tests, `tests/live`, `vendor_web.py --check` | not run | the coder's note is the only evidence for the twice-built zip; the others are outside CP2 verification |
 
 ## CI on the pushed commit
 
@@ -120,6 +171,13 @@ One test added (`test_deferred_text_fixes_f1_f4_f5`), none changed, none deleted
 - The repair added no new text that contradicts another document: the new sentence in the capability record agrees with `INSTALL.md` and `HOWTO.md` as changed in CP1; the REVIEW_CYCLE reword is neutral. Completed CP1 task notes were not edited, as the amendment says.
 - Real-use evidence (item d): no evidence yet.
 
+## Rev 3 summary of CP2
+
+- **Plan inventory and deviations:** Tasks 7 to 10 are all marked done with notes; the plan template line, the PR template sections and both tests match the plan's wording. One recorded deviation (item 2 ending), settled by the owner. One unplanned file (F9). Added beyond the plan text: "the `coordinator` may record the decision" in the decisions row; read as consistent with "a tick is a human act", not a finding.
+- **Intent (INT-26):** S7 and the "light path never covers code, rules or agent permissions; solo only; human approval kept" constraints are present in the text; the open points are F5 to F7. The intent's "approval follows the review policy" holds: item 4 of the ready check is unchanged.
+- **Standard for documents:** (a) traceability: each Task 7 to 10 acceptance line maps to a section and a test; (b) consistency: F5, F6, F8; (c) verified claims: the paths and section names the new text links (`docs/process/REVIEW_CYCLE.md`, `docs/templates/PULL_REQUEST_TEMPLATE.md`, "Where each fact is recorded", `human-confirms-closure` rule file at `bundles/base/rules/core/human-confirms-closure.md`) exist; (d) behavior: no evidence yet; (e) build and tests run, above; (g) owner approval of text that changes agent behavior: the plan is approved and the owner settled the two points named in the header.
+- **Nit cap:** 4 new nits plus F4 earlier, within the cap of 5.
+
 ## Could not check
 
 - The failing-first run of Task 5 on the old files (F2).
@@ -127,6 +185,12 @@ One test added (`test_deferred_text_fixes_f1_f4_f5`), none changed, none deleted
 - CI for the commit reviewed; `install.py --status` and the install itself (not rebuilt).
 - Whether the owner has read and ticked the Task 1 to 4 diff in the PR.
 - Rev 2: the failing-first run of Task 21 (coder's note only); `install.py --status` (guard refusal of my unzip step); CI for `eea5424`; the coder's shell history for the repair.
+
+- Rev 3: the failing-first run of Task 10 (F10); the coder's transcript and shell history for CP2; the twice-built zip equality and `install.py --status`; CI for `30e88bd`; whether the owner has read and ticked anything in the pull request.
+
+## Rule exceptions (this review)
+
+Rule exceptions: none by me in this session (no shell write, no refused command; Edit used only on this file). The earlier refusals of rounds 1 and 2 are listed above.
 
 ## A human decides
 
