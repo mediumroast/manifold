@@ -272,6 +272,30 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F16 — The `reviewer` tried a heredoc in a `bash -c` loop during the review of the final commit of Phase 3; refused, disclosed (2026-11-12)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** To compare bundle sources with installed copies, the `reviewer` ran a `bash -c` loop that read its file pairs from a heredoc. The live guard refused it before it ran, so nothing was written. The `reviewer` did not retry it another way; it redid the checks with plain `cmp` calls and read-only `python3 -c`, and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-12T21:15:59Z (rule `no-heredocs`, agent_type `reviewer`); the reviewer's report ("My Rule exceptions"). The heredoc was a read-only input, not a file write; the refusal is correct by the rule's text.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None; the guard held.
+**Status:** closed
+**Intent raised:** none
+
+## F17 — The `reviewer` tried to Write a scratch script to the scratchpad; refused by the write allowlist, disclosed (2026-11-12)
+
+**Rule:** The reviewer's write allowlist (guard rule `write-allowlist`): the `reviewer` writes only the review file.
+**What happened:** The `reviewer` tried to Write a scratch script into the session scratchpad. The live guard refused it before it ran, so nothing was written. The `reviewer` did not retry and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-12T21:16:05Z (rule `write-allowlist`, tool `Write`, agent_type `reviewer`); the reviewer's report ("My Rule exceptions"). Note: the plan and the `reviewer` brief I gave told it to Write snippets to the scratchpad, which conflicts with the reviewer's own allowlist. The cause is my instruction, not the agent's choice.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. The coordinator's instruction was inconsistent with the reviewer's allowlist (a coordinator slip, recorded here as my own).
+**Agent:** reviewer (attempt), coordinator (instruction)
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** The coordinator should not tell the `reviewer` to Write scratch files; reviewers need a read-only way to run a snippet, or the allowlist should name the scratchpad (the owner decides; an intent, not an edit here).
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |

@@ -16,6 +16,9 @@
 | 3 | 2026-11-11 | `30e88bd7f5d32fcd03c001fc1635dbca75c5611e` | Review of CP2 (Tasks 7 to 10): F4 repaired; two new Important (F5, F6) and four new Nits (F7 to F10) |
 | 4 | 2026-11-12 (time not recorded by the reviewer) | `db37ef69180caa46713ff7523f7e5a5b13e0f4e4` (CP3, Tasks 11 to 14); round 2 repair `815baa3d2359268bf031cb147227ebc14d4d2eac` (Tasks 22 to 26) re-checked | F5, F6, F7 repaired; F8, F9, F10 not reopened (owner deferred them; the decision lives in the pull request); one new Important (F11) and two new Nits (F12, F13) |
 | 5 | 2026-11-12 (time not recorded by the reviewer) | `1ccf6aec9d3bda8649e401a42e09fc90dbaee913` (CP7, Tasks 27 to 30; diff of that commit only: 5 files, 52 insertions, 13 deletions) | F11 and F13 repaired with evidence; F12, F8, F9, F10 not reopened; one new Nit (F14); no Important open |
+| 6 | 2026-11-12 (time not recorded by the reviewer) | `6716af3f257ca1dbeae91c3bf498cab96ec17927` (Task 18, the final commit of the branch), on `07d580d` (CP4, Tasks 15 to 17); the whole branch against `origin/main` checked against the plan and INT-26 | F8 repaired with evidence; F9, F10, F12 not reopened (owner-deferred); four new Nits (F15 to F18); no Important open |
+
+Revision 6 header: reviews CP4 (diff of `07d580d~1..6716af3`: 24 files, 959 insertions, 54 deletions) and, as the review of the final commit, the whole branch. Branch `claude/intent-phase3-streamline`; the working tree was clean and HEAD equals `6716af3`. Plan approved (Michael Hay, November 11, 2026) with three amendments approved. Policy used: `REVIEW.md` plus the built-in defaults and the documents standard (the change also holds code: a script, `build.py` and tests). The `Review process` approval rule (solo repository, no second approver) applies as stated there; nothing in this change needs a second approver. Brief: F9, F10, F12, F14's decision and the other owner deferrals are not reopened; CI was not read.
 
 Revision 4 header: reviews CP3, commit `db37ef6` (parent `815baa3`; diff of that commit only: 6 files, 137 insertions, 8 deletions), branch `claude/intent-phase3-streamline`; the working tree was clean and HEAD equals the commit. Plan approved (Michael Hay, November 11, 2026) with the round 2 amendment approved. Policy used: `REVIEW.md` plus the built-in defaults and the documents standard. The `Review process` approval rule (solo repository, no second approver) applies as stated there; nothing in this change needs a second approver. Per the owner's brief, the acceptance of `docs/process/BRANCH_RULES.md` and of the docs-only CI finding is not treated as a finding. Per this revision, the reviewer's state vocabulary is `open` or `repaired`; "deferred" for F8 to F10 is the owner's decision in the pull request, so they still show `open` here.
 
@@ -24,7 +27,9 @@ Revision 4 header: reviews CP3, commit `db37ef6` (parent `815baa3`; diff of that
 | Severity | Open | Repaired |
 |---|---|---|
 | Important | 0 | 4 (F1, F5, F6, F11) |
-| Nit | 5 (F8, F9, F10: deferred by the owner in the pull request, kept open here; F12 and F14 open) | 5 (F2, F3, F4, F7, F13) |
+| Nit | 8 (F9, F10: deferred by the owner in the pull request, kept open here; F12 settled by the owner, still `open` here; F14, F15, F16, F17, F18 open) | 6 (F2, F3, F4, F7, F8, F13) |
+
+Rev 6 replaces this table (rev 5: 5 Nit open, 5 repaired). F8 moved to repaired; four new Nits.
 
 Deferred and rejected counts are the owner's, in the pull request. The counts above are those of rev 5 and replace the rev 4 table (rev 4: 1 Important open, 5 Nit open). Per the brief, F12 is settled by the owner and not reopened; it still shows `open` here in the reviewer's vocabulary because the failing-first run remains unreproduced.
 
@@ -71,7 +76,8 @@ Deferred and rejected counts are the owner's, in the pull request. The counts ab
 - **Location:** `docs/process/REVIEW_CYCLE.md:44-45` and `docs/templates/PULL_REQUEST_TEMPLATE.md:62` (installed, old wording); `bundles/base/agents/coordinator.agent.md:61` and `.claude/agents/coordinator.md:72` ("a human confirms it"; no level named); `bundles/base/HOWTO.md:75`
 - **Evidence:** `cmp bundles/base/process/REVIEW_CYCLE.md docs/process/REVIEW_CYCLE.md` and the same for the PR template differ. The plan's inventory (line 74) says the install refresh is done later (Task 18) and the coordinator text changes in CP3 (Task 12). Until then, the coordinator in this repository reads the old installed ready check and its definition lacks the "closing report names the level" duty that the shipped `REVIEW_CYCLE.md` now states. Not a deviation; a transitional inconsistency that a reader of CP2 alone would see.
 - **Direction:** None for CP2; check at the CP3 review that the coordinator text, HOWTO and the refreshed install agree with this file (and with the resolution of F5 and F6).
-- **State:** open
+- **State:** repaired (rev 6)
+- **Rev 6 evidence (commit `6716af3`, Task 18):** the installed copies now equal their sources. `cmp` printed nothing (all equal) for `bundles/base/process/REVIEW_CYCLE.md` vs `docs/process/REVIEW_CYCLE.md`, `templates/PULL_REQUEST_TEMPLATE.md`, `templates/PHASE_PLAN_TEMPLATE.md`, `templates/REVIEW_PLAN_TEMPLATE.md`, `HOWTO.md` vs `docs/process/HOWTO.md`, `process/BREACH_PROCEDURE.md`, `hooks/guard.py`, `scripts/phase_status.py` vs `.manifold/phase_status.py` and `commands/phase-status.md` vs `.claude/commands/phase-status.md`. Every file in `.manifold/manifest.json` (25) matches its sha256 on disk (a read-only `python3 -c`, 0 bad), and the same 25 hashes equal a fresh in-memory `build_payload()` of the current bundle (so the seven rendered agent definitions, which have no single source file, equal the build output; 0 differences). The installed coordinator (`.claude/agents/coordinator.md:73,101`) now carries the exact-commit CI wording, the level report (mergeable, releasable, done; never declares done) and the single CI-write exception; the old "a human confirms it" wording is gone. The installed `AGENTS.md` managed block carries the self-contained-asks sentence (`grep -c "internal ID" AGENTS.md` prints 1, and 1 in each of the six agent definitions that carry rules). The transitional state named in this finding no longer exists. The same applies to the CP3 and CP7 notes that said the install was old until Task 18 (the AGENTS.md block, the coordinator, HOWTO).
 
 **F9 (Nit, new in rev 3; pass: Compliance) — `docs/agents/claude-desktop-failures.md` is changed but is not in the plan's inventory or Tasks 7 to 10**
 - **Location:** `docs/agents/claude-desktop-failures.md:239-249` (entry F13)
@@ -138,7 +144,45 @@ Deferred and rejected counts are the owner's, in the pull request. The counts ab
 - **Direction:** Optional: add the limit sentence to the CI-section assertions.
 - **State:** open
 
+### Rev 6 additional findings (CP4 and the install refresh)
+
+**F15 (Nit, new in rev 6; pass: Tests) — The "script never writes" test is a deny-list of call names, so it does not pin the read-only property**
+- **Location:** `bundles/base/tests/test_phase_status.py:192-209` (`test_no_call_in_the_script_writes_or_changes_a_file`) and `:212` (`test_the_script_imports_only_the_standard_library`)
+- **Evidence:** the AST test rejects calls named `open`, `write_text`, `mkdir`, `unlink` and the like, and `print(file=...)` other than to stderr. The stdlib test only checks that every import is in the standard library (`build.lint_hook`). A later edit that adds `import subprocess` or `import os` and calls `subprocess.run(...)`, `os.system(...)` or `getattr(path, "write_" + "text")` passes both tests: the names are not on the list and the modules are standard library. Today's script is read-only (I read all 209 lines: only `Path.read_text`, `is_file`, `print`, no write path; and the two unchanged-contents tests pass), so this is about how long the claim stays true, which INT-26 S3 ("a read of the script shows it only reads") depends on.
+- **Direction:** Optional: pin an allow-list of imports (`re`, `sys`, `pathlib`, `__future__`) in the AST test, so a new module has to be argued for.
+- **State:** open
+
+**F16 (Nit, new in rev 6; pass: Bugs, verified claims) — The shipped Copilot prompt says "run this in the terminal" but does not say what to do when no terminal is available**
+- **Location:** `bundles/base/commands/phase-status.prompt.md:6-12` (installed to `.github/prompts/phase-status.prompt.md` for the copilot format; not installed in this repository, which is a `claude` install)
+- **Evidence:** the Task 15 note marks as not verified "that a shell tool is available to a prompt file run" and the behaviour of `${input:...}` when the argument is typed after the command. The shipped limit paragraph states the run is the agent's act, that prompt files run only in the Local harness (deprecated, planned removal February 2027) and that the docs describe no way to run a command; it claims nothing the Task 15 note marks unverified (checked against the note: only `name`, `description`, `argument-hint` and `${input:...}`, which the note lists as read). But the instruction line "Run this command in the terminal" is unconditional, and the only error handling is "If it printed an error, show the error and stop". An agent with no terminal tool has no instruction to say so and stop, so it could write a status list from memory, which is exactly what INT-26 S3 ("from the files, not from an agent's memory") and "Must never report an item closed that the files show open" rule out. Prose: "an agent could be misled" is the Important test; I rate it Nit because the paragraph below already warns that the run is the agent's act, and the only evidence of a no-terminal case is the unverified item itself.
+- **Direction:** Add one sentence: if you cannot run the command, say so and do not list the open items yourself.
+- **State:** open
+
+**F17 (Nit, new in rev 6; pass: Security) — The Claude command pre-approves every `python3` command, and the typed argument reaches the shell unquoted**
+- **Location:** `bundles/base/commands/phase-status.md:4` (`allowed-tools: Bash(python3 *)`) and `:8` (`` !`python3 .manifold/phase_status.py $ARGUMENTS` ``); enforced by `build.py` `lint` (about lines 590-596)
+- **Evidence:** the plan (Task 15 settled note, Task 17) prescribes exactly this form and the coder read it in the Claude Code documentation, so it is not a deviation. Two consequences are not said anywhere: (1) the permission pattern covers any `python3 ...` command while the command runs, not only the status script; (2) `$ARGUMENTS` is the raw typed text, so `/phase-status 3; <other command>` reaches the shell as typed, and the script's digit check only runs after the shell has parsed the line. The typist is the user, so the trust boundary is the user's own; whether Claude Code splits compound commands before matching the `Bash(python3 *)` rule is not stated in what the coder read and I did not read it: unverified, confirm with the Claude Code permissions documentation. Not run: I did not invoke the command in a client.
+- **Direction:** Owner decision (the plan prescribed the form): either narrow the pattern to `Bash(python3 .manifold/phase_status.py *)` (and say that in the lint and test), or record the breadth as accepted.
+- **State:** open
+
+**F18 (Nit, new in rev 6; pass: Compliance) — The CP4 "Rule exceptions" line in the plan omits the `/dev/null` redirect that the coder reported and the breach record names**
+- **Location:** `docs/plans/PHASE_3_PLAN.md` line 320 (CP4 "Rule exceptions") against `docs/agents/claude-desktop-failures.md` F15 ("Evidence" paragraph)
+- **Evidence:** the plan line lists the refused `cmp` and the three web reads, and says "No file written from a shell command". The F15 entry (breach record, same commit) says "The coder also listed a command that ended with a redirect to `/dev/null` (not a file write)", and the brief says the coder's report listed it. A redirect to `/dev/null` writes no file, so no rule was broken, but the line the reviewer and the coordinator compare is the one in the plan, and it does not match the record. The AGENTS.md rule says "if you are unsure whether something was an exception, list it".
+- **Direction:** Add the redirect to the plan's CP4 line (or say in the F15 entry that the plan line is the shorter list). No rule effect.
+- **State:** open
+
 ## Checks that found nothing
+
+- **Rev 6 checks (CP4 and Task 18):**
+  - **Script is read-only (Task 16):** `bundles/base/scripts/phase_status.py` read in full (209 lines): imports `re`, `sys`, `pathlib.Path` only; reads with `Path.read_text` and `is_file`; the only output is `print` to stdout and, for errors, to stderr; no `open`, no write, delete, rename, `os`, `subprocess`. `.manifold/phase_status.py` is byte-equal to it. The tests (21) pass and include contents-and-mtimes-unchanged, same output twice, exit 2 for a missing plan and bad arguments, a filled approval never reported blank. I ran it: `python3 .manifold/phase_status.py 3` twice, the md5 of both outputs equal (`fdd297ff...`); `... 99` exits 2 with a plain message and no traceback; `... 1` runs on Phase 1. `git status --short` was clean after the runs.
+  - **Script output against the files:** it printed 4 approval lines filled (plan lines 3, 343, 400, 528), 0 unticked and 0 blocked tasks, 2 unticked Completion checklist lines (plan lines 328 and 329), review revision 5 with 5 open findings (F8, F9, F10, F12, F14). I read those lines in the plan and the review: all true at the time of the run (rev 6 changes the review file after the run). One reading note: the "Level aimed at" line is a declaration, not a task, but it counts as an open checklist line, so the script says "below mergeable" until a human ticks it; that is the stated rule (any unticked checklist line) and matches the plan, not a defect.
+  - **Install and manifest (Task 18, and F8):** 25 of 25 manifest hashes match the files; the same 25 hashes equal a fresh in-memory `build_payload()` of the bundle at `6716af3` (0 differences); nine `cmp` pairs equal (listed under F8). `install.py --status` itself: not run (needs the unzipped bundle and a built zip; I did not build one). No installed file differs from the build.
+  - **Task 17 deviation (install.py):** true. `bundles/base/install.py:143-157` (`selected_entries`) takes an entry that has a `role` by the role list and any other entry by its `profiles` list, so the two new format entries (no role) are chosen by profile, as the Copilot hook file already was. `git diff 07d580d~1 6716af3 -- bundles/base/install.py` is empty. The new test `test_phase_status_is_installed_per_profile_and_flavor_and_uninstalled_cleanly` (3 profiles x flavors, installed then uninstalled to an empty tree) passes, which is the behavioral evidence. The plan inventory said MODIFY; the coder recorded the deviation in the Task 17 note; I agree with it.
+  - **Task 17 commands:** `commands/phase-status.md` has `allowed-tools: Bash(python3 *)` and the inline form `` !`python3 .manifold/phase_status.py $ARGUMENTS` `` (both enforced by `build.py` lint and pinned by `test_the_claude_command_pre_approves_python3_and_runs_the_script_inline`; see F17 for the breadth). The skills line in `render_instructions_block` ends "(unverified that an agent runs it as asked)", only for the `skills` and `both` styles. Lint rejects a script with a non-stdlib import and a missing or wrong command file (two tests).
+  - **Copilot prompt:** frontmatter uses `name`, `description`, `argument-hint` only, and `${input:phase}`; it states the Local-harness limit and the deprecation, and says the run is the agent's act. It claims nothing that the Task 15 note marks unverified (see F16 for the missing fallback).
+  - **Tests:** `git diff --numstat 07d580d~1 6716af3 -- bundles/base/tests/test_bundle.py` prints `111 0`; 0 removed lines; ten test functions added (some parametrized; the suite grew from 2039 to 2078 passed, 39 = 21 + 18, as the coder says); `test_phase_status.py` is new (21 passed). No existing test was edited. The failing-first run of Task 17 (16 failed, 2 passed before the `build.py` change) is the coder's note; I did not reproduce it (it would need `build.py` reverted).
+  - **`.github`:** `git diff --name-only origin/main HEAD` lists 39 files, none under `.github/`, `server/` or `tests/`; `git diff 07d580d~1 6716af3 --name-only -- .github` is empty.
+  - **Inventory:** the CP4 commits touch the files of Tasks 15 to 18 plus the generated install files and the plan; `AGENTS.md` (managed block) and `.claude/commands/phase-status.md` are install output not named as paths in the inventory row (`.claude/agents/*`, `.manifold/*`, ...), the same as Task 6; `docs/agents/claude-desktop-failures.md` (F15 breach record) is the same kind of unplanned addition as F9. Not new findings.
+  - **HOWTO item 6** names `/phase-status <N>`, the Copilot limit and the "ask the agent to run" route for other formats; it matches the shipped prompt and instruction line.
 
 - **Rev 5 checks:** no existing test edited (`git diff --numstat 1ccf6ae~1 1ccf6ae -- bundles/base/tests/test_bundle.py` prints `16 0`); no installed copy touched (`git diff --name-only` for `.claude`, `.manifold`, `bundles/base/hooks` empty; the only `docs/process` file is `BRANCH_RULES.md`, planned); the five files of the commit are the four named in the plan's verification line plus the plan. The working tree is clean.
 - **Plan inventory:** `git diff --name-only 3e2bbaf..aabccb3` lists 12 files, all in the Tasks 1 to 6 files or the inventory rows (`.manifold/manifest.json` and `docs/process/*` are the install refresh, `PHASE_3_PLAN.md` holds the notes).
@@ -218,6 +262,25 @@ The coder's line for the repair was "none". Compared:
 | Rev 5: `-k "ci_write_is_the_one or howto or coordinator"` | 213 passed, 1827 deselected | pass |
 | Rev 5: `gh api --method GET repos/mediumroast/manifold/rulesets/26275761` (filtered to the `pull_request` rule) | 1 read | shows the F13 parameter as `true` |
 | Rev 5: failing-first run of Task 27 on the old text; twice-built zip `cmp`; `install.py --status`; server tests, `tests/live`, `vendor_web.py --check` | not run | the old-text failure is established by reading (0 hits of the new phrases in the parent); the rest are coder-note evidence or outside CP7 |
+| Rev 6: `python3 bundles/base/tools/build.py --check` at `6716af3` | n/a | `lint ok` |
+| Rev 6: `.venv/bin/python -m pytest bundles/base/tests -q` at `6716af3` | 2078 passed, 1 skipped | pass; equals the coder's count |
+| Rev 6: `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` | 21 passed | pass |
+| Rev 6: `.venv/bin/python -m pytest tests/live -q` | 24 passed | pass (CI does not run them) |
+| Rev 6: `.venv/bin/python tools/vendor_web.py --check` | n/a | "vendored files match a fresh build" |
+| Rev 6: server tests, `cd server && ../.venv/bin/python -m pytest -q -p no:cacheprovider` | 1060 passed, 2 warnings, 132.12 s | pass; equals the coder's count (the warnings are Pydantic deprecations, not from this change) |
+| Rev 6: nine `cmp` pairs, source vs installed (listed under F8) | 9 of 9 | equal |
+| Rev 6: manifest sha256 vs files; manifest hashes vs a fresh in-memory `build_payload()` | 25 of 25; 25 of 25 | 0 bad; 0 differences |
+| Rev 6: `python3 .manifold/phase_status.py 3` twice (md5 of each output); `... 99`; `... 1` | equal; exit 2; ran | pass |
+| Rev 6: `install.py --status`; two `--out` builds and `cmp` | not run | needs a built and unzipped bundle; the reviewer builds nothing (the coder's note reports 25 `ok` and 344969 bytes twice, `cmp` equal; not reproduced) |
+
+## Rule exceptions compared, rev 6
+
+The coder's CP4 line (plan line 320): "none broken"; three read-only WebFetch reads on 2026-11-12 (recorded in the Task 15 note); no web read and no `gh` call in the continuation; one command refused by the guard (rule `protected-file`, a `cmp` loop over `.claude/agents/`), not retried another way; no file written from a shell command; no commit, push or staging; no installed copy edited by hand; no existing test edited; `.github/` unchanged. The brief adds that the coder's report also listed a redirect to `/dev/null`. Compared:
+- **Guard log:** `.manifold/guard-log.jsonl` has, after the earlier entries I compared (2026-11-11T23:48:04Z `no-heredocs`, 2026-11-12T13:47:17Z `no-heredocs`, both coder, CP2 and CP3), one new coder entry: 2026-11-12T20:54:37Z, rule `protected-file`, tool Bash, command beginning with a scratchpad variable assignment (truncated in the log). That is the one refused `cmp` the line names, 8 seconds after `installed_at` (2026-11-12T20:54:29Z) in `.manifold/manifest.json`, so it came right after the apply step. Matches. The log is gitignored and covers this checkout only.
+- **Diff and commits:** `07d580d` and `6716af3` (both 2026-11-12 13:14:56 -0800) carry only files of Tasks 15 to 18 and the generated install files (see "Checks"); no `.github` file, no ruleset, no hook source (the `guard.py` pair is unchanged in these two commits), no staged extra. No installed file differs from the build (manifest and in-memory build, above), so "no installed copy edited by hand" is consistent with the files; I cannot see the hands.
+- **Not matched:** the `/dev/null` redirect is in the F15 breach entry but not in the plan line (F18, a Nit). A redirect to `/dev/null` is not a file write, so no rule is broken.
+- **Not compared:** the coder's transcript and shell history; the three WebFetch reads (the plan notes and the breach entry do not let me see them; the log records only refusals); that no `gh` call was made in the continuation. Status: matches as far as the log and the diff go.
+- **My own refusals, this review (listed again under "Rule exceptions (this review)"):** one `no-heredocs` and one `write-allowlist` entry from the reviewer are the last two lines of the log.
 
 ## Rule exceptions compared, rev 5
 
@@ -229,7 +292,7 @@ The coder's CP7 line (plan, after the CP7 verification): "none"; the only `gh` c
 
 ## CI on the pushed commit
 
-Not checked: I did not read CI for `aabccb3` (no `gh` call made; the plan says a human confirms CI).
+Not checked: I did not read CI for `aabccb3` (no `gh` call made; the plan says a human confirms CI). Rev 6: CI was not read for `07d580d` or `6716af3` either.
 
 ## Tests run and changed
 
@@ -265,7 +328,29 @@ One test added (`test_deferred_text_fixes_f1_f4_f5`), none changed, none deleted
 - **Installed copies:** the installed coordinator and HOWTO remain old until Task 18, the same transitional state as F8; not reopened.
 - **Nit cap:** one new nit.
 
+## Rev 6 summary of CP4, the install refresh and the whole branch
+
+- **CP4 (Tasks 15 to 18):** all four marked done with notes. Task 15: the notes list the file path and source per flavor, with unverified items marked, and the owner's option (a) is recorded. Task 16: script and 21 tests as described. Task 17: payload, lint, both command files and 18 new tests; the `install.py` deviation is true (see Checks). Task 18: install refreshed, 25 of 25 files match, HOWTO item 6 added. Findings: four Nits (F15 to F18), one repaired earlier finding (F8). `/phase-status 3` in a Claude Code client: not run by the coder and not run by me; I ran the script itself.
+- **F8:** repaired (rev 6), with the evidence under F8. F9, F10 and F12 are not reopened (owner deferrals); F14 is unchanged. Earlier repaired findings (F1 to F7, F11, F13): no regression found: the bundle test suite, which pins their wording, passes (2078), the nine installed copies equal their sources, and the two greps of Tasks 1 and 3 print nothing.
+- **Completion checklist (plan lines 324 to 329):** four of six lines ticked and true (all tasks `[x]`; lint ok; bundle and server tests pass, re-run here; no `[~]`). Two are not ticked: "Level aimed at: mergeable" (the owner's) and "Summary note added by the coder" (the coder's closing step). `/phase-status 3` itself reports these two as open.
+- **Verification lines of each checkpoint, whole branch:** CP1 to CP3 and CP7 were reviewed in revisions 1 to 5 (their gates then); today's re-run of lint and the bundle tests passes on the final commit, and the CP4 line ("the script run twice prints the same list; the gates with counts") is met. Items that live outside the files stay unchecked by me: the owner's tick of the Task 1 to 4 diff and of `BRANCH_RULES.md`, the owner's confirmation of the docs-only CI finding, and every CI result (CI was not read).
+- **INT-26 outcomes (the proposed outcome list), met in the files:**
+  1. three text fixes by the light path: met (F4, F5, F1 repaired; greps clean); the human tick is in the pull request: cannot tell.
+  2. one home per fact: met (`REVIEW_CYCLE.md` "Where each fact is recorded"; F6 repaired).
+  3. definition of done with levels: met (`REVIEW_CYCLE.md` "Definition of done"; the coordinator's report names the level; never declares done).
+  4. deterministic phase status: met (read-only script, Claude command with `allowed-tools: Bash(python3 *)`, Copilot prompt file with its limits stated, skills instruction line marked unverified). What is not shown: a run of the command in a client, and the Copilot prompt in the Local harness.
+  5. ceremony scaled to risk: met (light path, solo only, never code, rules, permissions, hooks or tests).
+  6. fewer, clearer human steps: met in the PR template ("What remains for you", "Decisions for you", ready check) and the coordinator text; no real pull request read.
+  7. self-contained asks: met in the rule and in the installed `AGENTS.md` block and agent definitions.
+  8. branch rules written and compared: met in text (`docs/process/BRANCH_RULES.md`, coordinator "Branch rules" section); the ruleset and `.github` were not changed; unverified rows are marked.
+  9. reduce CI repeats: investigation only, recorded in `BRANCH_RULES.md`; no workflow change, as the intent says.
+- **INT-26 scenario seeds:** S1 template met, a real description not read; S2 met; S3 met (same output twice, each open item named with its file, the script only reads; F15 is about keeping that true); S4 met; **S5 partly met by the owner's decision:** no repository commit is needed to record CI (met), but the seed's "a later commit that does not change code needs no second confirmation" is not what the shipped text says: item 3 now says every commit gets its own read and tick (round 2 amendment, F5 repaired at the owner's decision). Not a defect; the seed and the shipped rule differ, and the owner chose the rule. S6 met in text, no sample of real asks; S7 met (three findings fixed, kinds of change listed, solo only; human tick in the PR); S8 met in text, the unverified rows named; S9 met in text, no sample of a phase run.
+- **Standard for documents:** (a) traceability: each Task 15 to 18 acceptance line maps to a file, a test or a command run above; (b) consistency: installed copies equal sources (F8), HOWTO item 6, the shipped prompt, the instruction line and the Task 15 note agree; (c) verified claims: command syntax rests on the coder's reading of the Claude Code and VS Code pages (not re-read by me), unverified items marked (F16, F17 name two); (d) behavior: no evidence yet (no client run of `/phase-status`, no real pull request using the new template, no real use of the standing CI-write permission); (e) lint and tests run above; (g) owner approval: plan approved with three amendments.
+- **Nit cap:** four new Nits (within the cap of 5).
+
 ## Could not check
+
+- Rev 6: CI for `07d580d` and `6716af3` (CI was not read; no `gh` call by me); `install.py --status` and the twice-built zip equality (not built by me); the failing-first run of Task 17 (the coder's note only); `/phase-status 3` in a Claude Code client and the Copilot prompt in VS Code (not invoked); the three WebFetch pages the coder read (not re-read, so the command and prompt syntax rest on the coder's note, and the permission-matching behavior in F17 is unverified); whether the owner ticked anything in the pull request or read `BRANCH_RULES.md`; the coder's transcript and shell history for CP4.
 
 - Rev 5: the failing-first run of Task 27 (reasoned from the old text, not rebuilt); the coder's transcript and full `gh` call list; CI for `1ccf6ae` (no `gh run` read); `install.py --status`; the twice-built zip equality; whether the owner has ticked anything in the pull request.
 
@@ -281,7 +366,9 @@ One test added (`test_deferred_text_fixes_f1_f4_f5`), none changed, none deleted
 
 ## Rule exceptions (this review)
 
-Rule exceptions: none by me in rev 5 (no shell write, no refused command; Edit used only on this file; my one `gh api --method GET` call was read only). Rev 4: no shell write and no refused command; Edit used only on this file; my `gh api --method GET` calls were read only). The earlier refusals of rounds 1 and 2 are listed above.
+Rule exceptions (rev 6): two of my commands were refused by the guard and I did not retry them another way. (1) A Bash command with a heredoc (`bash -c '... <<EOF ...'`, to loop `cmp`), refused by rule `no-heredocs`; it ran nothing and I redid the checks with plain `cmp` calls and `python3 -c`. (2) A Write of a scratch script to the session scratchpad, refused by rule `write-allowlist` (the reviewer may write only `docs/plans/REVIEW_PLAN_<N>.md`); nothing was written and I used `python3 -c` one-liners instead (read-only). Both are the last two lines of `.manifold/guard-log.jsonl`. Beyond those: no file written from a shell command, no commit, push or staging, no `gh` call; the server tests and `tests/live` were run with `-p no:cacheprovider` (no cache written); Edit used only on this file.
+
+Rule exceptions (rev 5 and earlier): none by me in rev 5 (no shell write, no refused command; Edit used only on this file; my one `gh api --method GET` call was read only). Rev 4: no shell write and no refused command; Edit used only on this file; my `gh api --method GET` calls were read only). The earlier refusals of rounds 1 and 2 are listed above.
 
 ## A human decides
 
