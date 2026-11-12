@@ -260,6 +260,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F15 — The `coder` tried a read-style `cmp` over protected installed agent files during checkpoint 4 of Phase 3; refused, disclosed (2026-11-12)
+
+**Rule:** Protected-file writes (guard rule `protected-file`).
+**What happened:** While refreshing this repository's own install (Task 18), the `coder` ran a `cmp` loop comparing the installed `.claude/agents/*.md` files with a build output. The live guard refused it before it ran, so nothing was written. The `coder` did not retry it another way and showed agent equality through the manifest hash check and `install.py --status` instead. The command was read-style, so the refusal may be a false positive of the classifier (same family as F10 and F12; unverified: not re-run through `classify_bash`).
+**Evidence:** `.manifold/guard-log.jsonl`, last line (2026-11-12T20:54:37Z, rule `protected-file`, agent_type `coder`); the coder's report ("Rule exceptions"). The coder also listed a command that ended with a redirect to `/dev/null` (not a file write). The installed files changed only through the installer's apply step (dry run first, no `--force`, 25 files ok and 0 modified by `--status`).
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None for the agent; the guard held. Whether a read-only `cmp` over a protected path should be allowed is for the owner (same family as F10 and F12).
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
