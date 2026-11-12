@@ -15,6 +15,7 @@
 | 2 | 2026-11-11 | `eea54246c0c3bc957387e9215d881018f940dc7f` | Re-review of the repair (Tasks 19 to 21): F1 and F3 repaired, F2 repaired as accepted (evidence recorded, not reproduced by the reviewer); one new Nit (F4) |
 | 3 | 2026-11-11 | `30e88bd7f5d32fcd03c001fc1635dbca75c5611e` | Review of CP2 (Tasks 7 to 10): F4 repaired; two new Important (F5, F6) and four new Nits (F7 to F10) |
 | 4 | 2026-11-12 (time not recorded by the reviewer) | `db37ef69180caa46713ff7523f7e5a5b13e0f4e4` (CP3, Tasks 11 to 14); round 2 repair `815baa3d2359268bf031cb147227ebc14d4d2eac` (Tasks 22 to 26) re-checked | F5, F6, F7 repaired; F8, F9, F10 not reopened (owner deferred them; the decision lives in the pull request); one new Important (F11) and two new Nits (F12, F13) |
+| 5 | 2026-11-12 (time not recorded by the reviewer) | `1ccf6aec9d3bda8649e401a42e09fc90dbaee913` (CP7, Tasks 27 to 30; diff of that commit only: 5 files, 52 insertions, 13 deletions) | F11 and F13 repaired with evidence; F12, F8, F9, F10 not reopened; one new Nit (F14); no Important open |
 
 Revision 4 header: reviews CP3, commit `db37ef6` (parent `815baa3`; diff of that commit only: 6 files, 137 insertions, 8 deletions), branch `claude/intent-phase3-streamline`; the working tree was clean and HEAD equals the commit. Plan approved (Michael Hay, November 11, 2026) with the round 2 amendment approved. Policy used: `REVIEW.md` plus the built-in defaults and the documents standard. The `Review process` approval rule (solo repository, no second approver) applies as stated there; nothing in this change needs a second approver. Per the owner's brief, the acceptance of `docs/process/BRANCH_RULES.md` and of the docs-only CI finding is not treated as a finding. Per this revision, the reviewer's state vocabulary is `open` or `repaired`; "deferred" for F8 to F10 is the owner's decision in the pull request, so they still show `open` here.
 
@@ -22,10 +23,10 @@ Revision 4 header: reviews CP3, commit `db37ef6` (parent `815baa3`; diff of that
 
 | Severity | Open | Repaired |
 |---|---|---|
-| Important | 1 (F11, new in rev 4) | 3 (F1, F5, F6) |
-| Nit | 5 (F8, F9, F10: deferred by the owner in the pull request, kept open here; F12, F13 new in rev 4) | 4 (F2, F3, F4, F7) |
+| Important | 0 | 4 (F1, F5, F6, F11) |
+| Nit | 5 (F8, F9, F10: deferred by the owner in the pull request, kept open here; F12 and F14 open) | 5 (F2, F3, F4, F7, F13) |
 
-Deferred and rejected counts are the owner's, in the pull request. The counts above are those of rev 4 and replace the rev 3 table (rev 3: 2 Important open, 4 Nit open).
+Deferred and rejected counts are the owner's, in the pull request. The counts above are those of rev 5 and replace the rev 4 table (rev 4: 1 Important open, 5 Nit open). Per the brief, F12 is settled by the owner and not reopened; it still shows `open` here in the reviewer's vocabulary because the failing-first run remains unreproduced.
 
 ## Findings
 
@@ -113,7 +114,8 @@ Deferred and rejected counts are the owner's, in the pull request. The counts ab
 - **Location:** `bundles/base/agents/coordinator.agent.md` the new bullet in "CI of the exact commit" (diff line "Write the result for that exact commit into the pull request's remaining-steps list ... for a human to tick") against the "Ready check" paragraph's last sentence ("Write the description or a comment to the pull request only with the owner's go-ahead")
 - **Evidence:** the plan's Task 12 says the coordinator "writes the CI result for the exact commit into the pull request's remaining-steps list", and the new bullet carries no condition. Editing the PR description is a write to the pull request, and the Ready check paragraph, unchanged by this commit, requires the owner's go-ahead for that. An agent reading the CI section alone would edit the PR for every commit (the bullet says every new commit needs its own read and tick); an agent reading the Ready check paragraph would wait. `test_coordinator_reports_level_and_compares_branch_rules` checks only the phrases "remaining-steps list" and "no commit", not the go-ahead.
 - **Direction:** Decide, as an owner or amendment question, whether the go-ahead is given once for the phase's PR (then say so in the bullet) or per write, and make the two sections say the same. Where `gh` is unavailable the existing last bullet already covers "not read".
-- **State:** open
+- **State:** repaired (rev 5)
+- **Rev 5 evidence:** commit `1ccf6ae`, `bundles/base/agents/coordinator.agent.md`. The four places now agree: line 17 (operating rule) "Nothing is exempt except the one exception: the CI result line that "CI of the exact commit" and "Ready check" name"; line 57 (CI bullet) "This is the one write to the pull request you make without asking each time: the owner has given a standing permission ... Write that line only; change nothing else in the pull request"; line 62 (Ready check) "only with the owner's go-ahead; the one exception is the CI result line in the remaining-steps list ... Every other pull request write needs the go-ahead"; line 84 (What you do not do) "without the owner's go-ahead (the one exception is the CI result line ...)". `grep -n "go-ahead\|without asking"` lists exactly those four lines, so no fifth place. Greps I ran: "the one exception" 3, "without asking each time" 2, "Every other pull request write needs the go-ahead" 1, "Write that line only; change nothing else" 1. `bundles/base/HOWTO.md` matches: step 12 "What the agents will not do" and the human gates bullet each carry the exception ("he one exception is the CI result line" 2 hits; the bullet names it in parentheses). The permission is limited to one line in the remaining-steps list; the tick stays human; push, open, edit, other comment and issue posts still need the go-ahead. Not widened.
 
 **F12 (Nit, new in rev 4; pass: Tests) — Failing-first run of Task 14 not reproduced**
 - **Location:** `docs/plans/PHASE_3_PLAN.md` Task 14 note; `bundles/base/tests/test_bundle.py` (`test_coordinator_reports_level_and_compares_branch_rules`, `test_ask_rule_requires_self_contained_asks_for_coordinator`)
@@ -125,10 +127,20 @@ Deferred and rejected counts are the owner's, in the pull request. The counts ab
 - **Location:** `docs/process/BRANCH_RULES.md:27-39` (the rules table)
 - **Evidence:** I repeated the read (GET only: `gh api --method GET repos/{owner}/{repo}/rulesets/26275761`). Every row of the table matches: checks `test (3.10)` and `test (3.12)` with `integration_id` 15368, `strict_required_status_checks_policy: true`, `allowed_merge_methods: ["squash"]`, `required_linear_history`, 1 approving review, `dismiss_stale_reviews_on_push: true`, `required_review_thread_resolution: true`, `require_code_owner_review: false`, `require_last_push_approval: false`, `deletion`, `non_fast_forward`, and the two bypass actors (`OrganizationAdmin` with no actor id, `RepositoryRole` id 5, both `pull_request`). The ruleset also has `require_extra_approval_for_unattributed_changes: true`, which the file does not list; the file's claim "records what was read" is therefore not complete, though nothing false is stated. The tag ruleset is marked unverified, and role 5, the up-to-date `updated_at` caveat and the 404 URL are marked as such. The workflow claims hold: neither `ci.yml` nor `server.yml` has a `paths` filter (`grep -n paths` prints nothing in `server.yml`; `ci.yml` read to line 12), `ci.yml` job `test` has the matrix `["3.10", "3.12"]`, and `git diff --stat db37ef6~1 db37ef6 -- .github` is empty.
 - **Direction:** Add the row, or say the table lists the rules the owner cares about and not every parameter.
+- **State:** repaired (rev 5)
+- **Rev 5 evidence:** `docs/process/BRANCH_RULES.md` (diff of `1ccf6ae`: 3 added lines, 0 removed) adds the row "Extra approval for unattributed changes | required (`require_extra_approval_for_unattributed_changes: true`)" after "Code owner review", and the sentence "What `require_extra_approval_for_unattributed_changes` means: unverified: confirm with the GitHub REST page "Rules" ... or the ruleset page." My own read, `gh api --method GET repos/mediumroast/manifold/rulesets/26275761` (GET only, already signed in), filtered to the `pull_request` rule, prints `"require_extra_approval_for_unattributed_changes":true` with the other parameters unchanged from rev 4. The meaning is marked unverified, which is honest; I did not verify it either. `grep -c` of the parameter name in the file prints 2.
+
+### Rev 5 additional findings (CP7)
+
+**F14 (Nit, new in rev 5; pass: Tests) — The new test does not pin the limit of the standing permission**
+- **Location:** `bundles/base/tests/test_bundle.py`, `test_coordinator_ci_write_is_the_one_standing_exception` (added at about line 2294)
+- **Evidence:** the test pins that the exception is named in four places and that the Ready check says "Every other pull request write needs the go-ahead". It does not assert "Write that line only; change nothing else in the pull request" (CI bullet, line 57), the sentence that keeps the permission from widening, nor "the tick stays" human. A later edit could drop that limit and the test would still pass. It does fail on the old text: the old coordinator has 0 occurrences of "the one exception" or "without asking each time" (`git show 1ccf6ae~1:bundles/base/agents/coordinator.agent.md | grep -c`), so the first assertion fails, as the coder's note records ("1 failed"). Its split strings now resolve (the IndexError of the coder's first run was in the new test only; I ran it: passes).
+- **Direction:** Optional: add the limit sentence to the CI-section assertions.
 - **State:** open
 
 ## Checks that found nothing
 
+- **Rev 5 checks:** no existing test edited (`git diff --numstat 1ccf6ae~1 1ccf6ae -- bundles/base/tests/test_bundle.py` prints `16 0`); no installed copy touched (`git diff --name-only` for `.claude`, `.manifold`, `bundles/base/hooks` empty; the only `docs/process` file is `BRANCH_RULES.md`, planned); the five files of the commit are the four named in the plan's verification line plus the plan. The working tree is clean.
 - **Plan inventory:** `git diff --name-only 3e2bbaf..aabccb3` lists 12 files, all in the Tasks 1 to 6 files or the inventory rows (`.manifold/manifest.json` and `docs/process/*` are the install refresh, `PHASE_3_PLAN.md` holds the notes).
 - **Task 2:** `PHASE_2_PLAN.md` has one changed line (the last cell of the INT-20 S1 row), as planned.
 - **Task 4:** one line changed in `bundles/base/hooks/guard.py`, inside the docstring; the same words in `docs/agents/harness-capabilities.md:75`, `bundles/base/hooks/guard.py:80`, `.manifold/hooks/guard.py:80`.
@@ -201,6 +213,20 @@ The coder's line for the repair was "none". Compared:
 | Rev 4: `gh api --method GET repos/{owner}/{repo}/rulesets` and `.../rulesets/26275761` (read only) | 2 reads | table of `BRANCH_RULES.md` matches except one omitted parameter (F13) |
 | Rev 4: failing-first runs of Task 14 and Task 26; build twice and `cmp`; `install.py --status`; server tests, `tests/live`, `vendor_web.py --check` | not run | coder's notes only for the first two and the twice-built zip; the rest are outside CP3 verification |
 
+| Rev 5: `python3 bundles/base/tools/build.py --check` at `1ccf6ae` | n/a | `lint ok` |
+| Rev 5: `.venv/bin/python -m pytest bundles/base/tests -q` at `1ccf6ae` | 2039 passed, 1 skipped | pass; equals the coder's count |
+| Rev 5: `-k "ci_write_is_the_one or howto or coordinator"` | 213 passed, 1827 deselected | pass |
+| Rev 5: `gh api --method GET repos/mediumroast/manifold/rulesets/26275761` (filtered to the `pull_request` rule) | 1 read | shows the F13 parameter as `true` |
+| Rev 5: failing-first run of Task 27 on the old text; twice-built zip `cmp`; `install.py --status`; server tests, `tests/live`, `vendor_web.py --check` | not run | the old-text failure is established by reading (0 hits of the new phrases in the parent); the rest are coder-note evidence or outside CP7 |
+
+## Rule exceptions compared, rev 5
+
+The coder's CP7 line (plan, after the CP7 verification): "none"; the only `gh` call a GET of the ruleset; one deviation (wording of the operating rule) noted as not an exception. Compared:
+- **Diff:** `git show --stat 1ccf6ae`: `HOWTO.md`, `coordinator.agent.md`, `test_bundle.py`, `PHASE_3_PLAN.md`, `BRANCH_RULES.md`. All named in Tasks 27 to 30 or the plan notes. No installed copy, hook, rule, `.github` file or ruleset changed. Matches.
+- **Guard log:** `.manifold/guard-log.jsonl` last line is still 2026-11-12T13:47:17Z (coder, `no-heredocs`), the refusal I compared in rev 4 for CP3. The commit time is 06:15 -0800 (14:15Z), so that entry is earlier than the commit and no new entry exists for CP7. The log is gitignored and covers only this checkout. Matches "none".
+- **`gh` calls:** I cannot see the coder's calls; my own GET repeat gave the same value the coder reports.
+- **Not compared:** the coder's transcript and shell history. Status: matches; limited as stated.
+
 ## CI on the pushed commit
 
 Not checked: I did not read CI for `aabccb3` (no `gh` call made; the plan says a human confirms CI).
@@ -232,7 +258,16 @@ One test added (`test_deferred_text_fixes_f1_f4_f5`), none changed, none deleted
 - **Standard for documents:** (a) traceability: Task 11 to 14 acceptance lines map to files and tests; (b) consistency: F11; (c) verified claims: ruleset table checked against a fresh read (F13), workflow claims read; (d) behavior: no evidence yet; (e) bundle build and tests run, above; (g) owner approval: plan approved. Real-use evidence for the coordinator changes: no evidence yet.
 - **Nit cap:** two new nits plus open nits; within the cap of 5 new nits per review.
 
+## Rev 5 summary of CP7
+
+- **Plan inventory and deviations:** Tasks 27 to 30 are marked done with notes. One recorded deviation (operating-rule wording, "Nothing is exempt except the one exception: ...", so the grep count is 3); the owner accepted it. Task 29's owner reading of the diff was reported by the owner as done (per the brief); the plan note still says "pending" (not a finding; the owner's words are to be added there).
+- **Standard for documents:** (a) each acceptance grep maps to a file and I re-ran them (3, 2, 1, 2, 2); (b) consistency: the four coordinator places and the two HOWTO places agree; (c) verified claims: ruleset row confirmed by my GET, meaning marked unverified; (d) behavior: no evidence yet (the standing permission has not been used in a real pull request); (e) tests and lint run, above; (g) the owner decided the standing permission (Open question 2 and the round 3 amendment).
+- **Installed copies:** the installed coordinator and HOWTO remain old until Task 18, the same transitional state as F8; not reopened.
+- **Nit cap:** one new nit.
+
 ## Could not check
+
+- Rev 5: the failing-first run of Task 27 (reasoned from the old text, not rebuilt); the coder's transcript and full `gh` call list; CI for `1ccf6ae` (no `gh run` read); `install.py --status`; the twice-built zip equality; whether the owner has ticked anything in the pull request.
 
 - The failing-first run of Task 5 on the old files (F2).
 - The coder's own shell history and the guard's behavior during Task 6.
@@ -246,7 +281,7 @@ One test added (`test_deferred_text_fixes_f1_f4_f5`), none changed, none deleted
 
 ## Rule exceptions (this review)
 
-Rule exceptions: none by me in this session (rev 4: no shell write and no refused command; Edit used only on this file; my `gh api --method GET` calls were read only). The earlier refusals of rounds 1 and 2 are listed above.
+Rule exceptions: none by me in rev 5 (no shell write, no refused command; Edit used only on this file; my one `gh api --method GET` call was read only). Rev 4: no shell write and no refused command; Edit used only on this file; my `gh api --method GET` calls were read only). The earlier refusals of rounds 1 and 2 are listed above.
 
 ## A human decides
 
