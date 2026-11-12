@@ -14,13 +14,18 @@
 | 1 | 2026-11-11 | `aabccb3e4949de4de5cdaeedcff03cfd9212451d` | First review, CP1 only |
 | 2 | 2026-11-11 | `eea54246c0c3bc957387e9215d881018f940dc7f` | Re-review of the repair (Tasks 19 to 21): F1 and F3 repaired, F2 repaired as accepted (evidence recorded, not reproduced by the reviewer); one new Nit (F4) |
 | 3 | 2026-11-11 | `30e88bd7f5d32fcd03c001fc1635dbca75c5611e` | Review of CP2 (Tasks 7 to 10): F4 repaired; two new Important (F5, F6) and four new Nits (F7 to F10) |
+| 4 | 2026-11-12 (time not recorded by the reviewer) | `db37ef69180caa46713ff7523f7e5a5b13e0f4e4` (CP3, Tasks 11 to 14); round 2 repair `815baa3d2359268bf031cb147227ebc14d4d2eac` (Tasks 22 to 26) re-checked | F5, F6, F7 repaired; F8, F9, F10 not reopened (owner deferred them; the decision lives in the pull request); one new Important (F11) and two new Nits (F12, F13) |
+
+Revision 4 header: reviews CP3, commit `db37ef6` (parent `815baa3`; diff of that commit only: 6 files, 137 insertions, 8 deletions), branch `claude/intent-phase3-streamline`; the working tree was clean and HEAD equals the commit. Plan approved (Michael Hay, November 11, 2026) with the round 2 amendment approved. Policy used: `REVIEW.md` plus the built-in defaults and the documents standard. The `Review process` approval rule (solo repository, no second approver) applies as stated there; nothing in this change needs a second approver. Per the owner's brief, the acceptance of `docs/process/BRANCH_RULES.md` and of the docs-only CI finding is not treated as a finding. Per this revision, the reviewer's state vocabulary is `open` or `repaired`; "deferred" for F8 to F10 is the owner's decision in the pull request, so they still show `open` here.
 
 ## Counts by severity
 
-| Severity | Open | Repaired | Deferred | Rejected |
-|---|---|---|---|---|
-| Important | 2 (F5, F6, new in rev 3) | 1 (F1) | 0 | 0 |
-| Nit | 4 (F7 to F10, new in rev 3) | 3 (F2, F3, F4) | 0 | 0 |
+| Severity | Open | Repaired |
+|---|---|---|
+| Important | 1 (F11, new in rev 4) | 3 (F1, F5, F6) |
+| Nit | 5 (F8, F9, F10: deferred by the owner in the pull request, kept open here; F12, F13 new in rev 4) | 4 (F2, F3, F4, F7) |
+
+Deferred and rejected counts are the owner's, in the pull request. The counts above are those of rev 4 and replace the rev 3 table (rev 3: 2 Important open, 4 Nit open).
 
 ## Findings
 
@@ -30,13 +35,15 @@
 - **Location:** `bundles/base/process/REVIEW_CYCLE.md:57` (plan Task 7, "Change" line 165, prescribed this wording)
 - **Evidence:** item 3 now reads "...ticked by a human in the pull request; a commit that changes no code needs no second confirmation, a commit that changes code does. A run for an older commit is not the result." The two sentences cannot both hold for a commit after the confirmed one: if a no-code commit needs no second confirmation, the CI result in force is the one for an older commit, which the last sentence says is not the result. Item 1 and the PR template line ("CI of that exact commit") also keep the exact-commit wording. "Code" is not defined: a commit that changes only agent instructions, rules, hooks configuration or `test_bundle.py` is not "text in documents" by the light path section of the same file, yet it could be read as "no code" here. Here the bundle lint and tests are the CI gate for exactly such text, so skipping a second confirmation could let a behavior-changing commit ride on an older green run. `docs/process/REVIEW_CYCLE.md` (installed) and `bundles/base/agents/coordinator.agent.md:61` still say "a human confirms it" for the exact commit (see F8).
 - **Direction:** Decide, as an owner or amendment question (the plan prescribed the wording), what "no second confirmation" covers: name the kinds of commit (for example only the review file or the pull request text) and say that any other commit gets its own CI read; or drop the clause. State once how it fits with "a run for an older commit is not the result".
-- **State:** open
+- **State:** repaired (rev 4)
+- **Rev 4 evidence:** `bundles/base/process/REVIEW_CYCLE.md:57` now reads "CI of that exact commit has been read by the `coordinator` and ticked by a human in the pull request (the tick is in the pull request, never a commit). Every commit gets its own read and tick, including a commit that changes only text: the light path saves review effort, not the CI check. A run for an older commit is not the result." The "no second confirmation" clause is gone (`grep -n "no second confirmation" bundles/base/process/REVIEW_CYCLE.md` prints nothing, by the test's own assertion), the exact-commit sentence is kept, and there is no exemption for a no-code commit. `test_review_cycle_round2_repairs` asserts all of this and passes. Item 1 and the PR template line keep the exact-commit wording, so the three places now agree. Installed copy not refreshed (Task 18; see F8).
 
 **F6 (Important, new in rev 3; pass: Bugs, consistency of documents) — Two homes for "what was decided about a finding", and an instruction that contradicts the reviewer's own re-review rule**
 - **Location:** `bundles/base/process/REVIEW_CYCLE.md:56` and the new table row at `:46` against `:24`, `:29`, `:31`, `:37` (all in that file)
 - **Evidence:** the new table says a decision about a finding lives in the pull request, and item 2 says "(the reviewer's file keeps it `open`)". Line 24 (Re-review row) still tells the `reviewer` to show each earlier finding "as repaired, deferred or rejected with evidence", line 29 says every finding ends in one of three states, and the plan's amendment carries a "Finding / End / Reason" table (Phase 3 plan, "Findings not repaired") that records the same decision. The review template also has a counts table with Deferred and Rejected columns. An agent reading line 56 would leave a deferred finding `open`; an agent reading line 24 would mark it `deferred`; the ready check (old wording, "the counts table shows no open finding") has been replaced, but the state vocabulary in the reviewer's file has not. The coder's note says the item 2 wording was kept so `test_review_cycle_ready_check_leaves_the_decisions_to_a_human` still passes; the owner approved that and I take it as settled, so the finding is about the other lines, not the ending of item 2.
 - **Direction:** Say in the home table which part of a finding's end is the reviewer's (repaired, with evidence; open otherwise) and which is the human's (deferred, rejected, kept in the pull request), and align lines 24, 29 and 31 with it; or note that the amendment's table is the plan's copy of the decision and the pull request is the home. One rule for the reviewer.
-- **State:** open
+- **State:** repaired (rev 4)
+- **Rev 4 evidence:** one rule now reads the same everywhere I looked. `bundles/base/process/REVIEW_CYCLE.md:15` (re-review row: "repaired, with evidence, or still `open`"), `:18` ("The reviewer's file records only `open` and `repaired` (with the evidence); a human decides deferred and rejected, and the decision is recorded in the pull request"), `:24` ("moves each earlier finding from `open` to `repaired` with its evidence, or leaves it `open`"), `:27`, `:46` (home table: the amendment's table of findings not repaired is "the planner's proposal, not a second home"), `:56`. `bundles/base/templates/REVIEW_PLAN_TEMPLATE.md:25-32` has a two-column counts table (Open, Repaired) and the line "Deferred and rejected findings are a human's decision and are counted in the pull request, not here"; `:50` limits State to `open` or `repaired` and says the reviewer never writes the other two. `bundles/base/agents/planner.agent.md:78` says the planner proposes and a human decides and records it in the pull request. `bundles/base/HOWTO.md:75` lists the decision among the PR lines without a state vocabulary. A grep of `bundles/base` (agents, process, templates, rules, HOWTO) for `deferred|rejected` finds no remaining instruction that has the reviewer writing either state; the PR template keeps Deferred and Rejected columns, which is where the human counts them (the intended home). The old sentence "as repaired, deferred or rejected with evidence" is absent (the test asserts it). Leftover noted, not a finding: `REVIEW_CYCLE.md:18` still says "Every finding ends in one of three states", which is true of the whole process and is qualified by the next sentence.
 
 ### Security
 (none)
@@ -97,6 +104,27 @@
 - **Location:** `bundles/base/process/REVIEW_CYCLE.md` section "Light path for text fixes" (lines 72 to 79)
 - **Evidence:** the section says the route is "shorter" and "so they do not need a full amendment round", and lists four conditions, the last being a human tick on the diff. It does not say whether a `reviewer` pass, `REVIEW_PLAN_<N>.md` and the four ready-check lines are still required for such a change. The intent (S7, "Must never": skip the human's approval) is met by the tick; whether item 1 of the ready check (a review of the final commit exists) holds on this path is left to the reader. Who decides that a change "changes no behavior" is also not named (the diff reader, the author or the human who ticks).
 - **Direction:** One sentence: what is skipped (the amendment round) and what is kept (review, ready check, or neither), and who judges "text only".
+- **State:** repaired (rev 4)
+- **Rev 4 evidence:** `bundles/base/process/REVIEW_CYCLE.md:81` adds: "What it skips: the planner amendment and the repair checkpoint. What it keeps: a review of the final commit by the `reviewer` (a revision of `docs/plans/REVIEW_PLAN_<N>.md`), the four lines of the ready check, with CI of every commit read and ticked, and the human's tick of the diff. Who judges "text only": the human who ticks judges ... the author's word does not count, and when the human doubts it, the full amendment round applies." Line 77 also narrows "text" (a comment or docstring qualifies only when the diff shows no other changed line). All three questions of F7 are answered. The test asserts "the human who ticks judges" and "ready check" in the section.
+
+### Rev 4 additional findings (CP3)
+
+**F11 (Important, new in rev 4; pass: Bugs, consistency of agent instructions) — The coordinator is told to write the CI result into the pull request with no owner go-ahead, while the next section says to write to the pull request only with it**
+- **Location:** `bundles/base/agents/coordinator.agent.md` the new bullet in "CI of the exact commit" (diff line "Write the result for that exact commit into the pull request's remaining-steps list ... for a human to tick") against the "Ready check" paragraph's last sentence ("Write the description or a comment to the pull request only with the owner's go-ahead")
+- **Evidence:** the plan's Task 12 says the coordinator "writes the CI result for the exact commit into the pull request's remaining-steps list", and the new bullet carries no condition. Editing the PR description is a write to the pull request, and the Ready check paragraph, unchanged by this commit, requires the owner's go-ahead for that. An agent reading the CI section alone would edit the PR for every commit (the bullet says every new commit needs its own read and tick); an agent reading the Ready check paragraph would wait. `test_coordinator_reports_level_and_compares_branch_rules` checks only the phrases "remaining-steps list" and "no commit", not the go-ahead.
+- **Direction:** Decide, as an owner or amendment question, whether the go-ahead is given once for the phase's PR (then say so in the bullet) or per write, and make the two sections say the same. Where `gh` is unavailable the existing last bullet already covers "not read".
+- **State:** open
+
+**F12 (Nit, new in rev 4; pass: Tests) — Failing-first run of Task 14 not reproduced**
+- **Location:** `docs/plans/PHASE_3_PLAN.md` Task 14 note; `bundles/base/tests/test_bundle.py` (`test_coordinator_reports_level_and_compares_branch_rules`, `test_ask_rule_requires_self_contained_asks_for_coordinator`)
+- **Evidence:** the note records "2 failed, 2037 deselected" before Tasks 12 and 13 and "2 passed, 2037 deselected" after. The arithmetic fits (2037 + 2 = 2039 = 2038 passed + 1 skipped, the full count I ran). I ran `-k "coordinator_reports_level or self_contained_asks or round2_repairs"`: `3 passed, 2036 deselected`. I did not rebuild the old tree, so the failing run rests on the coder's note. The old coordinator text has no "## Branch rules" heading and the old rule lacks "coordinator" in `applies_to`, so a failure there is certain for the first assertion of each test. No existing test edited: `git diff -U0 db37ef6~1 db37ef6 -- bundles/base/tests | grep -c '^-[^-]'` printed 0; the same for `815baa3` printed 0.
+- **Direction:** None required; optional first-hand reproduction.
+- **State:** open
+
+**F13 (Nit, new in rev 4; pass: Compliance, verified claims) — `BRANCH_RULES.md` omits one value the ruleset read shows**
+- **Location:** `docs/process/BRANCH_RULES.md:27-39` (the rules table)
+- **Evidence:** I repeated the read (GET only: `gh api --method GET repos/{owner}/{repo}/rulesets/26275761`). Every row of the table matches: checks `test (3.10)` and `test (3.12)` with `integration_id` 15368, `strict_required_status_checks_policy: true`, `allowed_merge_methods: ["squash"]`, `required_linear_history`, 1 approving review, `dismiss_stale_reviews_on_push: true`, `required_review_thread_resolution: true`, `require_code_owner_review: false`, `require_last_push_approval: false`, `deletion`, `non_fast_forward`, and the two bypass actors (`OrganizationAdmin` with no actor id, `RepositoryRole` id 5, both `pull_request`). The ruleset also has `require_extra_approval_for_unattributed_changes: true`, which the file does not list; the file's claim "records what was read" is therefore not complete, though nothing false is stated. The tag ruleset is marked unverified, and role 5, the up-to-date `updated_at` caveat and the 404 URL are marked as such. The workflow claims hold: neither `ci.yml` nor `server.yml` has a `paths` filter (`grep -n paths` prints nothing in `server.yml`; `ci.yml` read to line 12), `ci.yml` job `test` has the matrix `["3.10", "3.12"]`, and `git diff --stat db37ef6~1 db37ef6 -- .github` is empty.
+- **Direction:** Add the row, or say the table lists the rules the owner cares about and not every parameter.
 - **State:** open
 
 ## Checks that found nothing
@@ -124,6 +152,15 @@ The coder's CP2 line (plan, after the CP2 gates): "none broken", with one attemp
 - **Commit log:** one commit by `mihay42`, 19:21 -0800; the logged refusal (23:48Z on the same day is earlier than 03:21Z on the next) precedes the commit. Message names Tasks 7 to 10. Nothing staged beyond the task files is visible.
 - **Not compared:** the coder's transcript and shell history are not available to me, so a command that the guard did not see and the coder did not mention cannot be excluded. Status: matches; limited as stated.
 - **This review:** no refusal so far; I used no shell write.
+
+## Rule exceptions compared, rev 4
+
+The coder's CP3 line (plan, "Rule exceptions (CP3)"): one attempt refused by the guard (`no-heredocs`, a stray `python3 - <<'X'` snippet appended to a verification command, not run, re-run without it); every `gh` call GET; no ruleset, setting or workflow changed; no commit, push or staging; no installed copy edited. Recorded by the coder as F14. Compared:
+- **Diff:** `git show --stat db37ef6` lists six files: `coordinator.agent.md`, `ask-on-ambiguity.md`, `test_bundle.py`, `claude-desktop-failures.md`, `PHASE_3_PLAN.md`, `BRANCH_RULES.md`. The first three, the plan and `BRANCH_RULES.md` are named in Tasks 11 to 14; the breach record is not in the inventory (same pattern as F9, already open; not a new finding). `git diff --stat db37ef6~1 db37ef6 -- .github` is empty; no installed file (`.claude/`, `.manifold/`, `docs/process/` other than the new file) changed. Matches "no ruleset, workflow or installed copy edited".
+- **Guard log:** `.manifold/guard-log.jsonl` last line: 2026-11-12T13:47:17Z, rule `no-heredocs`, tool Bash, agent_type `coder`, the command beginning with a scratchpad path. One coder refusal, as reported (count 1 refused, none through). The F14 entry's evidence ("last line", rule, agent_type, time) matches the log at the time I read it. The command text in the log is truncated to its first characters, so I cannot confirm the `python3 - <<'X'` detail; the rule and agent match.
+- **Commit log:** `git log` shows the commit by `mihay42` at 05:54 -0800 (13:54Z), after the refusal (13:47Z). The coder says it made no commit; the commit exists, so it was made by the owner or the coordinating session (not established by me). Message names Tasks 11 to 14.
+- **`gh` calls:** I cannot see the coder's calls. The recorded set is all GET. My own repeat of the ruleset read gave the same data, so the file's content is not in doubt; whether any write call was made is not checkable by me.
+- **Not compared:** the coder's transcript and shell history. Status: matches; limited as stated.
 
 ## Rule exceptions compared, rev 2
 
@@ -157,6 +194,13 @@ The coder's line for the repair was "none". Compared:
 | Rev 3: Task 7 to 9 greps (headings, five table rows, `never a commit`, `mergeable`, `releasable`, `Light path`, `What remains for you`, `Decisions for you`) | n/a | read in the diff of `30e88bd`: all present; table has five rows |
 | Rev 3: build twice with `build.py --out` and `cmp`; `install.py --status`; server tests, `tests/live`, `vendor_web.py --check` | not run | the coder's note is the only evidence for the twice-built zip; the others are outside CP2 verification |
 
+| Rev 4: `python3 bundles/base/tools/build.py --check` at `db37ef6` | n/a | `lint ok` |
+| Rev 4: `.venv/bin/python -m pytest bundles/base/tests -q` at `db37ef6` | 2038 passed, 1 skipped | pass; equals the coder's count |
+| Rev 4: `.venv/bin/python -m pytest bundles/base/tests -q -k "coordinator_reports_level or self_contained_asks or round2_repairs"` | 3 passed, 2036 deselected | pass (Task 14's two tests and the round 2 test) |
+| Rev 4: removed lines in `test_bundle.py` for `815baa3` and for `db37ef6` | 0 and 0 | no existing test edited |
+| Rev 4: `gh api --method GET repos/{owner}/{repo}/rulesets` and `.../rulesets/26275761` (read only) | 2 reads | table of `BRANCH_RULES.md` matches except one omitted parameter (F13) |
+| Rev 4: failing-first runs of Task 14 and Task 26; build twice and `cmp`; `install.py --status`; server tests, `tests/live`, `vendor_web.py --check` | not run | coder's notes only for the first two and the twice-built zip; the rest are outside CP3 verification |
+
 ## CI on the pushed commit
 
 Not checked: I did not read CI for `aabccb3` (no `gh` call made; the plan says a human confirms CI).
@@ -178,6 +222,16 @@ One test added (`test_deferred_text_fixes_f1_f4_f5`), none changed, none deleted
 - **Standard for documents:** (a) traceability: each Task 7 to 10 acceptance line maps to a section and a test; (b) consistency: F5, F6, F8; (c) verified claims: the paths and section names the new text links (`docs/process/REVIEW_CYCLE.md`, `docs/templates/PULL_REQUEST_TEMPLATE.md`, "Where each fact is recorded", `human-confirms-closure` rule file at `bundles/base/rules/core/human-confirms-closure.md`) exist; (d) behavior: no evidence yet; (e) build and tests run, above; (g) owner approval of text that changes agent behavior: the plan is approved and the owner settled the two points named in the header.
 - **Nit cap:** 4 new nits plus F4 earlier, within the cap of 5.
 
+## Rev 4 summary of CP3 and the round 2 re-check
+
+- **Round 2 (F5, F6, F7):** all three repaired with evidence above; F8, F9, F10 left as they were (owner-deferred).
+- **Task 11 (`BRANCH_RULES.md`):** states what the read showed, marks role 5, the tag ruleset and the skipped-job behaviour as unverified; stacked-PR steps cite `git rebase --help`; recommendation only, `.github` unchanged. One omitted parameter (F13). The owner's acceptance of the file and of the docs-only CI finding is not treated as a finding.
+- **Task 12 (coordinator):** level report (mergeable, releasable, done; never declares done), batch of decisions ("accept all", no bare IDs), PR-tick CI flow with no commit, "## Branch rules" comparison that never changes the ruleset, all present and tested. One consistency gap with the go-ahead rule (F11). The shipped text links no unshipped path (the coder's note says a reference check forced this; I saw no `BRANCH_RULES.md` path in the coordinator text).
+- **Task 13 (rule):** `applies_to` gains `coordinator`; the Instead text states what, why, consequence, default and no bare internal ID. The installed `AGENTS.md` managed block still has the old text (`grep -c "internal ID" AGENTS.md` printed 0) and the installed coordinator is old: the same transitional state as F8 (Task 18), owner-deferred; noted, not reopened.
+- **Task 14 (tests):** two tests, no existing test edited (F12 for the unreproduced failing run).
+- **Standard for documents:** (a) traceability: Task 11 to 14 acceptance lines map to files and tests; (b) consistency: F11; (c) verified claims: ruleset table checked against a fresh read (F13), workflow claims read; (d) behavior: no evidence yet; (e) bundle build and tests run, above; (g) owner approval: plan approved. Real-use evidence for the coordinator changes: no evidence yet.
+- **Nit cap:** two new nits plus open nits; within the cap of 5 new nits per review.
+
 ## Could not check
 
 - The failing-first run of Task 5 on the old files (F2).
@@ -188,9 +242,11 @@ One test added (`test_deferred_text_fixes_f1_f4_f5`), none changed, none deleted
 
 - Rev 3: the failing-first run of Task 10 (F10); the coder's transcript and shell history for CP2; the twice-built zip equality and `install.py --status`; CI for `30e88bd`; whether the owner has read and ticked anything in the pull request.
 
+- Rev 4: the failing-first runs of Tasks 14 and 26 (coder's notes only); the coder's transcript and the full `gh` call list for CP3; CI for `db37ef6` and `815baa3` (no `gh run` read made); `install.py --status`; whether the owner has ticked anything in the pull request; the text of the refused command in the guard log (truncated).
+
 ## Rule exceptions (this review)
 
-Rule exceptions: none by me in this session (no shell write, no refused command; Edit used only on this file). The earlier refusals of rounds 1 and 2 are listed above.
+Rule exceptions: none by me in this session (rev 4: no shell write and no refused command; Edit used only on this file; my `gh api --method GET` calls were read only). The earlier refusals of rounds 1 and 2 are listed above.
 
 ## A human decides
 
