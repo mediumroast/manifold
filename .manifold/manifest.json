@@ -1,8 +1,8 @@
 {
   "name": "manifold",
   "bundle": "base",
-  "version": "0.2.0",
-  "installed_at": "2026-11-12T20:54:29Z",
+  "version": "0.3.0",
+  "installed_at": "2026-11-13T13:27:25Z",
   "formats": [
     "claude"
   ],
