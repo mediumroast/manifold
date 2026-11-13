@@ -62,7 +62,7 @@ The sequence is the one in `docs/process/REVIEW_CYCLE.md`: review, `docs/plans/R
 **What the agents will not do.** Edit the review document (only the `reviewer` writes it), or start the next checkpoint unasked.
 
 ### 9. Re-review
-**What usually happens.** The `reviewer` runs again in a new session, never the agent that made the repair, on the same review file and the new commit. The file gets a new revision: each earlier finding is shown as repaired, deferred or rejected with evidence, and new findings are added.
+**What usually happens.** The `reviewer` runs again in a new session, never the agent that made the repair, on the same review file and the new commit. The file gets a new revision: each earlier finding is shown as repaired, with evidence, or still `open`, and new findings are added.
 **What you do.** Read the new revision. If something Important is still open, go back to step 6.
 **What the agents will not do.** Delete or rewrite an earlier finding.
 
@@ -79,7 +79,7 @@ The sequence is the one in `docs/process/REVIEW_CYCLE.md`: review, `docs/plans/R
 ### 12. Merge
 **What usually happens.** The pull request waits for you.
 **What you do.** Move it out of draft and merge it, once the check is met and you agree.
-**What the agents will not do.** Merge, move a pull request out of draft, or push, open or comment on one without your go-ahead.
+**What the agents will not do.** Merge, move a pull request out of draft, or push, open or comment on one without your go-ahead. The one exception is the CI result line the `coordinator` writes into the remaining-steps list of the pull request without asking each time; the tick stays yours.
 
 ## The human gates
 
@@ -93,7 +93,7 @@ Only a person does each of these:
 - say the cycle is done, or accept the remainder in writing;
 - confirm a bug is fixed (a bug nobody can check yet stays `Pending human confirmation`);
 - mark behavior scenarios `approved` in the quality repository;
-- give a go-ahead for anything that leaves the machine: a push, a pull request or a comment on one, a posted issue;
+- give a go-ahead for anything that leaves the machine: a push, a pull request or a comment on one, a posted issue (the one exception is the CI result line the `coordinator` writes into the remaining-steps list of the pull request);
 - grant an exception to the guard (an entry in `.manifold/guard-allow.json`, below);
 - read CI of the exact commit and confirm it;
 - approve any text that changes how an agent behaves;
@@ -117,7 +117,7 @@ To allow something the guard refuses, you add an entry to `.manifold/guard-allow
 
 ## What differs by client
 
-The guard is the same file in every client. What differs is whether the client runs it. This list is limited to what `docs/agents/harness-capabilities.md` in the Manifold source records, read from the vendors' documentation; none of it has been recorded in a live run yet, so treat it as "no evidence yet".
+The guard is the same file in every client. What differs is whether the client runs it. This list is limited to what `docs/agents/harness-capabilities.md` in the Manifold source records, read from the vendors' documentation; the only live evidence recorded is one refusal in a Claude Code subagent; for every other client or mode treat it as "no evidence yet".
 
 - **Claude Code.** The guard is a pre-tool hook written into each agent's definition. The vendor documentation says such hooks run when the agent is started as a subagent and when it runs as the main session (`claude --agent <name>`). A plain main session with no agent selected is not covered, and neither are agents supplied by plugins: there the rules are instruction only.
 - **GitHub Copilot.** With `--format copilot` (or `both`, `all`) the installer adds `.github/hooks/manifold-guard.json`. The vendor documentation describes hooks that can deny, but whether VS Code Copilot Chat runs this file, and how it names the running agent, is unverified: confirm by running it. Until you have, treat Copilot as instruction only. In particular the write limit for the `reviewer` and the `coordinator` may not apply there.
@@ -133,3 +133,4 @@ The guard is the same file in every client. What differs is whether the client r
 3. Look at what arrived: the agents in `.claude/agents/` (and `.github/agents/`), templates in `docs/templates/`, procedures and this guide in `docs/process/`, the guard in `.manifold/hooks/guard.py` and the scratch folder `.manifold/scratch/`.
 4. Write your first intent, then ask the `planner` to plan it. Ask for an agent by name; the README, under "Using the agents", shows the other ways to start one.
 5. To run a whole review cycle, ask the `coordinator`, for example: "run the review cycle for docs/plans/PHASE_1_PLAN.md".
+6. To see what is open in a phase at any time, run `/phase-status <N>`: a Claude Code command and, in the Copilot format, a prompt file that works only in the Local harness and asks the agent to run the script, which is the agent's act and not a read the client does by itself. Elsewhere, ask the agent to run `python3 .manifold/phase_status.py <N>`. The script only reads files.

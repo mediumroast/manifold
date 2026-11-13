@@ -72,7 +72,7 @@ Residual gaps, in the guard's own words (the module docstring of `bundles/base/h
 - kept refusals: `cd` into a protected directory, and `python3 .manifold/hooks/guard.py` typed by an agent (the client runs the hook);
 - command substitution inside double quotes;
 - `sed` with a `w` command (it cannot be told from text without parsing sed);
-- other languages, editors and tools than the ones named in the shell rule;
+- other languages, editors and tools than the ones named in the shell rule (for example `dd of=`, `curl -o`, `wget -O`, `tar x`, `unzip`, `install`, `python3 -m json.tool in out` are allowed although they write files);
 - a `cd` in an earlier call followed by a bare file name;
 - worktrees: a checkout counts as part of the project's repository only when its `.git` proves it (a `.git` directory, or a `.git` file whose git directory sits in the common directory's `worktrees/` folder, holds `commondir` and points back at that `.git` file); a checkout of another repository, a forged or unreadable `.git`, or a path in no checkout is judged as a path outside the project and matches no allowlist; whoever can write inside the repository's own `.git` directory can forge that proof; `.manifold/guard-allow.json` and `.manifold/guard-log.jsonl` are always the project directory's own, never another checkout's, so every checkout that can be a project directory needs its own installed guard;
 - tools the guard does not look at;
@@ -84,7 +84,7 @@ Rejected, with reason (CP2a): `bash < s.sh` is treated like `bash s.sh`, the scr
 
 ## Enforcement by client and agent type
 
-One row per client and per kind of agent run (T39). "Hook" means the guard refuses the call; "instructions only" means nothing refuses it and the coordinator finds a breach afterwards. The same table, without the row citations, is in `bundles/base/INSTALL.md`. Each row cites the row of the matrix above it rests on. Nothing here was seen in a live client: the recorded runs of 2026-11-08 captured no guard log.
+One row per client and per kind of agent run (T39). "Hook" means the guard refuses the call; "instructions only" means nothing refuses it and the coordinator finds a breach afterwards. The same table, without the row citations, is in `bundles/base/INSTALL.md`. Each row cites the row of the matrix above it rests on. One live guard refusal is recorded, for a Claude Code subagent (`test-coder`, 2026-11-09, `docs/agents/claude-desktop-failures.md` F9); no other row of this table was seen in a live client, and the runs of 2026-11-08 captured no guard log.
 
 | Client and where the agent runs | Enforced by | Rests on (row of the matrix, or of the table of unverified items) |
 |---|---|---|

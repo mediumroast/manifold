@@ -83,6 +83,17 @@ SETTINGS_FILES = {
 HOOK_FILES = {
     "hooks/guard.py": (".manifold/hooks/guard.py", ALL_PROFILES),
 }
+# Scripts the commands run, path relative to the bundle root -> (installed path, profiles). Read-only, standard library only.
+SCRIPT_FILES = {
+    "scripts/phase_status.py": (".manifold/phase_status.py", ALL_PROFILES),
+}
+# Slash command (claude) and prompt file (copilot) for /phase-status, per format, path relative to the bundle root ->
+# (installed path, profiles). The skills format gets an instruction line instead (see render_instructions_block).
+COMMAND_FILES = {
+    "claude": {"commands/phase-status.md": (".claude/commands/phase-status.md", ALL_PROFILES)},
+    "copilot": {"commands/phase-status.prompt.md": (".github/prompts/phase-status.prompt.md", ALL_PROFILES)},
+}
+PHASE_STATUS_RUN = "python3 .manifold/phase_status.py"
 # Copilot hook file (shape per docs/agents/harness-capabilities.md: `version: 1`, `hooks.preToolUse`),
 # path relative to the bundle root -> (installed path, profiles). Shipped for the copilot format only.
 # Whether VS Code Local enforces it is unverified (the owner chose to ship it and observe, plan task 7).
@@ -429,6 +440,8 @@ def render_instructions_block(agents: dict, rules, style: str = "agents", profil
                  "- Review: the passes and severity defaults are built into the `reviewer`; `REVIEW.md` (from `docs/templates/REVIEW_TEMPLATE.md`) is optional and adds repository-specific passes or exclusions; who approves is stated in the `Review process` section below.",
                  "- Each review leaves `docs/plans/REVIEW_PLAN_<N>.md`, written from `docs/templates/REVIEW_PLAN_TEMPLATE.md`.",
                  "- Pull requests follow `docs/templates/PULL_REQUEST_TEMPLATE.md`; only a human moves a pull request out of draft."]
+    if style in ("skills", "both"):
+        docs += ["- Phase status: ask the agent to run `%s <N>` and show the output unedited; the script only reads files, and no slash command is shipped for skills (unverified that an agent runs it as asked)." % PHASE_STATUS_RUN]
     docs += ["- The review-to-repair loop (who does each step, how it ends, the ready check) is written in `docs/process/REVIEW_CYCLE.md`; `docs/process/HOWTO.md` is the guide to the whole cycle.",
              "- Test plans follow `docs/templates/PHASE_TEST_PLAN_TEMPLATE.md`.",
              "- Manual walkthrough notes (`WT_<NNN>_<slug>.md`) follow `docs/templates/WT_TEMPLATE.md`; deferred feature gaps go to `FEATURE_GAPS.md`.",
@@ -550,10 +563,10 @@ def lint(root: Path = ROOT):
     for name in PROCESS_PATHS:
         if not (root / name).exists():
             problems.append("missing process document: %s" % name)
-    for rel in list(HOOK_FILES) + list(COPILOT_HOOK_FILES) + list(SUPPORT_FILES):
+    for rel in list(HOOK_FILES) + list(SCRIPT_FILES) + list(COPILOT_HOOK_FILES) + list(SUPPORT_FILES):
         if not (root / rel).exists():
             problems.append("missing file: %s" % rel)
-        elif rel in HOOK_FILES and rel.endswith(".py"):
+        elif (rel in HOOK_FILES or rel in SCRIPT_FILES) and rel.endswith(".py"):
             problems.extend(lint_hook(root / rel, rel))
         elif rel in COPILOT_HOOK_FILES:
             try:
@@ -563,6 +576,24 @@ def lint(root: Path = ROOT):
                 continue
             if data.get("version") != 1 or not isinstance(data.get("hooks", {}).get("preToolUse"), list):
                 problems.append("%s must have version 1 and a hooks.preToolUse list" % rel)
+    for fmt, files in COMMAND_FILES.items():
+        for rel in files:
+            if not (root / rel).exists():
+                problems.append("missing file: %s" % rel)
+                continue
+            text = (root / rel).read_text(encoding="utf-8")
+            try:
+                blocks, _ = split_frontmatter(text)
+            except BuildError as exc:
+                problems.append("%s: %s" % (rel, exc))
+                continue
+            if PHASE_STATUS_RUN not in text:
+                problems.append("%s must run %s" % (rel, PHASE_STATUS_RUN))
+            if fmt == "claude":
+                if ("allowed-tools", ["allowed-tools: Bash(python3 *)"]) not in blocks:
+                    problems.append("%s must pre-approve the script with `allowed-tools: Bash(python3 *)`" % rel)
+                if "!`%s $ARGUMENTS`" % PHASE_STATUS_RUN not in text:
+                    problems.append("%s must run the script with the inline form !`%s $ARGUMENTS`" % (rel, PHASE_STATUS_RUN))
     for name in SETTINGS_FILES:
         path = root / "config" / name
         if not path.exists():
@@ -580,7 +611,7 @@ def lint(root: Path = ROOT):
                     problems.append("%s: missing setting %s" % (name, key))
     for path in list((root / "agents").glob("*.md")) + list((root / "rules").rglob("*.md")) + \
             list((root / "templates").glob("*.md")) + list((root / "fragments").glob("*.md")) + \
-            list((root / "process").glob("*.md")) + [root / "HOWTO.md"]:
+            list((root / "process").glob("*.md")) + list((root / "commands").glob("*.md")) + [root / "HOWTO.md"]:
         if not path.exists():
             continue  # a missing HOWTO.md is reported above, with the other process documents
         text = path.read_text(encoding="utf-8").lower()
@@ -645,7 +676,13 @@ def build_payload(root: Path = ROOT):
         src = "payload/common/%s" % target
         files[src] = data
         common.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
-    for fname, (target, profiles) in list(HOOK_FILES.items()) + list(SUPPORT_FILES.items()):
+    for fmt, bucket in (("claude", claude), ("copilot", copilot)):
+        for fname, (target, profiles) in COMMAND_FILES[fmt].items():
+            data = (root / fname).read_bytes()
+            src = "payload/%s/%s" % (fmt, target)
+            files[src] = data
+            bucket.append({"path": target, "src": src, "sha256": sha256(data), "profiles": list(profiles)})
+    for fname, (target, profiles) in list(HOOK_FILES.items()) + list(SCRIPT_FILES.items()) + list(SUPPORT_FILES.items()):
         data = (root / fname).read_bytes()
         src = "payload/common/%s" % target
         files[src] = data

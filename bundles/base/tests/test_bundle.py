@@ -2239,6 +2239,96 @@ def test_t35_user_documents_link_nothing_outside_the_zip_and_name_no_bundle_vers
     assert "manifold-base-<version>" in _doc("INSTALL.md") and "manifold-base-<version>" in _doc("README.md")
 
 
+def test_deferred_text_fixes_f1_f4_f5():
+    """Phase 3 CP1: no repository history or pronoun in the review cycle, no 'never seen live' claim that a live
+    refusal contradicts, and the guard's stated limits name the write-capable tools it allows."""
+    cycle = (ROOT / "process" / "REVIEW_CYCLE.md").read_text()
+    for needle in ("Phase 2", "CP2a", "CP2b", " his "):
+        assert needle not in cycle, needle
+    for name in ("INSTALL.md", "HOWTO.md"):
+        assert "not yet seen in a live run" not in _doc(name), name
+        assert "recorded in a live" not in _doc(name), name
+    docstring = (ROOT / "hooks" / "guard.py").read_text().split("from __future__")[0]
+    assert "curl -o" in docstring
+
+
+def test_review_cycle_names_homes_levels_and_light_path():
+    """Phase 3 CP2: one home per fact, a definition of done with three levels, and a light path for text fixes."""
+    cycle = (ROOT / "process" / "REVIEW_CYCLE.md").read_text()
+    for heading in ("## Where each fact is recorded", "## Definition of done", "## Light path for text fixes"):
+        assert heading in cycle, heading
+    light = cycle.split("## Light path for text fixes")[1].split("\n## ")[0]
+    assert "solo" in light and "never code" in light
+    ready = cycle.split("## The ready check")[1].split("\n## ")[0]
+    item3 = [x for x in ready.splitlines() if x.startswith("3.")][0]
+    assert "never a commit" in item3 or "no second confirmation" in item3
+    assert "run for an older commit is not the result" in ready
+
+
+def test_review_cycle_round2_repairs():
+    """Phase 3 CP6: ready-check item 3 asks a CI read and tick for every commit, the reviewer's file records only
+    open and repaired, and the light path says what it skips, what it keeps and who judges 'text only'."""
+    cycle = (ROOT / "process" / "REVIEW_CYCLE.md").read_text()
+    ready = cycle.split("## The ready check")[1].split("\n## ")[0]
+    item3 = [x for x in ready.splitlines() if x.startswith("3.")][0]
+    assert "no second confirmation" not in item3 and "changes no code" not in item3
+    assert "never a commit" in item3 and "run for an older commit is not the result" in item3
+    assert "The reviewer's file records only `open` and `repaired`" in cycle
+    assert "as repaired, deferred or rejected with evidence" not in cycle
+    light = cycle.split("## Light path for text fixes")[1].split("\n## ")[0]
+    assert "the human who ticks judges" in light and "ready check" in light
+
+
+def test_coordinator_reports_level_and_compares_branch_rules():
+    """Phase 3 CP3: the coordinator writes the CI result into the pull request for a human to tick (no commit),
+    reports the level of the definition of done, batches decisions, and compares branch rules with the workflows."""
+    text = _agent_text("coordinator")
+    for needle in ("## Branch rules", "mergeable", "releasable", "accept all", "never declare", "never change the ruleset"):
+        assert needle in text, needle
+    ci = text.split("## CI of the exact commit")[1].split("\n## ")[0]
+    assert "remaining-steps list" in ci and "no commit" in ci
+    branch = text.split("## Branch rules")[1].split("\n## ")[0]
+    assert ".github/workflows/" in branch and "required check" in branch
+
+
+def test_coordinator_ci_write_is_the_one_standing_exception():
+    """Phase 3 CP7 (review round 3, F11): the four statements about pull request writes agree. The CI result line
+    is the one write the coordinator makes without asking each time; every other pull request write needs the go-ahead."""
+    text = _agent_text("coordinator")
+    ci = text.split("## CI of the exact commit")[1].split("\n## ")[0]
+    assert "without asking each time" in ci and "the one write" in ci
+    ready = text.split("## Ready check")[1].split("\n## ")[0]
+    for needle in ("only with the owner's go-ahead", "the one exception", "remaining-steps list",
+                   "Every other pull request write needs the go-ahead"):
+        assert needle in ready, needle
+    rule = text.split("**No outward action without the owner.**")[1].split("\n- **")[0]
+    assert "only with the owner's go-ahead" in rule and "the one exception" in rule
+    donot = text.split("## What you do not do")[1].split("\n## ")[0]
+    assert "the one exception" in donot
+
+
+def test_ask_rule_requires_self_contained_asks_for_coordinator():
+    """Phase 3 CP3: every ask says what, why, consequence and default, never an internal ID alone, and the
+    rule reaches the coordinator."""
+    rules = build.load_rules(ROOT)
+    rule = [r for r in rules if r["id"] == "ask-on-ambiguity"][0]
+    assert "coordinator" in rule["applies_to"]
+    for needle in ("internal ID", "the consequence", "the default"):
+        assert needle in rule["instead"], needle
+    fragments = build.load_fragments(ROOT)
+    for fmt in ("claude", "copilot"):
+        rendered = build.render_agent("coordinator", _agent_text("coordinator"), fmt, fragments, rules)
+        assert "internal ID" in rendered, fmt
+
+
+def test_pr_template_has_remaining_steps_and_decisions_table():
+    """Phase 3 CP2: the pull request template carries the human's remaining steps and one batch of decisions."""
+    t = (ROOT / "templates" / "PULL_REQUEST_TEMPLATE.md").read_text()
+    assert "## What remains for you" in t and "## Decisions for you" in t
+    assert "| What | Why | Consequence | Default |" in t
+    assert "accept all" in t and "Where each fact is recorded" in t
+
+
 def test_t35_install_states_the_guard_per_client_and_how_a_human_grants_an_exception():
     t = _doc("INSTALL.md")
     for needle in ("Claude Code", "Copilot", "unverified", ".manifold/hooks/guard.py", ".github/hooks/manifold-guard.json",
@@ -2411,3 +2501,114 @@ def test_test_coder_names_bug_coder_per_flavor():
         assert "`bug-coder`" in out and "fix-bug" not in out and "{{" not in out
     out = build.render_skill("test-coder", text, fragments, rules, build.read_version(ROOT))
     assert "`fix-bug`" in out and "bug-coder" not in out and "{{" not in out
+
+
+# ---- Phase 3 CP4 (Task 17): the /phase-status script and its command, in the build and the install
+
+PHASE_SCRIPT_INSTALLED = ".manifold/phase_status.py"
+PHASE_CLAUDE_COMMAND = ".claude/commands/phase-status.md"
+PHASE_COPILOT_PROMPT = ".github/prompts/phase-status.prompt.md"
+
+
+def test_phase_status_files_are_in_the_zip_and_the_manifest_for_every_profile(built, bundle_dir):
+    bundle = json.loads((bundle_dir / "bundle.json").read_text())
+    common = {e["path"]: e for e in bundle["common"]}
+    assert set(common[PHASE_SCRIPT_INSTALLED]["profiles"]) == {"build", "quality", "single"}
+    assert (bundle_dir / common[PHASE_SCRIPT_INSTALLED]["src"]).read_bytes() == (ROOT / "scripts" / "phase_status.py").read_bytes()
+    for fmt, path, source in (("claude", PHASE_CLAUDE_COMMAND, "phase-status.md"),
+                              ("copilot", PHASE_COPILOT_PROMPT, "phase-status.prompt.md")):
+        (entry,) = [e for e in bundle["formats"][fmt] if e["path"] == path]
+        assert set(entry["profiles"]) == {"build", "quality", "single"}, fmt
+        assert (bundle_dir / entry["src"]).read_bytes() == (ROOT / "commands" / source).read_bytes()
+    assert not [e for e in bundle["formats"]["skills"] if "phase" in e["path"]]
+
+
+@pytest.mark.parametrize("profile", ["build", "quality", "single"])
+@pytest.mark.parametrize("fmt,command", [("claude", PHASE_CLAUDE_COMMAND), ("copilot", PHASE_COPILOT_PROMPT), ("skills", None)])
+def test_phase_status_is_installed_per_profile_and_flavor_and_uninstalled_cleanly(bundle_dir, repo, profile, fmt, command):
+    assert run(bundle_dir, repo, "--profile", profile, "--format", fmt, "--apply")[0] == 0
+    installed = tree(repo)
+    assert PHASE_SCRIPT_INSTALLED in installed  # the script comes with every flavor and profile
+    assert (repo / PHASE_SCRIPT_INSTALLED).read_bytes() == (ROOT / "scripts" / "phase_status.py").read_bytes()
+    for path in (PHASE_CLAUDE_COMMAND, PHASE_COPILOT_PROMPT):
+        assert (path in installed) is (path == command), (fmt, path)
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_both_and_all_formats_install_both_commands(bundle_dir, repo):
+    assert run(bundle_dir, repo, "--format", "all", "--allow-overlap", "--apply")[0] == 0
+    assert {PHASE_CLAUDE_COMMAND, PHASE_COPILOT_PROMPT, PHASE_SCRIPT_INSTALLED} <= set(tree(repo))
+    assert run(bundle_dir, repo, "--uninstall", "--apply")[0] == 0
+    assert tree(repo) == []
+
+
+def test_two_builds_are_byte_equal_and_carry_the_phase_status_files(tmp_path):
+    first = build.build_zip(ROOT, tmp_path / "a")
+    second = build.build_zip(ROOT, tmp_path / "b")
+    assert first.read_bytes() == second.read_bytes()
+    with zipfile.ZipFile(first) as zf:
+        names = zf.namelist()
+    for suffix in ("payload/common/" + PHASE_SCRIPT_INSTALLED, "payload/claude/" + PHASE_CLAUDE_COMMAND,
+                   "payload/copilot/" + PHASE_COPILOT_PROMPT):
+        assert any(n.endswith(suffix) for n in names), suffix
+
+
+def test_the_claude_command_pre_approves_python3_and_runs_the_script_inline():
+    text = (ROOT / "commands" / "phase-status.md").read_text()
+    assert text.startswith("---\n")
+    front = text.split("\n---\n", 1)[0]
+    assert "allowed-tools: Bash(python3 *)" in front.split("\n")
+    assert "!`python3 .manifold/phase_status.py $ARGUMENTS`" in text
+
+
+def test_the_copilot_prompt_states_its_limit_and_claims_no_deterministic_run():
+    text = (ROOT / "commands" / "phase-status.prompt.md").read_text()
+    assert text.startswith("---\n")
+    assert "python3 .manifold/phase_status.py ${input:phase}" in text
+    for needle in ("paste its output unedited", "the run is your act", "not a read the client performs by itself",
+                   "Local harness", "deprecated", "February 2027"):
+        assert needle in text, needle
+    assert "!`" not in text  # the inline shell form is the Claude Code one; a prompt file has none
+
+
+def test_the_skills_instruction_names_the_script_and_says_it_is_unverified():
+    agents, rules = build.load_agents(), build.load_rules()
+    for style in ("skills", "both"):
+        block = build.render_instructions_block(agents, rules, style, "build")
+        (line,) = [x for x in block.split("\n") if "phase_status.py" in x]
+        assert "python3 .manifold/phase_status.py <N>" in line and "unverified" in line, style
+    assert "phase_status.py" not in build.render_instructions_block(agents, rules, "agents", "build")
+
+
+def test_lint_rejects_a_phase_status_script_that_imports_outside_the_standard_library(tmp_path):
+    src = copy_source(tmp_path / "src")
+    p = src / "scripts" / "phase_status.py"
+    p.write_text(p.read_text() + "\nimport requests\n")
+    assert any("scripts/phase_status.py" in x and "standard library" in x for x in build.lint(src))
+    p.write_text(p.read_text() + "\ndef broken(:\n")
+    assert any("scripts/phase_status.py does not compile" in x for x in build.lint(src))
+
+
+def test_lint_rejects_a_missing_phase_status_file_or_a_command_that_does_not_run_the_script(tmp_path):
+    src = copy_source(tmp_path / "src")
+    (src / "scripts" / "phase_status.py").unlink()
+    assert any("missing file: scripts/phase_status.py" in x for x in build.lint(src))
+    src = copy_source(tmp_path / "src2")
+    claude = src / "commands" / "phase-status.md"
+    claude.write_text(claude.read_text().replace("allowed-tools: Bash(python3 *)\n", ""))
+    assert any("phase-status.md" in x and "allowed-tools" in x for x in build.lint(src))
+    claude.write_text(claude.read_text().replace("phase_status.py", "elsewhere.py"))
+    assert any("phase-status.md" in x for x in build.lint(src))
+    src = copy_source(tmp_path / "src3")
+    (src / "commands" / "phase-status.prompt.md").unlink()
+    assert any("missing file: commands/phase-status.prompt.md" in x for x in build.lint(src))
+
+
+def test_the_installed_script_runs_from_the_install_and_reads_the_plan(bundle_dir, repo):
+    assert run(bundle_dir, repo, "--apply")[0] == 0
+    plans = repo / "docs" / "plans"
+    plans.mkdir(parents=True)
+    (plans / "PHASE_9_PLAN.md").write_text("**Approved by:**\n\n### Task 1 - x\n**Todo:** [ ]\n")
+    p = subprocess.run([sys.executable, str(repo / PHASE_SCRIPT_INSTALLED), "9"], capture_output=True, text=True, cwd=repo)
+    assert p.returncode == 0 and "Approved by: BLANK" in p.stdout and "Unticked tasks ([ ]): 1" in p.stdout

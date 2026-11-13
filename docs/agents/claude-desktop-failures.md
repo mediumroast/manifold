@@ -212,6 +212,90 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** open
 **Intent raised:** none yet (the owner decides whether this extends INT-20)
 
+## F11 — The `reviewer` tried a shell redirect; refused, disclosed (2026-11-11)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While reviewing checkpoint 1 of Phase 3, the `reviewer` tried to stage the old file tree with a shell redirect, to reproduce a failing-first run. The live guard refused the command before it ran, so no file was written. The `reviewer` did not retry it and said so in the review.
+**Evidence:** `docs/plans/REVIEW_PLAN_3.md`, finding on the failing-first run and "Rule exceptions compared".
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the review file).
+**Suggested change:** None; the guard held and the agent said so.
+**Status:** closed
+**Intent raised:** none
+
+## F12 — The `reviewer` tried a shell command the guard read as a write; refused, disclosed (2026-11-11)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While re-reviewing the repair of checkpoint 1 of Phase 3 (revision 2), the `reviewer` tried to unzip a scratchpad build with a `python3 -c` zipfile call. The live guard refused the command before it ran, so nothing was written. The `reviewer` did not retry it another way, left `install.py --status` as not run, and said so in the review.
+**Evidence:** `.manifold/guard-log.jsonl`, third line (2026-11-11T23:41:35Z, rule `no-heredocs`, agent_type `reviewer`); `docs/plans/REVIEW_PLAN_3.md`, "Could not check".
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. The command was a read-style unzip, so the refusal may be a false positive of the classifier (unverified: not re-run through `classify_bash`).
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report and the review file).
+**Suggested change:** None for the agent; the guard held. Whether the unzip form should be allowed is for the owner (same family as F10).
+**Status:** closed
+**Intent raised:** none
+
+## F13 — The `coder` tried a heredoc during checkpoint 2 of Phase 3; refused, disclosed (2026-11-11)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While doing Tasks 7 to 10 of Phase 3, the `coder` started an empty `python3 - <<'EOF'` snippet. The live guard refused it before it ran, so nothing was written. The `coder` did not retry and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, last line (2026-11-11T23:48:04Z, rule `no-heredocs`, agent_type `coder`); the coder's report ("Rule exceptions"). The diff of the run touches only the five files the tasks name.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None; the guard held and the agent said so.
+**Status:** closed
+**Intent raised:** none
+
+## F14 — The `coder` appended a heredoc snippet to a verification command during checkpoint 3 of Phase 3; refused, disclosed (2026-11-12)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While doing Tasks 11 to 14 of Phase 3, the `coder` added a stray `python3 - <<'X'` snippet to a verification command. The live guard refused the command before it ran, so nothing was written. The `coder` re-ran the check without the snippet, did not work around the block, and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, last line (2026-11-12T13:47:17Z, rule `no-heredocs`, agent_type `coder`); the coder's report ("Rule exceptions"). The diff of the run touches only the files the tasks name; `.github`, the installed copy and `.manifold` are unchanged.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. Second heredoc attempt by a `coder` in this phase (see F13).
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None; the guard held. The repeat suggests agents reach for a heredoc as a habit when checking a build; the owner may want the coder definition to name `Write` to the scratchpad for such snippets (an intent, not an edit here).
+**Status:** closed
+**Intent raised:** none
+
+## F15 — The `coder` tried a read-style `cmp` over protected installed agent files during checkpoint 4 of Phase 3; refused, disclosed (2026-11-12)
+
+**Rule:** Protected-file writes (guard rule `protected-file`).
+**What happened:** While refreshing this repository's own install (Task 18), the `coder` ran a `cmp` loop comparing the installed `.claude/agents/*.md` files with a build output. The live guard refused it before it ran, so nothing was written. The `coder` did not retry it another way and showed agent equality through the manifest hash check and `install.py --status` instead. The command was read-style, so the refusal may be a false positive of the classifier (same family as F10 and F12; unverified: not re-run through `classify_bash`).
+**Evidence:** `.manifold/guard-log.jsonl`, last line (2026-11-12T20:54:37Z, rule `protected-file`, agent_type `coder`); the coder's report ("Rule exceptions"). The coder also listed a command that ended with a redirect to `/dev/null` (not a file write). The installed files changed only through the installer's apply step (dry run first, no `--force`, 25 files ok and 0 modified by `--status`).
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None for the agent; the guard held. Whether a read-only `cmp` over a protected path should be allowed is for the owner (same family as F10 and F12).
+**Status:** closed
+**Intent raised:** none
+
+## F16 — The `reviewer` tried a heredoc in a `bash -c` loop during the review of the final commit of Phase 3; refused, disclosed (2026-11-12)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** To compare bundle sources with installed copies, the `reviewer` ran a `bash -c` loop that read its file pairs from a heredoc. The live guard refused it before it ran, so nothing was written. The `reviewer` did not retry it another way; it redid the checks with plain `cmp` calls and read-only `python3 -c`, and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-12T21:15:59Z (rule `no-heredocs`, agent_type `reviewer`); the reviewer's report ("My Rule exceptions"). The heredoc was a read-only input, not a file write; the refusal is correct by the rule's text.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None; the guard held.
+**Status:** closed
+**Intent raised:** none
+
+## F17 — The `reviewer` tried to Write a scratch script to the scratchpad; refused by the write allowlist, disclosed (2026-11-12)
+
+**Rule:** The reviewer's write allowlist (guard rule `write-allowlist`): the `reviewer` writes only the review file.
+**What happened:** The `reviewer` tried to Write a scratch script into the session scratchpad. The live guard refused it before it ran, so nothing was written. The `reviewer` did not retry and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-12T21:16:05Z (rule `write-allowlist`, tool `Write`, agent_type `reviewer`); the reviewer's report ("My Rule exceptions"). Note: the plan and the `reviewer` brief I gave told it to Write snippets to the scratchpad, which conflicts with the reviewer's own allowlist. The cause is my instruction, not the agent's choice.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. The coordinator's instruction was inconsistent with the reviewer's allowlist (a coordinator slip, recorded here as my own).
+**Agent:** reviewer (attempt), coordinator (instruction)
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** The coordinator should not tell the `reviewer` to Write scratch files; reviewers need a read-only way to run a snippet, or the allowlist should name the scratchpad (the owner decides; an intent, not an edit here).
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |

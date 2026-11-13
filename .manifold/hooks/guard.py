@@ -77,7 +77,7 @@ Residual gaps (stated, not fixed), one per line:
   client runs the hook);
 - command substitution inside double quotes;
 - `sed` with a `w` command (it cannot be told from text without parsing sed);
-- other languages, editors and tools than the ones named in the shell rule;
+- other languages, editors and tools than the ones named in the shell rule (for example `dd of=`, `curl -o`, `wget -O`, `tar x`, `unzip`, `install`, `python3 -m json.tool in out` are allowed although they write files);
 - a `cd` in an earlier call followed by a bare file name;
 - worktrees: a checkout counts as part of the project's repository only when its `.git` proves it (a `.git` directory, or a `.git` file whose git directory sits in the common directory's `worktrees/` folder, holds `commondir` and points back at that `.git` file); a checkout of another repository, a forged or unreadable `.git`, or a path in no checkout is judged as a path outside the project and matches no allowlist; whoever can write inside the repository's own `.git` directory can forge that proof; `.manifold/guard-allow.json` and `.manifold/guard-log.jsonl` are always the project directory's own, never another checkout's, so every checkout that can be a project directory needs its own installed guard;
 - tools the guard does not look at;
