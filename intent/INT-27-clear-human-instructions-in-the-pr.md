@@ -3,15 +3,16 @@ id: INT-27
 title: Tell the human exactly what to do, and where to write, in the pull request
 author: Michael Hay
 created: 2026-11-13
-status: draft
+status: accepted
 affects: [bundles/base, docs/templates, docs/process, bundles/base/agents/coordinator.agent.md]
 drafted_with: [claude-sonnet-5-5]
-accepted_by:
+accepted_by: Michael Hay on Nov 14, 2026
 ---
 
 # Intent: Tell the human exactly what to do, and where to write, in the pull request
 
 ## Problem
+
 The owner tried to finish Phase 3 by working through pull request 31 and could not tell what to do. In his words: "Instruction writing is nonexistent or unclear." INT-26 made finishing a phase lighter by moving the human steps into the pull request. It did not make those steps self-explanatory. Gaps seen in that pull request (the template is `bundles/base/templates/PULL_REQUEST_TEMPLATE.md`, installed as `docs/templates/PULL_REQUEST_TEMPLATE.md`, the two files are identical):
 
 1. **The ready-check table never says to replace the word.** The column header reads `State (met / missing)`. The owner did not know that the cell is meant to hold one of those two words in place of the header text.
@@ -24,6 +25,7 @@ The owner tried to finish Phase 3 by working through pull request 31 and could n
 The cost: a human is the gate for every pull request, so a gate whose instructions are not in the pull request is a gate the human has to reverse-engineer each time.
 
 ## Proposed outcome
+
 A person who has never read the process documents can open a pull request produced by the coordinator and finish their part by following only the text in the pull request.
 
 1. **The instructions are in the pull request itself.** Each place where a human must act carries, next to it, an **Instructions** block that says what the human must do. The block is not a link to a document and not a comment in the template that is deleted from the finished description.
@@ -56,6 +58,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 ```
 
 ## Affected users and systems
+
 - **The human approver** (the owner in this repository, a second approver in a team repository), who follows the instructions.
 - **Agents:** the `coordinator`, which fills in the pull request description and writes the CI result line, and any agent or person who copies the template.
 - **Files:** `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` and its installed copy `docs/templates/PULL_REQUEST_TEMPLATE.md`; `bundles/base/agents/coordinator.agent.md` (CI of the exact commit, Ready check); `docs/process/REVIEW_CYCLE.md` and its bundle source (ready check, "Where each fact is recorded"); `docs/process/BRANCH_RULES.md` (the approving-review row; this file is not shipped); the other human-written lines in the templates (plan **Approved by**, **Amendment approved by**, intent **accepted_by**) if the owner decides so (see Open questions).
@@ -63,6 +66,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 - **Both flavors** (`claude` and `copilot`) and **repositories that install the bundle**.
 
 ## Constraints
+
 - **A human keeps the final say.** Instructions tell the human what to do; they never do it. The coordinator never approves, never moves a pull request out of draft, never merges, never ticks, never fills in an approval line (`AGENTS.md` "Plan approval"; coordinator definition; INT-22 "A human decides"; INT-26 "A human keeps the final say").
 - **Instructions are in the pull request.** Linking to a process document may add detail but cannot replace the text; the human must be able to act with the pull request alone.
 - **Ready still means reviewed.** No ready-check line is dropped or loosened; this changes how it is explained, not what it requires (INT-22, `REVIEW_CYCLE.md` "The ready check").
@@ -77,6 +81,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 ## Scenario seeds
 
 ### S1 — I know what to do at each place I must act
+
 **Who:** The owner or a second approver opening a pull request produced by the coordinator.
 **Wants:** An **Instructions** block beside each human step, in the pull request, that says what to check, where to click or write and what to do if it fails.
 **So that:** Finishing needs no process document, no chat and no guessing.
@@ -84,6 +89,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 **Must never:** Leave a human step with no instructions, or put the instructions only in a template comment that is removed from the finished description.
 
 ### S2 — The CI line is split and says what to verify
+
 **Who:** The owner confirming CI for the pushed commit.
 **Wants:** The owner's worked example above: each workflow run on its own numbered line with its link, then numbered instructions (open the links, check success, write the approval, or tell the coordinator if a run failed), then the name field.
 **So that:** The owner can check each run in turn and knows what a pass and a fail mean.
@@ -91,6 +97,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 **Must never:** Write the name for the owner, or tell the human to approve when a run is not `completed` with `success`, or lose the full commit hash.
 
 ### S3 — Every name and date field has a slug I can replace
+
 **Who:** Anyone writing their name and date into the pull request.
 **Wants:** A slug such as `<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>` wherever a human's name and date go (CI **Confirmed by**, **Human confirmation**, and any other such field).
 **So that:** The field to change is obvious and the answer has a known shape.
@@ -98,6 +105,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 **Must never:** Leave such a field blank, hold prose instead of a slug, or use different slug shapes that cannot be found by one search.
 
 ### S4 — A state cell says what to write
+
 **Who:** The coordinator filling the ready-check table, and the human reading it.
 **Wants:** The table to say, in the cell or the instructions under it, that the State cell holds exactly `met` or `missing` and the coordinator replaces the placeholder with one of them.
 **So that:** Nobody wonders whether the header text `State (met / missing)` is the answer.
@@ -105,6 +113,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 **Must never:** Show a State cell that still reads `met / missing`, or mark a line `met` without evidence in the Evidence cell.
 
 ### S5 — The pull request explains GitHub's Approve review
+
 **Who:** The owner who must satisfy the ruleset's one required approving review.
 **Wants:** The pull request to say that GitHub's Approve review (the "Review changes" control on the pull request page) is a separate act from the description's rows and ticks, whether it is required, where to click, and what to do if GitHub does not allow it.
 **So that:** The merge button is not a surprise, and the owner does not mistake a tick for an approval.
@@ -112,6 +121,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 **Must never:** Claim the tick in the description satisfies the ruleset, or claim GitHub allows or blocks self-approval without it having been read from GitHub's documentation or the repository's settings.
 
 ### S6 — An unfilled slug is caught, not merged
+
 **Who:** The coordinator running the ready check, and the owner running `/phase-status`.
 **Wants:** A pull request with any `<Insert ...>` slug still unreplaced to show as not ready or open.
 **So that:** A missing name or date is found by a check, not by the owner reading carefully.
@@ -119,6 +129,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 **Must never:** Count a field with an unreplaced slug as met, or report the ready check as met while one is present.
 
 ### S7 — The agent never fills in the human's part
+
 **Who:** The coordinator or any agent that writes or edits the pull request description.
 **Wants:** To write the instructions, the evidence and the slugs, and leave every human field as the slug.
 **So that:** The human act stays human (`human-confirms-closure`, "Plan approval").
@@ -126,6 +137,7 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 **Must never:** Fill a slug, write an approver's name or a date in a human field, tick a box, or write "approved" on a human's behalf.
 
 ## Out of scope
+
 - Changing the GitHub ruleset on `main` (including the required review count), the CI workflow or merge settings. That is the owner's act on GitHub.
 - Weakening or removing any ready-check line or the human-confirmation requirement.
 - Changing the content of the review passes, severity or the reviewer's file (INT-21, INT-23).
@@ -134,10 +146,11 @@ Confirmed by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on J
 - Deciding the release number or releasing.
 
 ## Open questions
-- **One slug format for every human field?** What: a single shape for all name-and-date fields, such as `<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>` with the label changed per field (for example `Name of confirmer on Date of confirmation`). Why: one search finds every unfilled field. Consequence if not: several shapes and gaps in detection. Recommendation: one shape, `<Insert <role> on <date label>, ex. <Name> on <Mon-DD-YYYY>>`, using the owner's date style. Who: the owner. Default: the recommendation.
-- **Does the ready check treat an unreplaced `<Insert ...>` as missing?** What: whether the coordinator and `/phase-status` read a leftover slug as the line being missing. Why: S6. Consequence if not: a pull request can look ready with no name. Recommendation: yes, treat any `<Insert` text left in a human field as missing, and make `/phase-status` list it. Who: the owner. Default: the recommendation.
-- **Self-approval in a solo repository.** What: the ruleset requires one approving review (`docs/process/BRANCH_RULES.md`), and the owner is the only person. Why: GitHub may refuse an approval from the pull request's author, and nothing says what to do then. Consequence if not decided: the instructions for the Approve review cannot say what to do on failure. This intent does not assert the answer. Recommendation: the planner reads GitHub's documentation and the repository's settings first, and the owner then chooses between documenting the existing route (for example a bypass the owner already holds), a second account, or changing the ruleset, which is the owner's act and out of scope here. Who: the owner, after the planner reads the sources. Default: document what is found and ask.
-- **Should the instructions also cover the plan's **Approved by**, the **Amendment approved by** line and the intent's **accepted_by**?** What: the same slug and an instructions block for those lines. Why: they have the same problem, a human writes name and date with no prompt. Consequence if not: the owner is stopped again at the next human line. Recommendation: yes, in the same plan, with the slug in the templates and the agents leaving it as it is; the planner and the `coordinator` still never fill it in. Who: the owner. Default: the recommendation.
-- **Where does the instruction text live so it is not deleted?** What: the template's HTML comments are removed from the finished description, so instructions must be visible text, not comments. Why: S1. Recommendation: visible **Instructions** lines in the template, kept in the finished description and deleted by the human only after acting (or left in place). Who: the owner. Default: the recommendation.
-- **Do the instructions ship in the bundle for every installing repository, or only in this repository?** Recommendation: ship them in the bundle, worded generically, since every repository that installs the bundle has the same human steps. Who: the owner. Default: the recommendation.
-- **Which release carries this?** Recommendation: a separate phase after Phase 3's pull request is merged, so the pull request in hand is not held. Who: the owner. Default: the recommendation.
+
+- **One slug format for every human field?** What: a single shape for all name-and-date fields, such as `<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>` with the label changed per field (for example `Name of confirmer on Date of confirmation`). Why: one search finds every unfilled field. Consequence if not: several shapes and gaps in detection. Recommendation: one shape, `<Insert <role> on <date label>, ex. <Name> on <Mon-DD-YYYY>>`, using the owner's date style. Who: the owner. Default: the recommendation. Answer: Yes this is the right format.
+- **Does the ready check treat an unreplaced `<Insert ...>` as missing?** What: whether the coordinator and `/phase-status` read a leftover slug as the line being missing. Why: S6. Consequence if not: a pull request can look ready with no name. Recommendation: yes, treat any `<Insert` text left in a human field as missing, and make `/phase-status` list it. Who: the owner. Default: the recommendation. Answer: Agree with the approach and recommendation
+- **Self-approval in a solo repository.** What: the ruleset requires one approving review (`docs/process/BRANCH_RULES.md`), and the owner is the only person. Why: GitHub may refuse an approval from the pull request's author, and nothing says what to do then. Consequence if not decided: the instructions for the Approve review cannot say what to do on failure. This intent does not assert the answer. Recommendation: the planner reads GitHub's documentation and the repository's settings first, and the owner then chooses between documenting the existing route (for example a bypass the owner already holds), a second account, or changing the ruleset, which is the owner's act and out of scope here. Who: the owner, after the planner reads the sources. Default: document what is found and ask. Answer: If there is more than one reviewer in the repo then it is unlikely a solo repo, otherwise it is a solo repo.
+- **Should the instructions also cover the plan's **Approved by**, the **Amendment approved by** line and the intent's **accepted_by**?** What: the same slug and an instructions block for those lines. Why: they have the same problem, a human writes name and date with no prompt. Consequence if not: the owner is stopped again at the next human line. Recommendation: yes, in the same plan, with the slug in the templates and the agents leaving it as it is; the planner and the `coordinator` still never fill it in. Who: the owner. Default: the recommendation. Answer: Agree with the recommendation.
+- **Where does the instruction text live so it is not deleted?** What: the template's HTML comments are removed from the finished description, so instructions must be visible text, not comments. Why: S1. Recommendation: visible **Instructions** lines in the template, kept in the finished description and deleted by the human only after acting (or left in place). Who: the owner. Default: the recommendation. Answer: Agree with the recommendation.
+- **Do the instructions ship in the bundle for every installing repository, or only in this repository?** Recommendation: ship them in the bundle, worded generically, since every repository that installs the bundle has the same human steps. Who: the owner. Default: the recommendation. Answer: I agree with the bundle so every repo gains the benefit.
+- **Which release carries this?** Recommendation: a separate phase after Phase 3's pull request is merged, so the pull request in hand is not held. Who: the owner. Default: the recommendation. Answer: Yes, I'd suggest after we're done with the work we call the release V0.3.1 to signify we're patching the bundle and not significantly improving it.

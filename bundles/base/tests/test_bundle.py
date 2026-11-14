@@ -4,6 +4,7 @@
 import hashlib
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -2327,6 +2328,174 @@ def test_pr_template_has_remaining_steps_and_decisions_table():
     assert "## What remains for you" in t and "## Decisions for you" in t
     assert "| What | Why | Consequence | Default |" in t
     assert "accept all" in t and "Where each fact is recorded" in t
+
+
+_SLUG_RE = re.compile(r"<Insert [^<>]*>")
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+
+
+def _pr_template():
+    return (ROOT / "templates" / "PULL_REQUEST_TEMPLATE.md").read_text()
+
+
+def test_pr_template_has_visible_instructions_and_one_slug_shape():
+    """Phase 4 CP1 (INT-27 S1, S3, S7): each human-written line holds one slug; instructions are visible text."""
+    t = _pr_template()
+    for label in ("**Confirmed by:**", "**Human confirmation:**"):
+        (line,) = [ln for ln in t.splitlines() if ln.startswith(label)]
+        assert len(_SLUG_RE.findall(line)) == 1, line
+    assert len(_SLUG_RE.findall(t)) == 2  # no slug anywhere else in the template
+    visible = _HTML_COMMENT_RE.sub("", t)
+    assert visible.count("**Instructions:**") >= 4  # CI, ready check, human confirmation, remaining steps
+    assert not _SLUG_RE.search("".join(_HTML_COMMENT_RE.findall(t)))  # a slug only in a comment would be hidden
+
+
+def _ci_confirmation_places():
+    """The five places that describe the CI confirmation: template CI step, template remaining step, cycle table row, slug section, ready line, coordinator."""
+    visible = _HTML_COMMENT_RE.sub("", _pr_template())
+    ci_instructions = visible.split("## CI on the pushed commit")[1].split("**Confirmed by:**")[0].split("**Instructions:**")[1]
+    remaining = visible.split("## What remains for you")[1].split("## Decisions for you")[0]
+    cycle = _bundle_text("process", "REVIEW_CYCLE.md")
+    (row,) = [ln for ln in cycle.splitlines() if ln.startswith("| The CI confirmation |")]
+    slugs = cycle.split("## Human fields and slugs")[1].split("\n## ")[0]
+    ready = cycle.split("## The ready check")[1].split("\n## ")[0]
+    (ready3,) = [ln for ln in ready.splitlines() if ln.startswith("3. ")]
+    coordinator = _bundle_text("agents", "coordinator.agent.md").split("## CI of the exact commit")[1].split("\n## ")[0]
+    return ci_instructions, remaining, row, slugs, ready3, coordinator
+
+
+def test_ci_confirmation_is_the_line_and_the_tick_in_every_place():
+    """Phase 4 CP7 (review F1, INT-27 S1): the CI confirmation is two acts, the line and the tick, said once and agreed everywhere."""
+    ci, remaining, row, slugs, ready3, coordinator = _ci_confirmation_places()
+    (step2,) = [ln for ln in ci.splitlines() if ln.startswith("2. ")]
+    assert "**Confirmed by**" in step2 and "tick" in step2  # both acts in one step
+    (step3,) = [ln for ln in ci.splitlines() if ln.startswith("3. ")]
+    assert "do not tick" in step3
+    (rem2,) = [ln for ln in remaining.splitlines() if ln.startswith("2. ")]
+    assert "**Instructions**" in rem2 and "two acts" in rem2 and "no second copy" in rem2.lower()
+    assert "write your name" not in rem2.lower() and "tick the box" not in rem2.lower()  # no second procedure here
+    for place in (row, ready3, coordinator):
+        assert "**Confirmed by**" in place and "tick" in place, place
+    assert "**Confirmed by**" in slugs and "second act" in slugs and "tick" in slugs
+    assert "a tick in the pull request, never a commit" not in row  # the confirmation is not "a tick" only
+    assert "ticked by a human," in ready3 and "no slug" in ready3
+
+
+def test_pr_template_state_cells_name_both_values():
+    """Phase 4 CP1 (INT-27 S4): the State cell says what to write; the instructions name both values."""
+    t = _pr_template()
+    assert "met / missing" not in t
+    visible = _HTML_COMMENT_RE.sub("", t)
+    instructions = visible.split("## Ready check")[1]
+    assert "`met`" in instructions and "`missing`" in instructions
+
+
+def test_pr_template_names_the_approve_review_and_claims_nothing_about_self_approval():
+    """Phase 4 CP1 (INT-27 S5): the Approve review step exists; no claim about what GitHub allows an author."""
+    t = _pr_template()
+    assert "Approve" in t and "Review changes" in t
+    lowered = t.lower()
+    for forbidden in ("own pull request", "self-approv", "cannot approve"):
+        assert forbidden not in lowered, forbidden
+
+
+def test_approve_review_step_is_linked_or_marked_unverified():
+    """Phase 4 CP7 (review F8, INT-27 S5): the Approve review step cites GitHub's documentation or says it is unverified; no bypass or self-approval claim."""
+    (step,) = [ln for ln in _pr_template().splitlines() if ln.startswith("4. GitHub's Approve review")]
+    (row,) = [ln for ln in _bundle_text("process", "REVIEW_CYCLE.md").splitlines() if ln.startswith("| GitHub's Approve review |")]
+    for place in (step, row):
+        assert "Review changes" in place or "Approve" in place
+        assert "https://docs.github.com/" in place or "unverified" in place, place
+    for name in (("templates", "PULL_REQUEST_TEMPLATE.md"), ("process", "REVIEW_CYCLE.md")):
+        lowered = _bundle_text(*name).lower()
+        for forbidden in ("bypass", "own pull request", "self-approv", "cannot approve"):
+            assert forbidden not in lowered, (name, forbidden)
+
+
+def test_pr_template_is_generic():
+    """Phase 4 CP1 (INT-27): shipped text names no person and no repository."""
+    t = _pr_template()
+    for needle in ("Michael Hay", "mihay42", "mediumroast"):  # `.manifold/` is the install's own folder, not a repository name
+        assert needle.lower() not in t.lower(), needle
+
+
+def _bundle_text(*parts):
+    return (ROOT.joinpath(*parts)).read_text()
+
+
+def test_review_cycle_defines_slug_rule_and_approve_review():
+    """Phase 4 CP1 (INT-27 S3, S5, S6): one slug shape, who replaces it, and the separate Approve review."""
+    t = _bundle_text("process", "REVIEW_CYCLE.md")
+    assert "## Human fields and slugs" in t
+    assert "<Insert [^<>]*>" in t
+    assert "<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>" in t
+    section = t.split("## Human fields and slugs")[1].split("\n## ")[0]
+    assert "never replaces a slug" in section and "missing, never met" in section
+    assert "| GitHub's Approve review |" in t
+    ready = t.split("## The ready check")[1].split("\n## ")[0]
+    assert "Approve review" in ready and "nothing written in the description satisfies it" in ready
+    assert len(re.findall(r"^[1-4]\. ", ready, re.M)) == 4
+
+
+def test_plan_and_intent_templates_carry_a_slug():
+    """Phase 4 CP1 (INT-27 S6, S7): the human lines of the plan, test plan and intent start as a slug."""
+    plan = _bundle_text("templates", "PHASE_PLAN_TEMPLATE.md")
+    assert len(_SLUG_RE.findall(plan)) == 2  # Approved by, Amendment approved by
+    assert "**Instructions:**" in _HTML_COMMENT_RE.sub("", plan)
+    test_plan = _bundle_text("templates", "PHASE_TEST_PLAN_TEMPLATE.md")
+    (line,) = [ln for ln in test_plan.splitlines() if ln.startswith("**Approved by:**")]
+    assert len(_SLUG_RE.findall(line)) == 1
+    intent = _bundle_text("templates", "INTENT_TEMPLATE.md")
+    assert intent.startswith("---\n")  # frontmatter stays first
+    # PyYAML is not a dependency of the bundle tests (CI installs only pytest and skills-ref), so check the
+    # shape that keeps the frontmatter parseable: the slug is one quoted YAML string on the accepted_by line.
+    front = intent.split("\n---\n")[0]
+    (value,) = [ln.split(":", 1)[1].strip() for ln in front.splitlines() if ln.startswith("accepted_by:")]
+    assert value.startswith('"') and value.endswith('"') and _SLUG_RE.fullmatch(value[1:-1]), value
+
+
+def test_blank_approval_text_counts_a_slug_as_blank():
+    """Phase 4 CP1 (INT-27 S6, Concerns 4): the rule, coder and test-coder read a leftover slug as blank."""
+    for parts in (("rules", "core", "approved-plan-before-execution.md"), ("agents", "coder.agent.md"), ("agents", "test-coder.agent.md")):
+        t = _bundle_text(*parts)
+        assert "or still holds an `<Insert ...>` slug" in t, parts
+
+
+def _blank_approval_lines(text):
+    return [ln for ln in text.splitlines() if re.search(r"\bblank\b", ln, re.I) and re.search(r"approv|accepted_by", ln, re.I)]
+
+
+def test_agent_and_guide_text_counts_a_slug_as_blank(built):
+    """Phase 4 CP7 (review F2, INT-27 S6): each approval-line sentence that says "blank" also says "slug"; the guide and the intent template say to replace the whole slug."""
+    sources = [("agents", "coordinator.agent.md"), ("agents", "planner.agent.md"), ("agents", "reviewer.agent.md"), ("HOWTO.md",)]
+    for parts in sources:
+        lines = _blank_approval_lines(_bundle_text(*parts))
+        assert lines, parts  # the sentence is still there
+        for ln in lines:
+            assert "slug" in ln, (parts, ln)
+    assert "replace the whole slug" in _bundle_text("HOWTO.md")
+    assert "replace the whole slug" in _bundle_text("templates", "INTENT_TEMPLATE.md")
+    with zipfile.ZipFile(built) as zf:  # the Copilot and skills flavors are built from the same sources
+        wanted = ("agents/coordinator.agent.md", "agents/planner.agent.md", "agents/reviewer.agent.md", "agents/coordinator.md", "agents/planner.md",
+                  "agents/reviewer.md", "skills/coordinate-cycle/SKILL.md", "skills/plan-change/SKILL.md", "skills/review-change/SKILL.md", "/HOWTO.md")
+        checked = 0
+        for name in zf.namelist():
+            if name.endswith(wanted):
+                for ln in _blank_approval_lines(zf.read(name).decode("utf-8")):
+                    assert "slug" in ln, (name, ln)
+                checked += 1
+        assert checked >= 3, checked
+
+
+def test_coordinator_never_fills_a_slug_and_treats_one_as_missing():
+    """Phase 4 CP1 (INT-27 S2, S6, S7): numbered CI shape, slug left alone, a leftover slug is missing."""
+    t = _bundle_text("agents", "coordinator.agent.md")
+    ci = t.split("## CI of the exact commit")[1].split("\n## ")[0]
+    assert "**Instructions:**" in ci and "slug" in ci and "completed" in ci
+    ready = t.split("## Ready check")[1].split("\n## ")[0]
+    assert "<Insert" in ready and "missing" in ready
+    never = t.split("## What you do not do")[1].split("\n## ")[0]
+    assert "Replace a slug" in never and "tick a box" in never and 'write "approved"' in never
 
 
 def test_t35_install_states_the_guard_per_client_and_how_a_human_grants_an_exception():

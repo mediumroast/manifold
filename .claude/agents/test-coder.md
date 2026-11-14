@@ -40,7 +40,7 @@ Start your first reply with exactly one of these two lines, filling in the file:
 ## Implementing a test plan
 
 ### On startup
-1. Before anything else, read the test plan's **Approved by** line. If it is blank, stop and ask the human; do not fill it in yourself. Then read `## Questions for the human`: if a blocking question has an empty `Answer:`, stop and say which one. Do not start while the plan is unapproved or a blocking question is open.
+1. Before anything else, read the test plan's **Approved by** line. If it is blank or still holds an `<Insert ...>` slug, stop and ask the human; do not fill it in yourself. Then read `## Questions for the human`: if a blocking question has an empty `Answer:`, stop and say which one. Do not start while the plan is unapproved or a blocking question is open.
 2. Read the full test plan before writing any code. Automated cases are under `## Automated test cases` (IDs `A<N>`); each has a `Test file` field naming the file to create or update.
 3. Read the project's test configuration and existing fixtures to learn the patterns in use. Do not reinvent fixtures that already exist.
 4. List the incomplete automated cases (`[ ]` under an `A<N>`). If every automated case is already ticked, report "nothing to implement", not done work.

@@ -90,7 +90,7 @@ This adds no new pass and changes no heading of the review document. When the ch
 - no questions (`## Questions for the human` holds no question, and no stated reason either);
 - a case with no source (an empty or missing `**Derived from:**`, except a manual case marked `Unconfirmed: owner to confirm`).
 
-Report the signs you found, or say that you found none and what you read. A blank **Approved by** is the right state of a new test plan, not a finding. You never approve the test plan: a human does.
+Report the signs you found, or say that you found none and what you read. A blank **Approved by**, or one still holding a slug, is the right state of a new test plan, not a finding. You never approve the test plan: a human does.
 
 ## Report
 

@@ -25,7 +25,7 @@ Each row came from the `rulesets/26275761` read above.
 | Branch must be up to date before merging | yes (`strict_required_status_checks_policy: true`) |
 | Merge method | squash only (`allowed_merge_methods: ["squash"]`) |
 | Linear history | required (`required_linear_history`) |
-| Approving reviews | 1 required (`required_approving_review_count: 1`) |
+| Approving reviews | 1 required (`required_approving_review_count: 1`); how the owner meets it is under "Approving reviews" below |
 | Stale reviews | dismissed on a new push (`dismiss_stale_reviews_on_push: true`) |
 | Review conversations | must be resolved (`required_review_thread_resolution: true`) |
 | Code owner review | not required; last-push approval not required |
@@ -38,7 +38,22 @@ What "role 5" is: unverified: confirm with the GitHub documentation on repositor
 
 What `require_extra_approval_for_unattributed_changes` means: unverified: confirm with the GitHub REST page "Rules" (https://docs.github.com/en/rest/repos/rules) or the ruleset page.
 
-The review count of 1 and the solo repository (`AGENTS.md`, "Review process") are both facts; how the owner's approval is met under it is not stated by the ruleset and is not recorded here.
+### Approving reviews: what was read, and how the owner meets the requirement
+
+Read on 2026-11-14 (Phase 4 Task 1), each with its source:
+
+- The ruleset requires 1 approving review (`required_approving_review_count: 1`, `rulesets/26275761`, read with `gh api --method GET`), and `required_reviewers` is empty (same read).
+- GitHub documentation: "Pull request authors cannot approve their own pull requests." Source: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/approving-a-pull-request-with-required-reviews (read through a summarizing fetch tool; the sentence is the tool's quote). The same page says approvals from people with write or admin permissions count toward merge requirements and Copilot reviews do not.
+- The ruleset lists two bypass actors, `OrganizationAdmin` and `RepositoryRole` with `actor_id` 5, both with `bypass_mode: pull_request` (`rulesets/26275761`). The same read returned `current_user_can_bypass: "pull_requests_only"` for the signed-in `gh` user.
+
+The route the owner chose (Phase 4 plan, Open question 3, answered by the owner on 2026-11-14): this is a solo repository (`AGENTS.md`, "Review process"), and the owner meets the required review through the repository's bypass, the `pull_request` bypass above. The ruleset itself is not changed by this file.
+
+Unverified, not stated here as fact:
+
+- What `RepositoryRole` 5 means: unverified: confirm with the GitHub documentation on repository roles in rulesets, or the ruleset page.
+- What `require_extra_approval_for_unattributed_changes` means: unverified: confirm with the GitHub REST page "Rules" (https://docs.github.com/en/rest/repos/rules).
+- Whether the bypass lets the owner merge their own pull request without an approving review, and what the owner sees or does on the pull request to use it: unverified: confirm with the GitHub documentation on ruleset bypass, or the pull request page itself.
+- What the "Review changes" control shows an author, or whether it is disabled for them: unverified: confirm with the pull request page (open it on a pull request the owner wrote).
 
 ### Check names against the workflows
 
