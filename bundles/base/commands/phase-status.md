@@ -1,6 +1,6 @@
 ---
 description: List what is still open in a phase (read-only). Usage /phase-status <phase number>
-argument-hint: <phase number>
+argument-hint: <phase number> [--pr-body <file>]
 allowed-tools: Bash(python3 *)
 ---
 Phase status, read from the plan, test plan and review files by a read-only script:

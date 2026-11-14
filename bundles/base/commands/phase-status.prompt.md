@@ -1,7 +1,7 @@
 ---
 name: phase-status
 description: List what is still open in a phase (read-only). Usage /phase-status <phase number>
-argument-hint: <phase number>
+argument-hint: <phase number> [--pr-body <file>]
 ---
 Run this command in the terminal and paste its output unedited:
 

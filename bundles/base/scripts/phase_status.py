@@ -3,7 +3,7 @@
 # Copyright 2026 Mediumroast, Inc.
 """Print what is still open in one phase. Read-only, standard library only.
 
-    python3 .manifold/phase_status.py <N> [--root <repository>]
+    python3 .manifold/phase_status.py <N> [--root <repository>] [--pr-body <file>]
 
 Reads docs/plans/PHASE_<N>_PLAN.md (required), PHASE_<N>_TEST_PLAN.md and
 REVIEW_PLAN_<N>.md (both optional) under the root (default: the current
@@ -26,6 +26,10 @@ FINDING_RE = re.compile(r"^\*\*(F\d+)\b")
 STATE_RE = re.compile(r"^-\s+\*\*State:\*\*\s*(.*)$")
 REVISION_RE = re.compile(r"^\|\s*(\d+)\s*\|")
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+SLUG_RE = re.compile(r"<Insert [^<>]*>")
+# The fields where a human writes a name and a date. A slug anywhere else (a worked example in prose) is not reported.
+HUMAN_LABELS = frozenset({"Approved by", "Amendment approved by", "Confirmed by", "Human confirmation",
+                          "Intent accepted by", "accepted_by"})
 
 
 def blank_comments(text: str) -> str:
@@ -39,7 +43,25 @@ def read_lines(path: Path):
 
 def is_blank_approval(value: str) -> bool:
     value = value.strip()
-    return not value or (value.startswith("<") and value.endswith(">"))
+    return not value or (value.startswith("<") and value.endswith(">")) or bool(SLUG_RE.search(value))
+
+
+def slugs(lines):
+    """(line, field) for each unreplaced slug on a human-field line, in line order.
+
+    The field is the text before the first colon, asterisks removed. A line whose field is not a human
+    field (for example a task's Change line that quotes a slug as an example) is not reported. A slug
+    inside a code span on a human-field line is reported (GitHub may hide a bare tag; the span is allowed).
+    """
+    rows = []
+    for number, line in enumerate(lines, 1):
+        if ":" not in line:
+            continue
+        field = line.split(":", 1)[0].strip("* ")
+        if field not in HUMAN_LABELS:
+            continue
+        rows += [(number, field) for _ in SLUG_RE.findall(line)]
+    return rows
 
 
 def approvals(lines, rel):
@@ -107,8 +129,8 @@ def review_state(lines):
     return revision, open_ids, unknown
 
 
-def report(number: int, root: Path):
-    """Return (lines of output, error message or None)."""
+def report(number: int, root: Path, pr_body: Path | None = None):
+    """Return (lines of output, error message or None). pr_body is a saved copy of the pull request description."""
     plan_rel = "docs/plans/PHASE_%d_PLAN.md" % number
     test_rel = "docs/plans/PHASE_%d_TEST_PLAN.md" % number
     review_rel = "docs/plans/REVIEW_PLAN_%d.md" % number
@@ -141,6 +163,19 @@ def report(number: int, root: Path):
     out.append("")
 
     sources = [(plan_rel, plan)] + ([(test_rel, test)] if test is not None else [])
+    found = [(rel, line, field) for rel, lines in sources for line, field in slugs(lines)]
+    if pr_body is not None:
+        if not pr_body.is_file():
+            return [], "phase_status: --pr-body file not found: %s" % pr_body
+        found += [(str(pr_body), line, field) for line, field in slugs(read_lines(pr_body))]
+    out.append("Unreplaced slugs: %d" % len(found))
+    out += ["  %s:%d %s" % row for row in sorted(found)]
+    if pr_body is None:
+        out.append("  The pull request description was not read (give a saved copy with --pr-body <file>).")
+    out.append("")
+    if found:
+        reasons.append("%d unreplaced slug(s)" % len(found))
+
     unticked, blocked = [], []
     for rel, lines in sources:
         for line, marker, title in open_tasks(lines):
@@ -194,10 +229,18 @@ def main(argv=None) -> int:
             return 2
         root = Path(args[i + 1])
         del args[i:i + 2]
+    pr_body = None
+    if "--pr-body" in args:
+        i = args.index("--pr-body")
+        if i + 1 >= len(args):
+            print("phase_status: --pr-body needs a file", file=sys.stderr)
+            return 2
+        pr_body = Path(args[i + 1])
+        del args[i:i + 2]
     if len(args) != 1 or not re.fullmatch(r"[0-9]+", args[0]):
-        print("usage: phase_status.py <phase number> [--root <repository>]", file=sys.stderr)
+        print("usage: phase_status.py <phase number> [--root <repository>] [--pr-body <file>]", file=sys.stderr)
         return 2
-    lines, error = report(int(args[0]), root)
+    lines, error = report(int(args[0]), root, pr_body)
     if error:
         print(error, file=sys.stderr)
         return 2
