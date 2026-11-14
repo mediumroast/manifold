@@ -15,7 +15,7 @@ accepted_by: "<Insert Name of acceptor on Date of acceptance, ex. M. Kusanagi on
   Template for an intent (a PRD in the originator's own words).
   Copy this file to intent/INT-<n>-<slug>.md. Delete these comments when you are done.
   Status: draft | accepted | closed. Only a human changes the status; an AI may draft
-  and suggest, but never accepts. Fill in "accepted_by" (name and YYYY-MM-DD) on acceptance.
+  and suggest, but never accepts. On acceptance, replace the whole slug on "accepted_by" with your name and the date (YYYY-MM-DD).
   "affects" lists the repositories or components that will need to change.
   "drafted_with" lists the models or tools that helped, if any.
 -->

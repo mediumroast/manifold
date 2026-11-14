@@ -821,7 +821,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** In each line, replace "blank" with the rule's own words: "blank or still holding a slug" (coordinator: the amendment's **Amendment approved by** is blank or holds a slug; planner: leaves **Amendment approved by** as the template has it, a slug, and never deletes or fills it; reviewer: "a blank Approved by, or one still holding a slug, is the right state of a new test plan"). Generic text only.
 **Acceptance:** `grep -nE "blank" bundles/base/agents/coordinator.agent.md bundles/base/agents/planner.agent.md bundles/base/agents/reviewer.agent.md` shows each remaining "blank" on an approval line followed by "or still holding a slug" (read each hit); `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): coordinator line 36 now "blank or still holding a slug (it is a human's to fill in)"; planner line 76 now "left as the template has it, blank or still holding a slug; you never delete or fill it"; reviewer line 82 now "A blank **Approved by**, or one still holding a slug, is the right state ...". Addition beyond the named lines: planner line 54 ("Leave **Approved by** blank") is the same sentence kind and the acceptance grep lists it, so it now reads "blank or still holding a slug, as the template has it, and never delete or fill it". `grep -nE "blank"` on the three files: 4 hits (reviewer 82, coordinator 36, planner 54, planner 76), each read and each followed by the slug wording; `build.py --check` -> `lint ok`. Commit: with Tasks 47, 48.
 
 ---
 
@@ -832,7 +834,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** In `HOWTO.md` step 3 write "if it is blank or still holds a slug, asks ..." and "Write your name and the date on **Approved by**: replace the whole slug." In the `INTENT_TEMPLATE.md` comment, say to replace the whole slug on `accepted_by` with the name and date; do not move or reword the frontmatter, and the opening `---` stays the first line.
 **Acceptance:** `grep -n "replace the whole slug" bundles/base/HOWTO.md bundles/base/templates/INTENT_TEMPLATE.md` prints both files; `head -1 bundles/base/templates/INTENT_TEMPLATE.md` prints `---`.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): `HOWTO.md` step 3 now "if it is blank or still holds a slug, asks ..." and "Write your name and the date on **Approved by**: replace the whole slug."; the `INTENT_TEMPLATE.md` comment (inside the frontmatter's leading comment block; frontmatter keys untouched) now reads "On acceptance, replace the whole slug on "accepted_by" with your name and the date (YYYY-MM-DD)." `grep -n "replace the whole slug" bundles/base/HOWTO.md bundles/base/templates/INTENT_TEMPLATE.md` prints both files (HOWTO line 36, intent template line 18); `head -1 bundles/base/templates/INTENT_TEMPLATE.md` -> `---`; `build.py --check` -> `lint ok`. Commit: with Tasks 46, 48.
 
 ---
 
@@ -843,7 +847,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** Add the test over `coordinator.agent.md`, `planner.agent.md`, `reviewer.agent.md` and `HOWTO.md` (and the Copilot and skills flavors where the build writes them): each approval-line sentence that says "blank" also says "slug"; `HOWTO.md` holds "replace the whole slug"; the intent template comment holds the same phrase. Edit no existing test.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -k agent_and_guide_text_counts_a_slug` shows 1 passed (1 failed before Tasks 46 and 47; record both).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): failing-first: the test's source-file part (coordinator, planner, reviewer, HOWTO, intent template; without the zip part, which needs the flavors) was copied with `Edit` into the detached worktree at `a68f92e` (before Tasks 46 and 47) and `<repo>/.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -p no:cacheprovider -k agent_and_guide_text_counts_a_slug` there -> **1 failed, 368 deselected** (coordinator line 36 has "blank" and no "slug"). After Tasks 46 and 47, in this checkout, the full test (source files plus the built Copilot and skills flavors: agents `coordinator`, `planner`, `reviewer`, the `coordinate-cycle`, `plan-change` and `review-change` skills, HOWTO; at least 3 built files must be read) -> **1 passed, 368 deselected**. The first draft matched the built `test-planner` and `plan-tests` files by name suffix and failed on a "blank" there that is not an approval sentence; I narrowed the file list to exact paths. Commit: with Tasks 46, 47.
 
 ---
 

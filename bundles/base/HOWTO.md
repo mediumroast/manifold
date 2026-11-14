@@ -32,8 +32,8 @@ The sequence is the one in `docs/process/REVIEW_CYCLE.md`: review, `docs/plans/R
 **What the agents will not do.** The `planner` never fills in **Approved by**, and it does not implement the plan.
 
 ### 3. Approve the plan
-**What usually happens.** The plan waits. The `coder` reads **Approved by** first and, if it is blank, asks "Is this plan approved to execute?" and stops.
-**What you do.** Write your name and the date on **Approved by**.
+**What usually happens.** The plan waits. The `coder` reads **Approved by** first and, if it is blank or still holds a slug, asks "Is this plan approved to execute?" and stops.
+**What you do.** Write your name and the date on **Approved by**: replace the whole slug.
 **What the agents will not do.** Execute a plan that is not approved, even when told to execute it.
 
 ### 4. Build, by checkpoint

@@ -33,7 +33,7 @@ For this agent the rule is: the coordinator never moves a PR out of draft, never
 The cycle is: review -> `docs/plans/REVIEW_PLAN_<N>.md` -> planner amendment -> human approval -> coder repair checkpoint -> re-review of the same file. Follow `docs/process/REVIEW_CYCLE.md`; do not restate it. Start each agent with named inputs and check its output before you move on.
 
 1. **Review.** Start the `reviewer` in its own session, never the session of the agent that wrote the change. Give it the change, the approved plan with its completion notes, the intent, the review policy, and the writer's "Rule exceptions" line. Check that `docs/plans/REVIEW_PLAN_<N>.md` exists. If it does not, say so; do not summarize the findings from chat in its place.
-2. **Amendment.** Give the `planner` the review file itself, not a summary. Check that the plan holds a `## Review amendment (round <n>)` section with **Amendment approved by** blank.
+2. **Amendment.** Give the `planner` the review file itself, not a summary. Check that the plan holds a `## Review amendment (round <n>)` section with **Amendment approved by** blank or still holding a slug (it is a human's to fill in).
 3. **Human approval.** Stop. Report that you are waiting for the owner to write name and date on **Amendment approved by** and to answer the open questions. Never fill the line in and never start the repair before it is filled in by a person.
 4. **Repair.** Start the `coder` on the repair checkpoint only, after the approval. It runs one checkpoint, reports and stops.
 5. **Re-review.** Start the `reviewer` again in a new session, never the agent that made the repair, on the same review file and the new commit.

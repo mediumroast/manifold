@@ -2448,6 +2448,32 @@ def test_blank_approval_text_counts_a_slug_as_blank():
         assert "or still holds an `<Insert ...>` slug" in t, parts
 
 
+def _blank_approval_lines(text):
+    return [ln for ln in text.splitlines() if re.search(r"\bblank\b", ln, re.I) and re.search(r"approv|accepted_by", ln, re.I)]
+
+
+def test_agent_and_guide_text_counts_a_slug_as_blank(built):
+    """Phase 4 CP7 (review F2, INT-27 S6): each approval-line sentence that says "blank" also says "slug"; the guide and the intent template say to replace the whole slug."""
+    sources = [("agents", "coordinator.agent.md"), ("agents", "planner.agent.md"), ("agents", "reviewer.agent.md"), ("HOWTO.md",)]
+    for parts in sources:
+        lines = _blank_approval_lines(_bundle_text(*parts))
+        assert lines, parts  # the sentence is still there
+        for ln in lines:
+            assert "slug" in ln, (parts, ln)
+    assert "replace the whole slug" in _bundle_text("HOWTO.md")
+    assert "replace the whole slug" in _bundle_text("templates", "INTENT_TEMPLATE.md")
+    with zipfile.ZipFile(built) as zf:  # the Copilot and skills flavors are built from the same sources
+        wanted = ("agents/coordinator.agent.md", "agents/planner.agent.md", "agents/reviewer.agent.md", "agents/coordinator.md", "agents/planner.md",
+                  "agents/reviewer.md", "skills/coordinate-cycle/SKILL.md", "skills/plan-change/SKILL.md", "skills/review-change/SKILL.md", "/HOWTO.md")
+        checked = 0
+        for name in zf.namelist():
+            if name.endswith(wanted):
+                for ln in _blank_approval_lines(zf.read(name).decode("utf-8")):
+                    assert "slug" in ln, (name, ln)
+                checked += 1
+        assert checked >= 3, checked
+
+
 def test_coordinator_never_fills_a_slug_and_treats_one_as_missing():
     """Phase 4 CP1 (INT-27 S2, S6, S7): numbered CI shape, slug left alone, a leftover slug is missing."""
     t = _bundle_text("agents", "coordinator.agent.md")
