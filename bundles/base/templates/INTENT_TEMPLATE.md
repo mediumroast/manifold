@@ -6,7 +6,8 @@ created: YYYY-MM-DD
 status: draft
 affects: []
 drafted_with: []
-accepted_by:
+accepted_by: "<Insert Name of acceptor on Date of acceptance, ex. M. Kusanagi on Jan-01-2027>"
+# Instructions: read the intent, set status to accepted, then replace the whole quoted slug above (the quotes stay, the brackets go) with your name and the date. An agent leaves it as it is.
 ---
 
 # Intent: <short title>

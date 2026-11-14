@@ -2375,6 +2375,59 @@ def test_pr_template_is_generic():
         assert needle.lower() not in t.lower(), needle
 
 
+def _bundle_text(*parts):
+    return (ROOT.joinpath(*parts)).read_text()
+
+
+def test_review_cycle_defines_slug_rule_and_approve_review():
+    """Phase 4 CP1 (INT-27 S3, S5, S6): one slug shape, who replaces it, and the separate Approve review."""
+    t = _bundle_text("process", "REVIEW_CYCLE.md")
+    assert "## Human fields and slugs" in t
+    assert "<Insert [^<>]*>" in t
+    assert "<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>" in t
+    section = t.split("## Human fields and slugs")[1].split("\n## ")[0]
+    assert "never replaces a slug" in section and "missing, never met" in section
+    assert "| GitHub's Approve review |" in t
+    ready = t.split("## The ready check")[1].split("\n## ")[0]
+    assert "Approve review" in ready and "nothing written in the description satisfies it" in ready
+    assert len(re.findall(r"^[1-4]\. ", ready, re.M)) == 4
+
+
+def test_plan_and_intent_templates_carry_a_slug():
+    """Phase 4 CP1 (INT-27 S6, S7): the human lines of the plan, test plan and intent start as a slug."""
+    plan = _bundle_text("templates", "PHASE_PLAN_TEMPLATE.md")
+    assert len(_SLUG_RE.findall(plan)) == 2  # Approved by, Amendment approved by
+    assert "**Instructions:**" in _HTML_COMMENT_RE.sub("", plan)
+    test_plan = _bundle_text("templates", "PHASE_TEST_PLAN_TEMPLATE.md")
+    (line,) = [ln for ln in test_plan.splitlines() if ln.startswith("**Approved by:**")]
+    assert len(_SLUG_RE.findall(line)) == 1
+    intent = _bundle_text("templates", "INTENT_TEMPLATE.md")
+    assert intent.startswith("---\n")  # frontmatter stays first
+    # PyYAML is not a dependency of the bundle tests (CI installs only pytest and skills-ref), so check the
+    # shape that keeps the frontmatter parseable: the slug is one quoted YAML string on the accepted_by line.
+    front = intent.split("\n---\n")[0]
+    (value,) = [ln.split(":", 1)[1].strip() for ln in front.splitlines() if ln.startswith("accepted_by:")]
+    assert value.startswith('"') and value.endswith('"') and _SLUG_RE.fullmatch(value[1:-1]), value
+
+
+def test_blank_approval_text_counts_a_slug_as_blank():
+    """Phase 4 CP1 (INT-27 S6, Concerns 4): the rule, coder and test-coder read a leftover slug as blank."""
+    for parts in (("rules", "core", "approved-plan-before-execution.md"), ("agents", "coder.agent.md"), ("agents", "test-coder.agent.md")):
+        t = _bundle_text(*parts)
+        assert "or still holds an `<Insert ...>` slug" in t, parts
+
+
+def test_coordinator_never_fills_a_slug_and_treats_one_as_missing():
+    """Phase 4 CP1 (INT-27 S2, S6, S7): numbered CI shape, slug left alone, a leftover slug is missing."""
+    t = _bundle_text("agents", "coordinator.agent.md")
+    ci = t.split("## CI of the exact commit")[1].split("\n## ")[0]
+    assert "**Instructions:**" in ci and "slug" in ci and "completed" in ci
+    ready = t.split("## Ready check")[1].split("\n## ")[0]
+    assert "<Insert" in ready and "missing" in ready
+    never = t.split("## What you do not do")[1].split("\n## ")[0]
+    assert "Replace a slug" in never and "tick a box" in never and 'write "approved"' in never
+
+
 def test_t35_install_states_the_guard_per_client_and_how_a_human_grants_an_exception():
     t = _doc("INSTALL.md")
     for needle in ("Claude Code", "Copilot", "unverified", ".manifold/hooks/guard.py", ".github/hooks/manifold-guard.json",

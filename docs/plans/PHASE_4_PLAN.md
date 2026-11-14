@@ -251,7 +251,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** On each line put the slug and one visible **Instructions:** line under it (what to read, then replace the whole slug; an agent leaves it). In `INTENT_TEMPLATE.md` the slug is a quoted YAML string (`accepted_by: "<Insert ...>"`) so the frontmatter still parses; the first line stays `---`. The reviewer's text "A blank **Approved by** is the right state of a new test plan" stays true and now also names a slug.
 **Acceptance:** `grep -c "<Insert " bundles/base/templates/PHASE_PLAN_TEMPLATE.md` is 2; `.venv/bin/python -c "import yaml,sys; t=open('bundles/base/templates/INTENT_TEMPLATE.md').read().split('---')[1]; print(yaml.safe_load(t)['accepted_by'])"` prints the slug (PyYAML is in `server/requirements.txt`).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: slug plus a visible **Instructions:** line on the plan's two lines, the test plan's line and the intent's `accepted_by` (quoted YAML string, instruction as a YAML comment line because frontmatter cannot hold visible prose; first line still `---`). `grep -c "<Insert "` on the plan template gives 2; the PyYAML command printed `<Insert Name of acceptor on Date of acceptance, ex. M. Kusanagi on Jan-01-2027>`. The existing test `test_plan_template_puts_checkpoints_under_tasks_and_the_amendment_after_the_checklist` pins "never fills in" and "human" on the amendment line; I did not edit it: the amendment line keeps a short trailing comment `<!-- human only: the planner never fills in this line -->` so the old assertions still hold (the instruction itself is visible text). Commit: see CP1 log.
 
 ---
 
@@ -262,7 +264,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** Where each says "If it is blank", add "or still holds an `<Insert ...>` slug" (same words in all three). No other word changes.
 **Acceptance:** `grep -rn "Insert" bundles/base/rules/core/approved-plan-before-execution.md bundles/base/agents/coder.agent.md bundles/base/agents/test-coder.agent.md` finds all three; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: "or still holds an `<Insert ...>` slug" added in the rule, coder (lines 24 and 34) and test-coder (line 33), same words. The grep finds all three; `build.py --check` printed `lint ok`. Commit: see CP1 log.
 
 ---
 
@@ -273,7 +277,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** In "CI of the exact commit" write the result as the numbered shape of Task 3 (one line per run with link; the **Instructions:** block; the slug left as is) and never tell the human to confirm when a run is not `completed` with `success`. In "Ready check" treat any `<Insert` text left in a human field as missing and name each such field in the report. Add to "What you do not do": replace a slug, write a name or date in a human field, tick a box, or write "approved" for a human. Do not weaken any existing line.
 **Acceptance:** `grep -n "Insert\|never replace" bundles/base/agents/coordinator.agent.md` finds each; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: coordinator now writes the CI result in the numbered shape with the slug left alone, treats `<Insert` in a human field as missing (naming each field), and "What you do not do" gains the slug line; nothing weakened. `grep -n "Insert\|never replace"` finds each; `build.py --check` printed `lint ok`. Commit: see CP1 log.
 
 ---
 
@@ -284,7 +290,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** Add `test_review_cycle_defines_slug_rule_and_approve_review`, `test_plan_and_intent_templates_carry_a_slug` (and the intent frontmatter parses), `test_blank_approval_text_counts_a_slug_as_blank` (rule, coder, test-coder), `test_coordinator_never_fills_a_slug_and_treats_one_as_missing`. If an existing test pins text these tasks changed, stop, name the test and the assertion and ask the owner before editing it. Failing first, counts recorded.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests -q -k "slug or approve_review or blank_approval"` passes with the counts reported.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: four tests added to `bundles/base/tests/test_bundle.py`. The intent test does not use PyYAML (CI installs only pytest and skills-ref, not PyYAML) and checks the quoted-string shape instead. Failing first, run after Tasks 2 to 6 and before Tasks 7 to 9: `.venv/bin/python -m pytest bundles/base/tests -q -k "slug or approve_review or blank_approval"` gave 3 failed, 7 passed (the review cycle test passed already, because Task 2 was done; it is a guard now). After Tasks 7 to 9: all pass. Full run `.venv/bin/python -m pytest bundles/base/tests -q`: 2086 passed, 1 skipped (one existing test needed no edit; see Task 7). Commit: see CP1 log.
 
 ---
 
