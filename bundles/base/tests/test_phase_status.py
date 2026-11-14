@@ -276,6 +276,19 @@ def test_prose_slug_in_a_plan_is_still_not_reported(tmp_path, capsys):
     assert code == 0 and "Unreplaced slugs: 0" in out
 
 
+@pytest.mark.parametrize("name", ["phase-status.md", "phase-status.prompt.md"])
+def test_command_files_describe_pr_body_and_the_intent_limit(name):
+    """Phase 4 CP7 (review F7): description, argument-hint and body name --pr-body; intent files are said not to be read."""
+    text = (ROOT / "commands" / name).read_text(encoding="utf-8")
+    front, body = text.split("\n---\n", 1)
+    lines = {ln.split(":", 1)[0]: ln for ln in front.splitlines() if ":" in ln}
+    assert "--pr-body" in lines["description"] and "--pr-body" in lines["argument-hint"]
+    assert "--pr-body" in body
+    assert "does not read intent files" in body
+    if name.endswith(".prompt.md"):  # the Copilot file cannot be assumed to pass the option through ${input:phase}
+        assert "unverified" in body or "code.visualstudio.com" in body
+
+
 def test_missing_plan_exits_2_with_a_plain_message(tmp_path, capsys):
     make_repo(tmp_path, plan=None)
     code, out, err = status(tmp_path, capsys)

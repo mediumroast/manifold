@@ -886,7 +886,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** In both files change the `description` to "List what is still open in a phase (read-only). Usage /phase-status <phase number> [--pr-body <file>]" and the body sentence to say the script reads the plan, test plan and review files, and the pull request description when `--pr-body <file>` is given, and does not read intent files (an unreplaced `accepted_by` slug is found only by reading the intent). In the Copilot prompt, state whether `${input:phase}` can carry `4 --pr-body <file>`: read the VS Code prompt-file documentation (reference for `${input:...}`) and state what it says with its source; if it cannot be read, write "unverified: confirm with the VS Code prompt-file documentation" in the `Limit:` paragraph and do not claim it works. Keep `.claude/commands/phase-status.md` for Task 56 (refresh).
 **Acceptance:** `grep -n "pr-body" bundles/base/commands/phase-status.md bundles/base/commands/phase-status.prompt.md` shows it in `description`, `argument-hint` and the body of each file; the Copilot file holds either the documented sentence with its source or the word "unverified".
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): both files: `description` now "... Usage /phase-status <phase number> [--pr-body <file>]"; the body says the script reads the plan, test plan and review files, and the pull request description when `--pr-body <file>` is given, and "does not read intent files (an unreplaced `accepted_by` slug in an intent is found only by reading the intent)". Copilot `Limit:` paragraph: read https://code.visualstudio.com/docs/copilot/customization/prompt-files (fetched with WebFetch, which answers through a summarising model, so the quotes are as returned, not read by me in the raw page): under "Reference files" it shows `${input:variableName}` and says "Most language models understand this syntax and will prompt for these inputs."; it does not say whether one input can hold several words. So the file now says that whether `${input:phase}` can carry `4 --pr-body <file>` is "unverified: confirm with the VS Code prompt-file documentation" (with the URL), and that the script can be run by hand with `--pr-body`; it does not claim it works. `grep -n "pr-body"` shows it in `description`, `argument-hint` and the body of each file; `build.py --check` -> `lint ok`. `.claude/commands/phase-status.md` is left for Task 56. Commit: with Task 52.
 
 ---
 
@@ -897,7 +899,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** Add the test: both command files carry `--pr-body` in `description`, `argument-hint` and the body, and the sentence that intent files are not read; the Copilot file carries either a cited sentence or "unverified" about the input. Edit no existing test.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q -k command_files_describe` shows 1 passed (1 failed before Task 51; record both).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): the test is parametrized over the two command files (2 cases). Failing-first: the test was copied with `Edit` into the detached worktree at `a68f92e` (old command files) and `<repo>/.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q -p no:cacheprovider -k command_files_describe` there -> **2 failed, 27 deselected**. After Task 51, in this checkout, same `-k` -> **2 passed, 38 deselected**. Commit: with Task 51.
 
 ---
 
