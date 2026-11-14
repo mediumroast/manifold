@@ -327,7 +327,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** Build into the scratchpad (`python3 bundles/base/tools/build.py --out <scratchpad>/dist`), unzip, read `install.py --help`, run the install over this repository as in Phase 3 Task 6 (dry run first, then `--apply` without `--force`); stage explicit paths only. Do not hand-edit the managed block.
 **Acceptance:** `cmp bundles/base/templates/PULL_REQUEST_TEMPLATE.md docs/templates/PULL_REQUEST_TEMPLATE.md` prints nothing; `install.py --status` from the unzipped bundle reports no modified file.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: done out of order, before Task 12 (it does not depend on it; Task 12 waits for the owner's answer to Open question 3). `python3 bundles/base/tools/build.py --out <scratchpad>/dist` -> `manifold-base-0.3.0.zip` (348342 bytes), unzipped; `install.py --help` read first; dry run `--target . --format claude --profile build` -> UPDATE coder, test-coder, coordinator agents, `phase-status.md`, the three templates plus the PR template, `REVIEW_CYCLE.md`, `.manifold/phase_status.py`, AGENTS.md managed block (one line: the rule text), everything else SKIP; then the same with `--apply`, no `--force` -> "Installed manifold 0.3.0". The guard did not block the install (the three `.claude/agents/*.md` files changed in this worktree; see the report). `cmp bundles/base/templates/PULL_REQUEST_TEMPLATE.md docs/templates/PULL_REQUEST_TEMPLATE.md` printed nothing; `install.py --status` (from the unzipped bundle): every file `ok`, 0 MODIFIED. No hand edit of an installed file; the managed block of AGENTS.md was changed only by the installer (diff is the one rule line). Commit: see CP1 log.
 
 ---
 

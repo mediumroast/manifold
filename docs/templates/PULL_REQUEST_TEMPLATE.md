@@ -39,9 +39,19 @@
 | | | |
 
 ## CI on the pushed commit
+The coordinator writes the evidence below and leaves the slug on the last line for a human.
+
 **Commit (full hash):** <!-- the commit that was pushed, the head of the branch -->
-**Run:** <!-- each workflow run for exactly that commit: name, status, conclusion and link; or "no run found" -->
-**Confirmed by:** <!-- a human: name and date. Only a person writes this. "not yet confirmed" until then -->
+
+1. Ran: <!-- how the runs were read, for exactly this commit -->
+   1. <workflow name>, run <run id>, <status>, <conclusion>, <link> <!-- one numbered sub-line per run; or "no run found" -->
+
+**Instructions:**
+1. Open each link in the numbered runs above and check that the run finished successfully.
+2. If every run is `completed` with the conclusion `success`, write your name and the date on the **Confirmed by** line below, replacing the whole slug.
+3. If a run failed, is not `completed`, or is missing, do not write your name. Tell the coordinator.
+
+**Confirmed by:** <Insert Name of confirmer on Date of confirmation, ex. M. Kusanagi on Jan-01-2027>
 
 ## Rule exceptions
 <!-- Each agent's "Rule exceptions" line, set against the diff, the commit log and .manifold/guard-log.jsonl: what matched and what did not. Entries added to the breach record. "none" if there were none. -->
@@ -54,6 +64,13 @@
 
 ## What remains for you
 <!-- Checkboxes for the human; a tick is a human act. One line per changed file: what to check and what the tick means. Then the CI line and the findings line. Levels of done: "Definition of done" in docs/process/REVIEW_CYCLE.md. -->
+
+**Instructions:**
+1. Changed files (one line each): open the pull request's Files changed tab, read that file's diff, and look for what the line says to check. Tick the box only if you read it and accept it. If you do not accept it, leave it unticked and say why in a comment.
+2. CI line: follow the **Instructions** under "CI on the pushed commit". There is no second copy here.
+3. Findings line: read the "Decisions for you" table below, then write "accept all" or name the exceptions.
+4. GitHub's Approve review: a separate act from every tick and row in this description, and nothing written here satisfies it. It is needed when the repository's rules require an approving review (see the `Review process` section of `AGENTS.md` and the branch rules). To give it, open the Files changed tab, click "Review changes", choose Approve and submit. If the control is missing or disabled for you, do not write a name or tick a box here instead; ask the owner how approval is met in this repository.
+
 - [ ] `<path>`: <what to check; ticking means you read the diff and accept it>
 - [ ] CI of commit <full hash> is green (read by the coordinator)
 - [ ] Findings: decisions below
@@ -66,13 +83,23 @@
 | | | | |
 
 ## Ready check
-<!-- Four lines, from docs/process/REVIEW_CYCLE.md. Mark each "met" or "missing" with its evidence. While any line is missing the description does not say the pull request is ready. Where each fact is recorded: see "Where each fact is recorded" in docs/process/REVIEW_CYCLE.md; link to it, do not restate it. -->
+<!-- Four lines, from docs/process/REVIEW_CYCLE.md. While any line is missing the description does not say the pull request is ready. Where each fact is recorded: see "Where each fact is recorded" in docs/process/REVIEW_CYCLE.md; link to it, do not restate it. -->
 
-| Line | State (met / missing) | Evidence |
+**Instructions:**
+1. The coordinator replaces each State cell with exactly `met` or `missing`. A cell left as `missing` is the safe value.
+2. `met` needs evidence in the Evidence cell. A line with no evidence stays `missing`.
+3. A human does not edit State cells. If one looks wrong, tell the coordinator.
+
+| Line | State | Evidence |
 |---|---|---|
-| A review of the final commit exists | | |
-| Each finding has a decision recorded in the pull request | | |
-| CI of that exact commit was read and a human ticked it | | |
-| Approval follows the `Review process` section of `AGENTS.md` | | |
+| A review of the final commit exists | missing | |
+| Each finding has a decision recorded in the pull request | missing | |
+| CI of that exact commit was read and a human ticked it | missing | |
+| Approval follows the `Review process` section of `AGENTS.md` | missing | |
 
-**Human confirmation:** <!-- Name and date, written by the person who decides; only a human moves a pull request out of draft, and the coordinator leaves this blank. -->
+**Instructions:**
+1. Read this description, the review file it names and the changed files.
+2. When every line above is `met` and you are satisfied, write your name and the date on the next line, replacing the whole slug. Only the person who decides writes it; only a human moves a pull request out of draft or merges, and the coordinator leaves the slug as it is.
+3. If a line above is `missing`, do not write your name. Ask the coordinator what is missing.
+
+**Human confirmation:** <Insert Name of decider on Date of decision, ex. M. Kusanagi on Jan-01-2027>
