@@ -1,74 +1,103 @@
 # PHASE_4_PLAN.md
 
 **Approved by:**
-**Source intent:** INT-27 `intent/INT-27-clear-human-instructions-in-the-pr.md`, INT-2 `intent/INT-2-test-hardening-and-contracts.md`, INT-3 `intent/INT-3-test-data-sets.md` (all three still `status: draft`; see "Intent review")
+**Source intent:** INT-27 `intent/INT-27-clear-human-instructions-in-the-pr.md`, INT-2 `intent/INT-2-test-hardening-and-contracts.md`, INT-3 `intent/INT-3-test-data-sets.md` (all three `status: accepted`, `accepted_by: Michael Hay on Nov 14, 2026`; see "Intent review"). INT-7 `intent/INT-7-github-app.md` was considered and kept out (Open question 15).
 
 ## Objective
 
-A person who has never read the process documents can finish every human step of a coordinator-written pull request from the text in the pull request alone (INT-27). The server's tool behavior is pinned by recorded contract tests, its write and error paths and its import rule are tested, and tests can ask for a small, medium or large synthetic instance, or a curated messy or hostile one, and get the same tree every time (INT-2, INT-3). Phase 5 server work (the content store refactor, INT-4, and later) then has a safety net.
+A person who has never read the process documents can finish every human step of a coordinator-written pull request from the text in the pull request alone (INT-27). The server's tool behavior is pinned by recorded contract tests, the write and error paths that are not yet tested are tested, and the import rule is enforced by a test (INT-2). A curated messy and a curated hostile instance are committed, a real-data rule and scan exist, and an external test organization (Megaroast, four repositories) is set up as the real-shaped testbed (INT-3). The bundle is then released as v0.3.1 (INT-27 owner answer). Phase 5 server work (the content store refactor, INT-4, and later) then has a safety net.
 
 ## Intent review
 
-The owner reads each entry, answers its decision line, and the plan is approved only after that. No agent fills these lines.
+The owner accepted the three intents on Nov 14, 2026 and wrote answers inline on each one. The plan is approved only by the owner's own name on **Approved by** above; no agent fills it.
 
 ### INT-27 Tell the human exactly what to do, and where to write, in the pull request
 **Asks:** Put visible, numbered **Instructions** next to every human step of the pull request (CI line, ready-check table, ticks, GitHub's Approve review), and one replaceable `<Insert ...>` slug in every place a human writes a name and date, so an unfilled field is found by a script. It never lets an agent fill a human's part.
-**Recommendation: accept with changes.** (1) Its scenario S6 asks `/phase-status` to list unreplaced slugs, but that script reads only files in the repository and the pull request description is not one; the plan adds an optional `--pr-body <file>` input (Open question 6). (2) Its self-approval question cannot be answered from the files; Task 1 reads GitHub's documentation first. (3) A `<...>` slug may be hidden by GitHub's Markdown rendering; Task 1 checks (unverified until then).
-Intent accepted by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Owner's answers (in the intent file):** one slug shape, an unreplaced slug counts as missing, the plan, test-plan and intent human lines are covered, instructions are visible text, they ship in the bundle for every repository, and the work is released as v0.3.1. The self-approval question is not answered (Open question 3).
+**Plan changes:** (1) Its scenario S6 asks `/phase-status` to list unreplaced slugs, but that script reads only files in the repository and the pull request description is not one; the plan adds an optional `--pr-body <file>` input (Open question 6). (2) Task 1 reads GitHub's documentation on self-approval first. (3) A `<...>` slug may be hidden by GitHub's Markdown rendering; Task 1 checks (unverified until then).
+Intent accepted by: Michael Hay on Nov 14, 2026 (recorded in the intent file's `accepted_by`)
 
 ### INT-2 Test hardening and contract tests for the server
 **Asks:** Pin what every MCP tool promises its callers as recorded request/response tests that change only by a reviewed edit, run the official MCP conformance checks, close gaps in write and error paths, and enforce by test that only the entry module imports the web framework.
-**Recommendation: accept with changes.** (1) Its scenario S3 ("a failed write leaves the instance clean", including "git refuses") conflicts with what the code documents today: `git_commit` is deliberately non-fatal and the file stays on disk after a refused commit (`server/wiki_backend/write.py`, `git.py`); also `write_page_of_kinds` creates the parent folder before the etag and frontmatter checks. The plan writes the tests, and any test that fails is reported as a defect, not fixed here (Concerns 1). (2) The conformance suite is not read yet (unverified); Task 14 reads it before any CI change. (3) "Python versions the server supports" means 3.11 and 3.12 (`server/requirements.txt`, `.github/workflows/server.yml`).
-Intent accepted by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Owner's answers (in the intent file):** all three questions (recording format and place, conformance required or advisory, coverage gate) are answered "survey the repository first; the implementation has moved on; planning must find how much work is needed; I believe some rules may exist". The survey was done for this plan; its findings and the decision per question are below.
+**Survey (read on 2026-11-14; 678 test functions in 60 files under `server/tests/`):**
+
+| Question | Found | Decision (owner may overrule) |
+|----------|-------|-------------------------------|
+| Recorded contracts | No recording, snapshot or golden file in `server/tests` (searched for those words). Every tool is exercised by behavior tests (`test_tool_policy.py` lists valid arguments for each of the 16 tools, `test_tool_authz.py`, `test_handoff_*.py`, `test_onboarding.py`, `test_example_acme.py`), but `wiki_export_helper_tool` and `wiki_list_helpers_tool` appear only in `test_tool_policy.py` (who may call them, not what they return). Reusable: `ToolWorld.call` in `server/tests/conftest.py`, the `acme` fixture in `test_example_acme.py`, the tool set equality in `test_tool_policy.py`. | The harness and recordings are needed (S1); the work stays, built on those three patterns (Open question 7). |
+| Import rule | Only `server/server.py` imports `fastmcp` or `starlette` (searched `server/`). No test enforces it; `test_offline_clean.py` has the AST scan to copy but covers only HTTP clients. | A small test is needed (S4), Task 15. |
+| Failed-write tests | Stale etag (`test_pickup_stale_etag_rejected`) and bad frontmatter (`test_write_validation.py`) are tested for refusal. No test injects a full disk or a git refusal, or checks that the tree, sidebar and log are unchanged afterwards. | Task 20 stays, narrowed to the missing cases. |
+| HTTP errors | Host, origin and 401, 403, 421 refusals are covered (`test_request_guard.py`, `test_auth*.py`, `test_docs_route_policy.py`); `/ingest` traversal returns 400 (`test_server_smoke.py`). Nothing for malformed JSON, an unknown tool, a missing or wrong-typed argument, `GET /mcp` or an oversized body. | Task 21 stays, only for those cases. |
+| Conformance suite | No conformance run anywhere. `server.yml` job `image` checks only an `initialize` call by `curl`. Not read yet: whether the official suite can run offline (unverified until Task 14). | Advisory, and only if Task 14 shows it runs offline (Open question 8). |
+| Coverage gate | No coverage tool or percentage anywhere: not in `server/requirements-dev.txt`, `.github/workflows/*`, `REVIEW.md`, `CONTRIBUTING.md`. The only coverage text is the template section "Coverage judgement" (a judgement of cases, not a number), and the rule `no-generated-artifacts-in-commits` (do not commit coverage data). The "thresholds" in `SATISFACTION_REPORT_TEMPLATE.md` belong to the quality side. | No percentage gate. The gates are "every registered tool has a recording" and the import rule (Open question 9). |
+| What blocks a merge today | Required checks are only `test (3.10)` and `test (3.12)` of `ci.yml`, the bundle tests (`docs/process/BRANCH_RULES.md`). The `server.yml` jobs are not required, so a failing server test does not block a merge. | Concerns 6 and Open question 19; the ruleset is the owner's act. |
+
+**Plan changes:** (1) Its scenario S3 ("a failed write leaves the instance clean", including "git refuses") conflicts with what the code documents today: `git_commit` is deliberately non-fatal and the file stays on disk after a refused commit (`server/wiki_backend/write.py`, `git.py`); also `write_page_of_kinds` creates the parent folder before the etag and frontmatter checks. The plan writes the tests, and any test that fails is reported as a defect, not fixed here (Concerns 1). (2) The conformance suite is not read yet (unverified); Task 14 reads it before any CI change. (3) "Python versions the server supports" means 3.11 and 3.12 (`server/requirements.txt`, `.github/workflows/server.yml`).
+Intent accepted by: Michael Hay on Nov 14, 2026 (recorded in the intent file's `accepted_by`)
 
 ### INT-3 Test data sets, real and synthetic
 **Asks:** A seeded generator for instances of any size, a small set of committed curated instances for awkward and hostile content, and a written rule for when real data may be used and how it is scrubbed.
-**Recommendation: accept with changes.** (1) Sizes need numbers (Open question 11); the plan proposes defaults. (2) The only forbidden-terms scan today is for the bundle (`FORBIDDEN_TERMS` in `bundles/base/tools/build.py`); the server data sets need their own scan, and a list of real names cannot itself be committed in a public repository (Open question 12). (3) No real source has been offered, so this phase ships the procedure and the scan and commits only synthetic data.
-Intent accepted by: <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Owner's answers (in the intent file):** use the external test organization Megaroast as the testbed, with four repositories: (1) a fork of the company's `company_dns`, (2) a new repository that pulls the GUI out of `company_dns` as a standalone, (3) a holdout QA repository, (4) an example manifold repository; consider a simple GitHub App; sizes and committed-versus-generated are "start with Megaroast, see above".
+**Plan changes:** (1) The sized generator is deferred (Open question 17); the curated messy and hostile instances stay because S2 and the awkward-case constraint do not depend on size. (2) The Megaroast repositories derive from the owner's company repository, so the real-data rule is now used, not only written: nothing from them enters this repository, and the permission and visibility are the owner's decisions (Open question 16). (3) The only forbidden-terms scan today is for the bundle (`FORBIDDEN_TERMS` in `bundles/base/tools/build.py`); the data sets need their own scan, and a list of real names cannot itself be committed in a public repository (Open question 12). (4) The GitHub App is not pulled in (Open question 15).
+Intent accepted by: Michael Hay on Nov 14, 2026 (recorded in the intent file's `accepted_by`)
+
+### INT-7 (considered, not accepted into this phase)
+See Open question 15, "Decision recorded by the coordinator and planner on the owner's delegation". INT-7 stays `accepted` and unplanned.
 
 ## Scope
 
 **In scope:**
 
 - CP1 (INT-27): visible **Instructions** and one slug shape in the pull request template, the plan, test-plan and intent templates, `REVIEW_CYCLE.md`, the coordinator and the rule/agent text that reads a blank approval; `/phase-status` reports unreplaced slugs. Both flavors from one source.
-- CP2 (INT-2): import-rule test, contract-test harness and recordings for every tool, write-failure and HTTP-error tests, the conformance run (if the owner agrees).
-- CP3 (INT-3): generator, curated instances, loader, tests, the real-data rule and scan.
+- CP2 (INT-2): import-rule test, contract-test harness and recordings for every tool, the missing write-failure and HTTP-error tests, the conformance run (if the owner agrees).
+- CP3 (INT-3): curated messy and hostile instances with a loader and tests, the real-data rule, scan and sign-off record, and the Megaroast testbed (four repositories created by the owner, checked from a scratch clone).
+- CP4 (release): the bundle version becomes 0.3.1 and the owner tags it.
 
 **Out of scope:**
 
-- The content store refactor (INT-4), the GitHub-API store and App (INT-14, INT-7 and the GitHub part of INT-6): they change the server this phase protects, so they follow it.
+- The content store refactor (INT-4) and the GitHub-API store (INT-14): they change the server this phase protects, so they follow it.
+- INT-7 (the GitHub App) and the GitHub part of INT-6 (creating the instance repository through the App): the server makes no GitHub call today and no feature of this phase uses an App. The reasoning and the alternatives are in Open question 15; the owner may overrule.
+- The work inside the Megaroast repositories (extracting the GUI from `company_dns`, the holdout scenarios, the example instance's content): it belongs in those repositories under their own plans. This plan only needs the four repositories to exist.
+- The sized synthetic generator of INT-3 S1 (small, medium, large): deferred, owner to confirm (Open question 17). Its tasks are in this file at commit `f939205` (old Tasks 23, 25 and 26).
 - INT-24 (review and answer in the UX): needs a UI; INT-27 stays plain text.
 - INT-5 (agent harvest) and the rest of the backlog: not needed by the safety net and not started.
-- Changing the GitHub ruleset, `.github/workflows/` (except the one optional job in Task 22, with the owner's go-ahead), the release number, releasing.
+- Changing the GitHub ruleset, `.github/workflows/` (except the one optional job in Task 22, with the owner's go-ahead), and making the server tests a required check (Concerns 6).
 - Fixing any defect that Tasks 20 and 21 expose: recorded and handed to `bug-coder` after the owner decides (Concerns 1).
 - Performance and load tests, a UI, language-model-generated content (INT-2 and INT-3 Out of scope).
 - Noticed, not done: `docs/process/BRANCH_RULES.md` records `RepositoryRole` 5 and `require_extra_approval_for_unattributed_changes` as unverified; Task 12 adds only what Task 1 reads.
 
-**Needs from other repositories:** None.
+**Needs from other repositories:** The four Megaroast repositories (CP3, Tasks 29 to 32) must exist before Task 33. They are created by the owner in the external organization, not by this plan's code changes.
 
-**Provides to other repositories:** Repositories that install the bundle receive the new template, process and agent text and the extended `/phase-status`.
+**Provides to other repositories:** Repositories that install the bundle receive the new template, process and agent text and the extended `/phase-status`, as release 0.3.1. Megaroast becomes the first test organization that INT-7 names in its "Affected users and systems", so a later INT-7 plan starts with an organization that exists.
 
 **Constraints:**
 INT-27: a human keeps the final say (instructions tell, never do; the coordinator never approves, moves out of draft, merges, ticks or fills a human field); instructions are in the pull request itself, not a link; ready still means reviewed (no ready-check line dropped or loosened); approval follows `AGENTS.md` "Review process" (solo is not made to look like a team); facts are not duplicated (point to `REVIEW_CYCLE.md` "Where each fact is recorded"); shipped text stays generic (`M. Kusanagi` is a neutral placeholder); both flavors from one source, deterministic build, standard library only for any script; concise, numbered, plain words, no bare internal IDs; no outward action without the owner (editing a live pull request, the ruleset, the workflow); no unverified claim about GitHub.
 INT-2: no network and no real git remote in tests, finishing in a laptop-tolerable time; recorded responses contain no real data (the fictional example instance only); a change to a recording is a visible, reviewed decision, never automatic; only the entry module imports the web framework, enforced by a test; no flaky tests; tests run on the Python versions the server supports.
-INT-3: nothing real enters a public repository without the owner's written permission and a checked scrub (until then only synthetic data); deterministic, same seed gives the same instance byte for byte; small enough to commit, or generated on demand when large; covers dotted and similar slugs, a page with no frontmatter, duplicates, stale pages, very long pages, non-English text and text aimed at an AI; no personal data, not even fake data that looks like a real person's.
+INT-3: nothing real enters a public repository without the owner's written permission and a checked scrub (until then only synthetic data); deterministic, same seed gives the same instance byte for byte (applies if the generator is kept); small enough to commit, or generated on demand when large; covers dotted and similar slugs, a page with no frontmatter, duplicates, stale pages, very long pages, non-English text and text aimed at an AI; no personal data, not even fake data that looks like a real person's.
+INT-7 (applies to the interim route and to any later App): least privilege; private first; no long-lived secret in the instance repository, the private key outside it; short-lived tokens only; the name `manifold` available or a fallback chosen; what an App cannot do is verified before any plan relies on it; one App per company, created by the company. This plan creates no App and writes no key, token or secret anywhere.
 
 ## Concerns flagged
 
 1. **INT-2 S3 versus documented behavior.** `git_commit` is non-fatal by design (the file stays when git refuses), and `write_page_of_kinds` runs `file_path.parent.mkdir(...)` before the conflict and frontmatter checks, so a refused write may leave an empty folder. S3 says a refused write leaves "no partial files". Owner decides: (a) keep the code, and narrow S3 to the cases the code already supports, or (b) treat the differences as defects for `bug-coder`. Default: the tests are written to S3 as the intent states it, any failure is recorded and not fixed in this phase, and the owner chooses (a) or (b) per failure.
-2. **Split.** INT-27 and INT-2/INT-3 touch different surfaces (bundle text versus server tests) and release differently. See Open question 1.
+2. **Split (settled).** INT-27 and INT-2/INT-3 touch different surfaces. The owner chose one plan (Open question 1); CP1 is delivered as its own pull request first, and CP2 and CP3 follow in later pull requests.
 3. **`<Insert ...>` may not render in GitHub Markdown.** An unknown tag may be hidden in the rendered description (unverified: confirm with GitHub's Markdown documentation or a comment preview, Task 1). If hidden, the slug goes inside a code span and the detector accepts the span; the owner decides at Task 1.
 4. **A slug in a plan's Approved by line must still count as blank** for `coder` and `test-coder` and for `/phase-status` (it already treats a `<...>` value as blank). Tasks 8 and 11 make that explicit; if it is missed, a slug would read as an approval.
 5. **The conformance suite and CI.** Whether it runs offline against a locally started server, and what runtime it needs, is unread (unverified: confirm with the MCP project documentation, Task 14). Making it a required check is a ruleset change, the owner's act.
+6. **The server tests do not block a merge today.** The required checks are only `test (3.10)` and `test (3.12)` from `ci.yml` (the bundle tests); the `server.yml` jobs are not required (`docs/process/BRANCH_RULES.md`). INT-2 S2 says a conformance failure "blocks the merge", and the contract tests of CP2 would not block one either. Making them required is the owner's act on GitHub, out of scope here (Open question 19).
+7. **Real data in the Megaroast repositories.** They derive from the owner's company repository. INT-3 forbids real content in a public repository without the owner's written permission and a checked scrub. Whether the Megaroast repositories are public, and whether the company permits the derivation at all, is not stated anywhere I read (Open question 16). Until the owner answers, nothing from those repositories is committed here, no test reads them, and Tasks 29 to 33 do not start.
+8. **The holdout QA repository.** `AGENTS.md` "Held-out scenarios": builders do not read, copy or ask for the quality side's scenarios. Task 31 therefore creates repository 3 empty and no builder agent session in this repository clones or reads it.
+9. **INT-7 not pulled in** (Open question 15): the owner's idea to accelerate it is respected as a decision the owner can overrule; the cost of overruling is stated there.
 
 ## Prerequisites
 
 - [x] Phase 3 merged (`4516792`); release 0.3.0 (`4f8b448`); `bundles/base/VERSION` reads `0.3.0`.
 - [x] Project commands known: `AGENTS.md` "Project commands" (read; `pytest` here means the server tests command).
 - [ ] The `.venv` exists (`python3 -m venv .venv`, then the install line in `AGENTS.md`; none exists in this worktree).
-- [ ] The owner answered the Open questions below, at least 1 to 6 before CP1 and 7 to 10 before CP2 and 11 to 13 before CP3.
+- [ ] The owner answered the Open questions still empty: 3 and 6 before CP1; 10 before Task 20 (CP2); 12, 16, 17 and 18 before CP3.
 - [ ] For Task 1: the owner's go-ahead to read GitHub's documentation and the repository's settings with `gh` (GET only).
 - [ ] For Task 22 only: the owner's go-ahead to edit `.github/workflows/server.yml`.
+- [ ] For Tasks 28 to 33 (outward actions in the Megaroast organization, using the owner's own GitHub login): the owner's go-ahead for each task. No agent reads, prints or stores a token; `gh auth token` is not run; no key or token is written to the repository or to chat.
+- [ ] CP1 is its own pull request and is merged before CP2 starts (Open question 1).
 
 ## File inventory
 
@@ -86,7 +115,9 @@ INT-3: nothing real enters a public repository without the owner's written permi
 | `server/tests/contracts/` (`harness.py`, `record.py`, `test_tool_contracts.py`, `test_harness.py`, `<tool>.json` files) | CREATE | INT-2 S1 |
 | `server/tests/test_write_failures.py`, `server/tests/test_http_errors.py` | CREATE | INT-2 S3 and the HTTP layer |
 | `.github/workflows/server.yml` | MODIFY | optional advisory conformance job (Task 22) |
-| `server/tests/datasets/` (`generate.py`, `curated/`, `loader.py`, `scan.py`, `README.md`, `SIGNOFFS.md`, `test_datasets.py`) | CREATE | INT-3 |
+| `server/tests/datasets/` (`curated/`, `loader.py`, `scan.py`, `README.md`, `SIGNOFFS.md`, `test_datasets.py`) | CREATE | INT-3 (no generator: Open question 17) |
+| `bundles/base/VERSION`, `.manifold/manifest.json` | MODIFY | release 0.3.1 (Tasks 34, 35), as in `4f8b448` |
+| Megaroast repositories 1 to 4 (outside this repository) | CREATE by the owner | INT-3 testbed; nothing from them is committed here |
 
 ## Tasks
 
@@ -108,7 +139,7 @@ INT-3: nothing real enters a public repository without the owner's written permi
 **Files:** none changed; the note goes here
 **Action:** none (read)
 **Change:** With the owner's go-ahead, read (a) GitHub's documentation on approving a pull request and on required approving reviews, for whether the author may approve and what the "Review changes" control shows when it cannot be used; (b) the ruleset with `gh api --method GET repos/{owner}/{repo}/rulesets/26275761` (read-only; the form is already used in `docs/process/BRANCH_RULES.md`); (c) whether GitHub's Markdown description renders `<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>` visibly (read the Markdown documentation, or the owner pastes it into a comment preview without posting it). Record each fact with its source, or "unverified: confirm with <source>".
-**Acceptance:** the note lists, per question (a), (b), (c), the fact and its source or "unverified". The owner then answers Open questions 3 and 5.
+**Acceptance:** the note lists, per question (a), (b), (c), the fact and its source or "unverified". The owner then answers Open question 3 (Question 5 is already answered).
 **Todo:** [ ]
 
 ---
@@ -208,7 +239,7 @@ INT-3: nothing real enters a public repository without the owner's written permi
 **Files:** `bundles/base/scripts/phase_status.py`, `bundles/base/commands/phase-status.md`, `bundles/base/commands/phase-status.prompt.md`, `bundles/base/tests/test_phase_status.py`
 **Action:** MODIFY
 **Change:** Add `SLUG_RE = re.compile(r"<Insert [^<>]*>")` and a function `slugs(lines, label)` that returns, for each match on a line, the field name taken from the text before the first colon on that line with asterisks removed (for example `Approved by`, `Confirmed by`, `Human confirmation`, `Intent accepted by`). In `report`, add a section "Unreplaced slugs" over the plan and test plan, listing `file:line field`; add each to `reasons` so the level reads below mergeable. Add an optional `--pr-body <file>` (parsed like `--root` in `main`) that scans a saved copy of the description the same way and prints the same list; with the option absent the output states that the pull request description was not read. Standard library only, read-only, sorted output. Update `argument-hint` in both command files to `<phase number> [--pr-body <file>]`. Add tests: a plan with a slug reports it and level below mergeable; a plan with the slug replaced lists none; `--pr-body` with two slugs lists both by field name; output is identical on two runs.
-**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` passes (counts reported); `.venv/bin/python bundles/base/scripts/phase_status.py 4` run on this plan lists the three "Intent accepted by" lines (the plan's own **Approved by** line is blank, not a slug) and is read-only (`git status --short` unchanged).
+**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` passes (counts reported); `.venv/bin/python bundles/base/scripts/phase_status.py 4` run on this plan lists no unreplaced slug (the three "Intent accepted by" lines now hold the owner's recorded value, and the plan's own **Approved by** line is blank, not a slug), and run on a copy of the plan in the scratchpad where one "Intent accepted by" line holds the slug it lists exactly that line; it is read-only (`git status --short` unchanged).
 **Todo:** [ ]
 
 ---
@@ -301,7 +332,7 @@ INT-3: nothing real enters a public repository without the owner's written permi
 **Source:** INT-2 S3 and Must never; Concerns 1
 **Files:** `server/tests/test_write_failures.py` (CREATE)
 **Action:** CREATE
-**Change:** Read `write_page_of_kinds` and `handoff_create` first to name each failure point. Using `ToolWorld` and monkeypatch, inject: a stale etag; invalid frontmatter; a write refused (`OSError` with `errno.ENOSPC` from `Path.write_text`); git refusing the commit (`git_commit` returning `committed=False`); a failure part-way through `handoff_create`. After each, assert that the tree (relative paths, empty folders and sha256 of every file outside `.git`), `wiki/_sidebar.md` and `wiki/log.md` equal their snapshot from before the call, and that `wiki_health` reports healthy. Where the existing code fails the assertion (Concerns 1), mark the case `pytest.mark.xfail(strict=True, reason="defect: <one line>")` with the reason, so the suite stays green and the defect is listed, and stop to ask the owner; do not edit the code.
+**Change:** Read `write_page_of_kinds` and `handoff_create` first to name each failure point. The refusals of a stale etag and bad frontmatter are already tested (`test_pickup_stale_etag_rejected`, `test_write_validation.py`); do not repeat them, only add the unchanged-tree assertion for them. Using `ToolWorld` and monkeypatch, inject: a stale etag; invalid frontmatter; a write refused (`OSError` with `errno.ENOSPC` from `Path.write_text`); git refusing the commit (`git_commit` returning `committed=False`); a failure part-way through `handoff_create`. After each, assert that the tree (relative paths, empty folders and sha256 of every file outside `.git`), `wiki/_sidebar.md` and `wiki/log.md` equal their snapshot from before the call, and that `wiki_health` reports healthy. Where the existing code fails the assertion (Concerns 1), mark the case `pytest.mark.xfail(strict=True, reason="defect: <one line>")` with the reason, so the suite stays green and the defect is listed, and stop to ask the owner; do not edit the code.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_write_failures.py -q` passes (counts reported, including the number of xfail cases, each named in the note).
 **Todo:** [ ]
 
@@ -311,7 +342,7 @@ INT-3: nothing real enters a public repository without the owner's written permi
 **Source:** INT-2 Problem (HTTP layer thin)
 **Files:** `server/tests/test_http_errors.py` (CREATE)
 **Action:** CREATE
-**Change:** Use `TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")` as `test_request_guard.py` does. Cases, each with an authenticated principal from `auth_world`: `/mcp` with a malformed JSON body; an unknown tool name; a missing required argument; a wrong argument type; `GET /mcp`; an oversized body. For each assert the status and that the body holds no stack trace, file path or secret.
+**Change:** Use `TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")` as `test_request_guard.py` does. Do not repeat the host, origin, 401, 403 and 421 cases that `test_request_guard.py`, `test_auth.py` and `test_docs_route_policy.py` already cover. Cases, each with an authenticated principal from `auth_world`: `/mcp` with a malformed JSON body; an unknown tool name; a missing required argument; a wrong argument type; `GET /mcp`; an oversized body. For each assert the status and that the body holds no stack trace, file path or secret.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_http_errors.py -q` passes (counts reported); no network (existing `test_offline_clean.py` still passes).
 **Todo:** [ ]
 
@@ -329,117 +360,218 @@ INT-3: nothing real enters a public repository without the owner's written permi
 
 **Verification:** `cd server && ../.venv/bin/python -m pytest -q` passes (counts reported, with the number of xfail cases named); `.venv/bin/python -m pytest tests/live -q` and `.venv/bin/python tools/vendor_web.py --check` unchanged; the owner changes one field name in one tool locally and sees exactly that tool's test fail naming the field (not committed).
 
-### CP3 — Test data sets (INT-3)
+### CP3 — Test data sets and the Megaroast testbed (INT-3)
 
-### Task 23 — Create the seeded generator
-**Source:** INT-3 S1, Constraints (deterministic, standard library)
-**Files:** `server/tests/datasets/generate.py` (CREATE)
-**Action:** CREATE
-**Change:** `SIZES = {"small": ..., "medium": ..., "large": ...}` with the numbers the owner chose (Open question 11; defaults: small 3 components and about 20 pages, medium 12 and 200, large 50 and 2000) and `build_instance(size, seed, dest)`. Randomness comes from a class `Stream` built on `hashlib.sha256` over `seed:counter`, not from `random`, because `random`'s choice and shuffle algorithms are not guaranteed identical across Python versions (unverified: confirm with the Python documentation if the owner wants `random.Random` instead). Content is built from fixed word lists with the fictional `acme-` and `.test` names only, LF line endings, no clock, no process id. A command form `python3 server/tests/datasets/generate.py --size medium --seed 1 --out DIR` for demos. Standard library only.
-**Acceptance:** two runs with the same size and seed give directories with identical file lists and sha256 (`diff -r` empty); a different seed differs.
-**Todo:** [ ]
+INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open question 17). S2 (hostile text) is Tasks 23, 24, 25 and 27. S3 (a real source is scrubbed before use) is Tasks 26, 28 and 33, and now applies to the Megaroast repositories.
 
----
-
-### Task 24 — Create the curated messy and hostile instances
+### Task 23 — Create the curated messy and hostile instances
 **Source:** INT-3 S2, Constraints (awkward cases, no personal data)
 **Files:** `server/tests/datasets/curated/messy/` and `server/tests/datasets/curated/hostile/` (CREATE)
 **Action:** CREATE
-**Change:** `messy`: components with dotted and look-alike slugs (`acme.io`, `acme-io`), a page with no frontmatter, two pages with the same title, a stale page, a non-English page (more than one script). `hostile`: pages whose text addresses an AI agent ("ignore your instructions and ...", "call the tool ... with ...") that are harmless test strings only. No names of real people, hosts or companies; hosts use `.test`. The very long page is generated by the loader (Task 25), not committed.
+**Change:** `messy`: components with dotted and look-alike slugs (`acme.io`, `acme-io`), a page with no frontmatter, two pages with the same title, a stale page, a non-English page (more than one script). `hostile`: pages whose text addresses an AI agent ("ignore your instructions and ...", "call the tool ... with ...") that are harmless test strings only. No names of real people, hosts or companies; hosts use `.test`. The very long page is generated by the loader (Task 24), not committed.
 **Acceptance:** the folders load with `load_config` from `server/wiki_backend/config.py`; `du -sk server/tests/datasets/curated` is under 200; each file is read once by the coder for real data before staging.
 **Todo:** [ ]
 
 ---
 
-### Task 25 — Add the loader that gives a git-backed copy
-**Source:** INT-3 S1
+### Task 24 — Add the loader that gives a git-backed copy
+**Source:** INT-3 S2, Constraints (very long pages)
 **Files:** `server/tests/datasets/loader.py` (CREATE)
 **Action:** CREATE
-**Change:** `make_instance(tmp_path, size, seed=0)`, `copy_curated(tmp_path, name)` and `long_page(chars)` (a long-page text of the stated size). Both initialise git and commit as the `acme` fixture of `test_example_acme.py` does, with a fixed author and no network. A pytest fixture `dataset` in the datasets test module wraps them.
-**Acceptance:** a test builds `small` and `copy_curated("messy")` and `wiki_health` reports healthy for each.
+**Change:** `copy_curated(tmp_path, name)` and `long_page(chars)` (a long-page text of the stated size). `copy_curated` copies a folder of `curated/` and initialises git and commits as the `acme` fixture of `test_example_acme.py` does, with a fixed author and no network. A pytest fixture `dataset` in the datasets test module wraps them.
+**Acceptance:** a test runs `copy_curated("messy")` and `copy_curated("hostile")` and `wiki_health` reports healthy for each.
 **Todo:** [ ]
 
 ---
 
-### Task 26 — Test determinism and the health of every size
-**Source:** INT-3 S1 and Must never
+### Task 25 — Test that hostile text is returned as plain content
+**Source:** INT-3 S2
 **Files:** `server/tests/datasets/test_datasets.py` (CREATE)
 **Action:** CREATE
-**Change:** `test_the_same_seed_gives_the_same_tree` (compare relative paths and sha256, excluding `.git`), `test_a_different_seed_gives_a_different_tree`, `test_every_size_passes_the_health_check` (small, medium, large). Record the seconds the large case takes on this machine in the note; if it takes more than 20 seconds, stop and ask the owner whether it goes behind an environment variable.
-**Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q` passes (counts and the large-case time reported).
-**Todo:** [ ]
-
----
-
-### Task 27 — Test that hostile text is returned as plain content
-**Source:** INT-3 S2
-**Files:** `server/tests/datasets/test_datasets.py`
-**Action:** MODIFY
 **Change:** `test_hostile_pages_are_returned_as_content_and_not_acted_on`: with `ToolWorld` over `copy_curated("hostile")`, `wiki_read_tool` returns each page's text unchanged in its content field; `wiki_inventory_tool` and `wiki_freshness_tool` run over the instance; the wiki tree and `log.md` are unchanged afterwards, and the git log has no new commit.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q -k hostile` passes (counts reported).
 **Todo:** [ ]
 
 ---
 
-### Task 28 — Write the real-data rule, the scan and the sign-off record
+### Task 26 — Write the real-data rule, the scan and the sign-off record
 **Source:** INT-3 S3, Constraints (nothing real without written permission and a checked scrub)
 **Files:** `server/tests/datasets/README.md`, `server/tests/datasets/SIGNOFFS.md`, `server/tests/datasets/scan.py` (CREATE)
 **Action:** CREATE
-**Change:** `README.md` holds the sizes, the determinism rule, the awkward cases and the real-data rule: who gives permission (the data's owner, in writing), the scrub steps (names, hosts, secrets, email addresses), the check, and "the original is never committed". `scan.py`: `scan(path)` reports email addresses, hosts not ending in `.test`, `.example` or `.invalid`, strings shaped like tokens or keys, and every term listed in a private term list read from a file outside the repository whose path comes from the environment variable `MANIFOLD_SCAN_TERMS` (Open question 12; nothing real is committed). `SIGNOFFS.md` holds a table with no rows yet (columns: source, owner, permission date, scrub checked by, scan result) and states that no real data is committed. A test in `test_datasets.py`, `test_scan_flags_real_shaped_text_and_passes_the_committed_sets`, feeds `scan` a temporary file with an email address, a non-test host and a token-shaped string, and runs it over the generator output and `curated/`.
+**Change:** `README.md` holds the awkward cases, the real-data rule (who gives permission: the data's owner, in writing; the scrub steps for names, hosts, secrets and email addresses; the check; "the original is never committed") and a short "Megaroast testbed" section: the organization's name, the four repositories by role (fork, standalone GUI, holdout QA, example instance), that they are outside this repository, that nothing from them is committed here, that no test reads them, and that no builder agent reads the holdout QA repository. Repository names are written only if the owner agrees (Open question 18). `scan.py`: `scan(path)` reports email addresses, hosts not ending in `.test`, `.example` or `.invalid`, strings shaped like tokens or keys, and every term listed in a private term list read from a file outside the repository whose path comes from the environment variable `MANIFOLD_SCAN_TERMS` (Open question 12; the list is never committed). `SIGNOFFS.md` holds a table with no rows yet (columns: source, owner, permission date, scrub checked by, scan result) and states that no real data is committed. A test in `test_datasets.py`, `test_scan_flags_real_shaped_text_and_passes_the_committed_sets`, feeds `scan` a temporary file with an email address, a non-test host and a token-shaped string, and runs it over `curated/`.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q -k scan` passes (counts reported); `scan.py` over `curated/` prints no finding.
 **Todo:** [ ]
 
 ---
 
-### Task 29 — Test that the set covers the awkward cases and holds no personal data
+### Task 27 — Test that the curated sets cover the awkward cases and hold no personal data
 **Source:** INT-3 Constraints (awkward cases, no personal data)
 **Files:** `server/tests/datasets/test_datasets.py`
 **Action:** MODIFY
-**Change:** `test_the_sets_cover_every_awkward_case` asserts each of dotted slug, look-alike slug, no frontmatter, duplicate title, stale page (through `wiki_freshness`), long page (via `long_page`), non-English text and AI-aimed text is present in `messy`, `hostile` or the generator output; `test_no_set_contains_personal_data` runs `scan` for email addresses and for a first-name-plus-surname pattern list kept in the test, over every committed and generated set.
+**Change:** `test_the_sets_cover_every_awkward_case` asserts each of dotted slug, look-alike slug, no frontmatter, duplicate title, stale page (through `wiki_freshness`), long page (via `long_page`), non-English text and AI-aimed text is present in `messy` or `hostile`; `test_no_set_contains_personal_data` runs `scan` for email addresses and for a first-name-plus-surname pattern list kept in the test, over every committed set.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q` passes (counts reported).
 **Todo:** [ ]
 
 ---
 
-**Verification:** `cd server && ../.venv/bin/python -m pytest -q` passes with counts; `python3 server/tests/datasets/generate.py --size medium --seed 1 --out <scratch>` run twice gives identical directories (`diff -r`); `python3 bundles/base/tools/build.py --check` prints `lint ok` and `.venv/bin/python -m pytest bundles/base/tests -q` still passes (no bundle change in this checkpoint).
+### Task 28 — Record the owner's decisions on permission and visibility
+**Source:** INT-3 Constraints (written permission, checked scrub); Concerns 7
+**Files:** `server/tests/datasets/SIGNOFFS.md`
+**Action:** MODIFY
+**Who:** the owner writes the rows; the coder only prepares the empty table (Task 26) and an **Instructions** line above it.
+**Change:** Add one row per Megaroast repository that derives from the company repository (repositories 1 and 2, and 4 if its content derives from it): source, owner, permission date, the repository's visibility (private or public), and "nothing committed here". The owner writes the name and date; the coder does not fill any cell. If the owner answers Open question 16 "no permission", Tasks 29 to 33 are marked `[~]` and stop.
+**Acceptance:** each row is filled by the owner; `git diff` shows no content from any Megaroast repository, only the table rows.
+**Todo:** [ ]
+
+---
+
+### Task 29 — Create Megaroast repository 1, the fork of the company's `company_dns`
+**Source:** INT-3 owner answer (repository 1)
+**Files:** none in this repository
+**Action:** none (outward action in the Megaroast organization)
+**Who:** the owner, using their own GitHub login (the coder does not run it).
+**Change:** The owner forks the source repository into the Megaroast organization, private if Open question 16 says so, for example `gh repo fork <owner>/company_dns --org Megaroast` (flag `--org` verified in `gh repo fork --help`, gh 2.86.0), or by the GitHub page. No token or key is passed to, printed by or stored by an agent.
+**Acceptance:** the owner confirms in chat the repository's URL and visibility; `gh repo view Megaroast/<name> --json visibility` (read-only, run by the owner) shows the visibility chosen in Task 28 (`visibility` is listed among the `--json` fields in `gh repo view --json`).
+**Todo:** [ ]
+
+---
+
+### Task 30 — Create Megaroast repository 2, the standalone GUI
+**Source:** INT-3 owner answer (repository 2)
+**Files:** none in this repository
+**Action:** none (outward action in the Megaroast organization)
+**Who:** the owner.
+**Change:** The owner creates an empty repository for the GUI, private if Open question 16 says so, for example `gh repo create Megaroast/<name> --private` (flag verified in `gh repo create --help`). Pulling the GUI out of `company_dns` is work inside that repository under its own plan and is out of scope here; this task needs only that the repository exists with a README.
+**Acceptance:** the owner confirms the URL and visibility.
+**Todo:** [ ]
+
+---
+
+### Task 31 — Create Megaroast repository 3, the holdout QA repository
+**Source:** INT-3 owner answer (repository 3); `AGENTS.md` "Held-out scenarios"
+**Files:** none in this repository
+**Action:** none (outward action in the Megaroast organization)
+**Who:** the owner. Builder agents never read, clone or ask for its content.
+**Change:** The owner creates an empty private repository (`gh repo create Megaroast/<name> --private`). Which repositories the scenarios in it test, and who writes them, is the quality side's decision and is not planned here. No file of this repository is read by any session working on this plan.
+**Acceptance:** the owner confirms the URL; it is private. The coder's report states that it did not read it.
+**Todo:** [ ]
+
+---
+
+### Task 32 — Create Megaroast repository 4, the example manifold instance
+**Source:** INT-3 owner answer (repository 4)
+**Files:** none in this repository
+**Action:** none (outward action in the Megaroast organization)
+**Who:** the owner.
+**Change:** The owner makes a local instance from the example or the starter with the documented route (`./manifold init`, `docs/quickstart.md`; read both before running it, since neither was run for this plan), and creates the private repository from it, for example `gh repo create Megaroast/<name> --private --source=<instance folder> --push` (flags `--source` and `--push` verified in `gh repo create --help`). The instance registers repositories 1 and 2 as components. The creation through the App is INT-6's GitHub part and is not used.
+**Acceptance:** the owner confirms the URL; a clone of it has `manifold.yaml` listing two components (Task 33 checks it).
+**Todo:** [ ]
+
+---
+
+### Task 33 — Check the example instance from a scratch clone
+**Source:** INT-3 S3; INT-2 constraint (tests are offline, so this is a manual check, not a test)
+**Files:** none changed; the note goes here (no repository content in it)
+**Action:** none (manual check)
+**Who:** the owner runs the clone, or the coder after the owner's explicit go-ahead; the clone goes to the scratchpad, outside this repository, and uses the owner's existing login (`gh repo clone Megaroast/<name> <scratch folder>`; no token is read or printed).
+**Change:** Start the server against the clone as `docs/quickstart.md` describes (read it first; the exact start command is not recorded here), then call `wiki_health` and `wiki_inventory_tool`. Run `scan.py` (Task 26) with `MANIFOLD_SCAN_TERMS` pointing at the owner's private list over the clone, to learn what a scrub would still have to remove; the findings are counted in the note and never quoted. Do not copy any file from the clone into this repository.
+**Acceptance:** the note records the commands, that health reports healthy, the two components listed and the count of scan findings per kind; `git status --short` in this repository is unchanged.
+**Todo:** [ ]
+
+---
+
+**Verification:** `cd server && ../.venv/bin/python -m pytest -q` passes with counts; `python3 bundles/base/tools/build.py --check` prints `lint ok` and `.venv/bin/python -m pytest bundles/base/tests -q` still passes (no bundle change in this checkpoint); `git diff --stat` for the checkpoint lists only `server/tests/datasets/`; the owner confirms the four repositories exist with the visibility recorded in `SIGNOFFS.md`.
+
+### CP4 — Release 0.3.1 (INT-27 owner answer)
+
+Placed last because the owner said to release after the work is done. Only CP1 changes shipped files, so the owner may instead take it right after CP1 merges.
+
+### Task 34 — Bump the bundle version to 0.3.1
+**Source:** INT-27 Open question "Which release carries this?" (owner: "call the release V0.3.1"); commit `4f8b448` (how 0.3.0 was bumped)
+**Files:** `bundles/base/VERSION`
+**Action:** MODIFY
+**Change:** Replace the single line `0.3.0` by `0.3.1`. Release 0.3.0 changed only `bundles/base/VERSION` and the `version` in `.manifold/manifest.json`, in two commits ("Bump the base bundle", then "Refresh this repository's own install"); do the same. The release workflow (`.github/workflows/release.yml`) fails unless the tag equals `v` plus the content of `bundles/base/VERSION`.
+**Acceptance:** `cat bundles/base/VERSION` prints `0.3.1`; `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes (counts reported).
+**Todo:** [ ]
+
+---
+
+### Task 35 — Refresh this repository's own install to 0.3.1
+**Source:** commit `4f8b448` (second commit)
+**Files:** `.manifold/manifest.json` (generated; plus any other file `install.py --status` reports)
+**Action:** MODIFY
+**Change:** Run the install over this repository as in Task 13 (dry run first, then `--apply` without `--force`) from a build of the new version; do not hand-edit `.manifold/manifest.json`. Commit it separately from Task 34.
+**Acceptance:** `.manifold/manifest.json` reads `"version": "0.3.1"`; `install.py --status` reports no modified file.
+**Todo:** [ ]
+
+---
+
+### Task 36 — Merge and tag v0.3.1
+**Source:** `.github/workflows/release.yml` (trigger: a pushed tag `v*`)
+**Files:** none
+**Action:** none (outward action)
+**Who:** the owner merges the pull request and creates the tag; the coordinator and coder do not tag and do not push a tag. The tag ruleset `protect-release-tags` exists and its rules are unverified (`docs/process/BRANCH_RULES.md`).
+**Change:** After the pull request with Tasks 34 and 35 is merged, the owner creates the tag `v0.3.1` on the merge commit and pushes it. The workflow then lints, tests, builds the ZIP and creates the release.
+**Acceptance:** the owner confirms the `release` workflow run for `v0.3.1` succeeded and the release lists `manifold-base-*.zip` and `SHA256SUMS` (names as in `release.yml`).
+**Todo:** [ ]
+
+---
+
+**Verification:** `git tag` lists `v0.3.1` (run by the owner); `cat bundles/base/VERSION` on the tagged commit prints `0.3.1`.
 
 ## Completion checklist
-- [ ] All tasks marked [x] by the coder
+- [ ] All tasks marked [x] by the coder (Tasks 28 to 32 and 36 by the owner's confirmation; Task 33 by the owner's go-ahead)
 - [ ] `python3 bundles/base/tools/build.py --check` prints `lint ok`
 - [ ] `.venv/bin/python -m pytest bundles/base/tests -q` and `cd server && ../.venv/bin/python -m pytest -q` pass clean (no regressions; xfail cases named)
 - [ ] No [~] blocked items outstanding
+- [ ] No Megaroast content, key, token or secret in any committed file (`git diff` of the phase read for it)
 - [ ] Level aimed at: mergeable (see "Definition of done" in `docs/process/REVIEW_CYCLE.md`)
 - [ ] Summary note added by the coder below this line
 
 ## Open questions
 
-Each has an empty `Answer:` line for the owner. "accept all" settles every default.
+Each has an `Answer:` line for the owner. Where the owner already answered in an intent file, the line quotes it and names the file. Still empty: 3, 6, 10, 12, 16, 17, 18, 19. Decided on delegation, owner may overrule: 7, 8, 9, 15.
 
 1. **Split INT-27 from the server work?** What: do INT-27 (bundle text, CP1) and INT-2/INT-3 (server tests, CP2 and CP3) go in one phase, one pull request, or separately? Why: INT-27 is your current pain and must not wait on, or be held by, a large server review (the review loop allows three runs); the two have different release surfaces. Consequence: one pull request means one long review and a bigger risk of a late finding blocking the small fix; two pull requests cost one more cycle. Recommendation: keep one plan so the intents are reviewed once, but deliver CP1 as its own pull request first and merge it before CP2 starts; if you prefer, CP2 and CP3 move unchanged to `PHASE_5_PLAN.md`. Default: that recommendation.
    Answer: Keep one plan (Michael Hay, 2026-11-13, entered by the coordinator at the owner's instruction in chat: "Keep one plan").
 2. **One slug shape for every human field?** What: a single form `<Insert <role> on <date label>, ex. <Name> on <Mon-DD-YYYY>>`, label changed per field. Why: one search finds every unfilled field. Consequence if not: several shapes and gaps in detection. Recommendation and default: one shape (INT-27's recommendation), Mon-DD-YYYY as in your example.
-   Answer:
+   Answer: Yes (owner, `intent/INT-27-clear-human-instructions-in-the-pr.md`, Open questions: "Yes this is the right format.").
 3. **Self-approval in a solo repository.** What: the ruleset requires one approving review and you are the only person. Why: the instruction for the Approve review needs a "if GitHub does not allow it" step, and nothing in the repository says what it is. Consequence: without a decision, the text can only say "stop and ask the owner" (it never claims what GitHub does). Recommendation: Task 1 reads GitHub's documentation and the ruleset first; then you choose to document an existing route (for example a bypass you already hold), a second account, or a ruleset change (your act, out of scope). Default: document what is read and ask.
    Answer:
+   Related words of the owner, not an answer to this question (`intent/INT-27-...md`): "If there is more than one reviewer in the repo then it is unlikely a solo repo, otherwise it is a solo repo." They say when a repository counts as solo (this one, per `AGENTS.md` "Review process"); they do not say how the required approving review is met. Still open.
 4. **Also cover the plan's **Approved by**, **Amendment approved by**, the test plan's **Approved by** and the intent's `accepted_by`?** What: the same slug and an instructions line (Task 7), and a slug counts as blank for `coder` (Task 8). Why: the same "no prompt" problem stops you at the next human line. Consequence if not: you are stopped again there. Recommendation and default: yes, in this phase.
-   Answer:
+   Answer: Yes (owner, `intent/INT-27-...md`: "Agree with the recommendation.").
 5. **Does an unreplaced `<Insert ...>` count as missing, and do the instructions stay visible?** What: the coordinator and `/phase-status` read a leftover slug as the line being missing, and the instructions are visible text (not HTML comments) that stay in the finished description. Why: otherwise a pull request can look ready with no name. Consequence if not: S6 and S1 of INT-27 fail. Recommendation and default: yes to both.
-   Answer:
+   Answer: Yes to both (owner, `intent/INT-27-...md`: "Agree with the approach and recommendation" for the leftover slug counting as missing, and "Agree with the recommendation." for visible instructions).
 6. **How does `/phase-status` read the pull request description?** What: the script reads repository files only; the description is on GitHub. Options: (a) an optional `--pr-body <file>` holding a saved copy, written by the coordinator or by you; (b) the script calls `gh` itself. Why: INT-27 S6 wants unreplaced slugs listed. Consequence: (b) makes a read-only script depend on `gh` and a network. Recommendation and default: (a).
    Answer:
 7. **Contract recording format and place (INT-2).** What: one JSON file per tool and case under `server/tests/contracts/`, normalising commit hashes and timestamps, recorded by an explicit command that refuses to run in CI or under pytest. Why: a change to a recording must be a visible, reviewed diff. Consequence if not: a regenerated file can hide a broken tool. Recommendation and default: this format.
-   Answer:
+   Answer: Delegated to planning by the owner (`intent/INT-2-test-hardening-and-contracts.md`: "Survey the manifold repo ... the planning should determine how much additional work is required."). Decision after the survey (see "Intent review", INT-2): keep this format; no recording exists today, and the harness reuses `ToolWorld.call`, the `acme` fixture and the tool-set check of `test_tool_policy.py`. The owner may overrule.
 8. **Conformance suite: required check or advisory (INT-2)?** What: whether the official MCP conformance run blocks the merge. Why: a flaky required check blocks every pull request, and making it required is a ruleset change that only you make. Consequence: too strict, merges stop; too loose, a protocol break can merge. Recommendation: advisory (non-required job, Task 22) until it has run green on several pull requests; then you decide. Default: advisory, and Task 22 only if Task 14 shows it runs offline.
-   Answer:
+   Answer: Delegated to planning by the owner (same words, `intent/INT-2-...md`). Decision after the survey: advisory. No conformance run exists in the repository (only the `initialize` call by `curl` in the `image` job of `server.yml`), and the server tests themselves are not required checks today (Concerns 6), so a required conformance check would be stricter than the rest. The owner may overrule.
 9. **Coverage gate (INT-2)?** What: whether a coverage percentage blocks the merge. Why: the question is open in the intent; no coverage tool is in `server/requirements-dev.txt`, so adding one changes the locked dependencies. Consequence: a gate with no tool is wishful; adding a tool is a dependency change. Recommendation and default: no coverage gate in this phase; the contract list (every tool has a recording) and the import rule are the gates.
-   Answer:
+   Answer: Delegated to planning by the owner ("I believe we may already have some rules in the repo so the planner must find out", `intent/INT-2-...md`). Found: no coverage tool, configuration or percentage in `server/requirements-dev.txt`, `server/pytest.ini`, `.github/workflows/*`, `REVIEW.md`, `CONTRIBUTING.md` or `bundles/base/rules/`; the only coverage-related text is the template section "Coverage judgement" (a judgement, not a number) and the rule against committing coverage data. Decision: no coverage gate in this phase. The owner may overrule.
 10. **What happens to a write-failure test that exposes a defect (Concerns 1)?** What: for each case where the server leaves a file, folder, sidebar entry or log line after a refused write, do you change the code (a `bug-coder` fix, a behavior change) or narrow INT-2's S3 to what the code promises? Why: git refusing is documented as non-fatal today. Consequence: either way the test must match the decision, and an `xfail` left in place hides it. Recommendation: treat a stray folder, partial file, sidebar entry or log line as defects to fix by `bug-coder` after this phase, and keep "file stays when only the commit fails" as the documented behavior, written down in the test. Default: record each as `xfail(strict=True)` with the reason and ask.
     Answer:
 11. **What are small, medium and large (INT-3)?** What: the number of components and pages. Why: tests and demos ask by name. Consequence: the large size affects test run time. Recommendation: small 3 components and about 20 pages, medium 12 and 200, large 50 and 2000, all generated on demand in the test's temporary folder and never committed. Default: that recommendation (and the 20-second limit in Task 26).
-    Answer:
+    Answer: Superseded by the owner (`intent/INT-3-test-data-sets.md`: "Let's just start with Megaroast for now using 4 repos within the organization."). No sizes are defined in this phase; see Open question 17 for the deferred generator.
 12. **Where does the list of terms to scan for live, and may real data ever be fetched (INT-3)?** What: the scan for real names and hosts needs a list, and a list of real names cannot be committed to a public repository. Recommendation: pattern checks in the repository (emails, non-test hosts, token shapes) plus a private list in a file outside the repository, named by `MANIFOLD_SCAN_TERMS`; "fetched" large data sets are not used. Consequence if not: the scan is weak, or it leaks the terms. Default: that recommendation.
     Answer:
 13. **Is any real data on offer (INT-3)?** What: will the new company or other products offer real data, and under what terms. Why: the scrub procedure is only written, not used, until someone offers. Consequence: none now; this phase commits synthetic data only. Recommendation and default: no real data in this phase; the rule and scan ship so the first offer has a procedure.
-    Answer:
+    Answer: Yes, in a form the question did not foresee (owner, `intent/INT-3-...md`: "We can use the Megaroast organization to provide a testbed for external repos."). The rule and scan are therefore used in this phase (Tasks 26, 28, 33). Whether the company permits the derived repositories and whether any of them is public is Open question 16.
 14. **Which release carries this?** What: CP1 changes shipped bundle text and so needs a version decision; CP2 and CP3 change no shipped file. Recommendation: you choose the number after CP1 merges (release is out of scope here). Default: no release task in this plan.
+    Answer: Release as v0.3.1 after the work is done (owner, `intent/INT-27-...md`: "after we're done with the work we call the release V0.3.1 to signify we're patching the bundle"). CP4 (Tasks 34 to 36) does this; the owner tags.
+15. **Decision recorded by the coordinator and planner on the owner's delegation: is the GitHub App (INT-7) pulled into this phase?** The owner left the call to the coordinator and the planner. Read: INT-7, INT-6 (GitHub part), INT-1, INT-14, INT-15, INT-16, and the server source.
+    **Facts.** (1) The server makes no GitHub call: `server/tests/test_offline_clean.py` forbids an HTTP client library in the server, and `server/manifold_cli/init_cmd.py` says "No GitHub, no outside request". Git runs as a local subprocess only (`server/wiki_backend/git.py`). (2) The features that would use an App are drafts or unplanned: INT-14 (draft, needs "the App or a personal access token"), INT-15, INT-16, INT-6's GitHub part ("comes after INT-7"). (3) INT-7's own rules: "Every permission has a feature", S1 "Must never: Request a permission that no feature uses", "What an App cannot do ... is verified before any plan relies on it", "One App per company, created by the company", and its open questions (which organization owns it, manifest flow or by hand, organization-owner approval, one App or two) are marked "resolve in planning" and "needs a spike". (4) INT-14's constraint already accepts a personal access token "for a quick start", never stored in the instance repository.
+    **Options.** (a) All of INT-7 in this phase: eight scenario seeds, sign-in and device flow, either-rule, revocation; it needs the spike, the INT-1 roles and server code that does not exist, and delays CP2 and CP3, whose purpose is a safety net before server change. Rejected. (b) A thin slice: create the App in Megaroast with only Metadata (read) and install it on the example instance repository; no sign-in, no device flow. It would cover INT-7 S1 (create and install, permissions listed), S3 (remove it, by hand), the "private first" and "name" constraints, and open questions 1, 2 and 6 by spike. It would leave S2 (the server acting as the App: no server code uses it), S4 to S8, the either-rule, the sign-in rule, the revocation promise and the Secrets question. Cost: about six more owner-gated tasks (a spike read, name check, create, install, uninstall test, record) and an App no feature uses, which breaks INT-7's own "every permission has a feature" and "verified before any plan relies on it" for the permissions beyond Metadata. (c) Keep INT-7 out, and give the Megaroast testbed existing means: git and `gh` under the owner's own login, no token read or stored by any agent (Tasks 29 to 33).
+    **Decision: (c).** The testbed needs only to create four repositories and clone one; the owner's login does that today (`gh auth status` on this machine shows a keyring login for the owner's account; `gh repo fork --org`, `gh repo create --private --source --push` and `gh repo clone` exist in gh 2.86.0). Nothing in this phase would consume an App. Megaroast stays valuable to INT-7: it is the "first test organization" INT-7 names, so a later INT-7 plan, which should start with its spike, finds it ready. If the owner wants (b), the plan gains a CP5 of about six tasks and Tasks 29 to 33 are unchanged.
+    **Unverified, to confirm in INT-7's own spike and not relied on here:** that the name `manifold` is free as a GitHub App name (unverified: confirm on GitHub's App creation page, an owner act); what an App cannot do (approve its own pull requests, create repositories, which permission creating a repository needs: unverified: confirm with GitHub's documentation on App permissions); whether an organization owner must approve the permissions for Megaroast (unverified: confirm with GitHub's documentation on installing an App in an organization).
+    Answer (owner, to overrule or confirm):
+16. **Real data in the Megaroast repositories.** What: (a) does the company that owns `company_dns` permit a fork and a GUI derived from it in the Megaroast organization, in writing; (b) will each of the four repositories be private; (c) may anything from them ever be copied into this public repository (default: no, nothing). Why: INT-3 forbids real content in a public repository without written permission and a checked scrub; the repositories derive from a company's code. Consequence: without an answer, Tasks 28 to 33 do not start and the rest of the phase goes on. Recommendation: private for all four; permission written in `SIGNOFFS.md` (Task 28); nothing copied here. Default: that.
+    Answer:
+17. **The sized synthetic generator (INT-3 S1: small, medium, large, same seed gives the same tree).** What: defer it, since the owner chose to start with Megaroast, or keep it as before. Why: S1 is an accepted seed and is not dropped silently; the curated messy and hostile sets (S2) stay either way. Consequence: deferring leaves no large instance for a later performance or store test (INT-4); keeping it adds about three tasks (the old Tasks 23, 25 and 26 in this file at commit `f939205`). Recommendation and default: defer, and add it when INT-4 needs a size.
+    Answer:
+18. **Names.** What: the exact names of the four Megaroast repositories, and whether the committed `README.md` of Task 26 may name them (default: it names the organization and the four roles, not the repository names). Why: the source repository belongs to a company. Consequence: Task 26 writes roles only until you answer.
+    Answer:
+19. **Should the server tests become a required check?** What: add `server tests (3.11)` and `server tests (3.12)` of `server.yml` to the ruleset's required checks (a ruleset change, your act on GitHub). Why: today a failing server test does not block a merge (Concerns 6), so CP2's contract tests would be advisory in effect. Consequence: not required, a broken tool can merge; required, a flaky test blocks every pull request. Recommendation: yes, after CP2 has passed on several pull requests. Default: no change in this phase.
     Answer:
