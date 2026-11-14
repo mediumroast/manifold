@@ -4,6 +4,7 @@
 import hashlib
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -2327,6 +2328,51 @@ def test_pr_template_has_remaining_steps_and_decisions_table():
     assert "## What remains for you" in t and "## Decisions for you" in t
     assert "| What | Why | Consequence | Default |" in t
     assert "accept all" in t and "Where each fact is recorded" in t
+
+
+_SLUG_RE = re.compile(r"<Insert [^<>]*>")
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+
+
+def _pr_template():
+    return (ROOT / "templates" / "PULL_REQUEST_TEMPLATE.md").read_text()
+
+
+def test_pr_template_has_visible_instructions_and_one_slug_shape():
+    """Phase 4 CP1 (INT-27 S1, S3, S7): each human-written line holds one slug; instructions are visible text."""
+    t = _pr_template()
+    for label in ("**Confirmed by:**", "**Human confirmation:**"):
+        (line,) = [ln for ln in t.splitlines() if ln.startswith(label)]
+        assert len(_SLUG_RE.findall(line)) == 1, line
+    assert len(_SLUG_RE.findall(t)) == 2  # no slug anywhere else in the template
+    visible = _HTML_COMMENT_RE.sub("", t)
+    assert visible.count("**Instructions:**") >= 4  # CI, ready check, human confirmation, remaining steps
+    assert not _SLUG_RE.search("".join(_HTML_COMMENT_RE.findall(t)))  # a slug only in a comment would be hidden
+
+
+def test_pr_template_state_cells_name_both_values():
+    """Phase 4 CP1 (INT-27 S4): the State cell says what to write; the instructions name both values."""
+    t = _pr_template()
+    assert "met / missing" not in t
+    visible = _HTML_COMMENT_RE.sub("", t)
+    instructions = visible.split("## Ready check")[1]
+    assert "`met`" in instructions and "`missing`" in instructions
+
+
+def test_pr_template_names_the_approve_review_and_claims_nothing_about_self_approval():
+    """Phase 4 CP1 (INT-27 S5): the Approve review step exists; no claim about what GitHub allows an author."""
+    t = _pr_template()
+    assert "Approve" in t and "Review changes" in t
+    lowered = t.lower()
+    for forbidden in ("own pull request", "self-approv", "cannot approve"):
+        assert forbidden not in lowered, forbidden
+
+
+def test_pr_template_is_generic():
+    """Phase 4 CP1 (INT-27): shipped text names no person and no repository."""
+    t = _pr_template()
+    for needle in ("Michael Hay", "mihay42", "mediumroast"):  # `.manifold/` is the install's own folder, not a repository name
+        assert needle.lower() not in t.lower(), needle
 
 
 def test_t35_install_states_the_guard_per_client_and_how_a_human_grants_an_exception():

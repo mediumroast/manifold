@@ -186,7 +186,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** Add a section "Human fields and slugs" before "The ready check": the one slug shape `<Insert <role> on <date label>, ex. <Name> on <Mon-DD-YYYY>>` (written out with the real example `<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>`; the detection pattern is `<Insert [^<>]*>`); the human replaces the whole slug, brackets included; an agent never replaces one; a human field still holding a slug is missing, never met. Add a row "GitHub's Approve review" to "Where each fact is recorded" (a separate act in GitHub's "Review changes" control, not a row or tick of the description; who writes it: a human). In "The ready check" item 4 add one sentence that the Approve review is separate from the description's ticks and that nothing in the description satisfies it. Do not drop or loosen any ready-check line.
 **Acceptance:** `grep -n "Human fields and slugs\|Approve review" bundles/base/process/REVIEW_CYCLE.md` finds the section and the row; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: added "Human fields and slugs" section, the "GitHub's Approve review" row and one sentence in ready-check item 4 in `bundles/base/process/REVIEW_CYCLE.md`. `grep -n "Human fields and slugs\|Approve review"` finds all three; `python3 bundles/base/tools/build.py --check` printed `lint ok`. Commit: see the CP1 commit log (Tasks 1 and 2 together).
 
 ---
 
@@ -197,7 +199,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** Rewrite "CI on the pushed commit" to the shape of INT-27's "After" example: **Commit (full hash)**; "1. Ran:" with one numbered sub-line per workflow run (name, run id, status, conclusion, link, or "no run found"); an **Instructions:** block as visible text (not a comment) with the pass step (open each link; if every run is `completed` with `success`, write your name below), the fail step (if a run failed, is not `completed`, or is missing, tell the coordinator and do not write your name) ; then `**Confirmed by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>` (label changed to "confirmer" and "confirmation" for this field). Keep the full hash. Replace the template's HTML-comment hints for this section with one line that the coordinator writes the evidence and leaves the slug.
 **Acceptance:** `grep -c "<Insert " bundles/base/templates/PULL_REQUEST_TEMPLATE.md` is at least 1 for this field; the section has no HTML comment holding instructions; the hash line still says "full hash".
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: rewrote "CI on the pushed commit" in `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` to INT-27's "After" shape (hash, numbered "Ran:" with sub-lines, visible **Instructions:**, `Confirmed by` slug with "confirmer"/"confirmation"). `grep -c "<Insert " ...` printed 1 at this step (the Task 4 slug came after); no instruction sits in an HTML comment in this section; "full hash" kept. Commit: see CP1 log.
 
 ---
 
@@ -208,7 +212,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** In "Ready check" change the header `State (met / missing)` to `State` and put into each State cell the placeholder `missing` (the safe value); add an **Instructions:** block above the table: the coordinator replaces the cell with exactly `met` or `missing`, `met` needs evidence in the Evidence cell, a human does not edit State cells. Replace the **Human confirmation** comment with the slug `<Insert Name of decider on Date of decision, ex. M. Kusanagi on Jan-01-2027>` plus numbered instructions (what to review, where, when to write the line, what not to write if a line is missing).
 **Acceptance:** `grep -n "met / missing" bundles/base/templates/PULL_REQUEST_TEMPLATE.md` prints nothing; both words `met` and `missing` appear in the instructions.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: header is now `State`, each cell holds `missing`, an **Instructions:** block above the table names `met` and `missing`, and the Human confirmation comment is replaced by the `Human confirmation` slug with numbered instructions. `grep -n "met / missing"` prints nothing. Commit: see CP1 log.
 
 ---
 
@@ -219,7 +225,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** Under "What remains for you" add an **Instructions:** block per kind of line: (a) per changed file: open the diff on the Files changed tab, what to look for, a tick means you read it and accept it, and if you do not accept it, leave it unticked and say why in a comment; (b) the CI line: points to the instructions under "CI on the pushed commit" (no second copy); (c) findings: read the "Decisions for you" table, write "accept all" or name the exceptions. Add a numbered step "GitHub's Approve review": separate from every tick and row here; needed when the repository's rules require an approving review (see its `Review process` and branch rules); where to click ("Review changes" on the Files changed tab, then Approve); if the control is missing or disabled for you, do not write a name or tick here instead, and ask the owner how approval is met in this repository. Add the fact Task 1 found, if it was read (otherwise no claim about GitHub). Keep each block to numbered short lines.
 **Acceptance:** `grep -n "Approve review\|Review changes" bundles/base/templates/PULL_REQUEST_TEMPLATE.md` finds the step; it makes no claim about self-approval (read the diff).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: added an **Instructions:** block under "What remains for you" (files, CI line pointing to the CI section, findings, and a numbered "GitHub's Approve review" step stating it is separate, where to click, and what to do if the control is missing). It states no fact about self-approval: Task 1 found the documentation sentence, but Open question 3 (the route) is not answered, so no claim about GitHub's behavior is made; the step only says to ask the owner. `grep -n "Approve review\|Review changes"` finds line 72. Commit: see CP1 log.
 
 ---
 
@@ -230,7 +238,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** Add `test_pr_template_has_visible_instructions_and_one_slug_shape` (every human-written line, `Confirmed by` and `Human confirmation`, holds exactly one match of the pattern `<Insert [^<>]*>`; no instructions sit only inside an HTML comment; the pattern finds no text in the rest of the template), `test_pr_template_state_cells_name_both_values` (no `met / missing`; both words in the instructions), `test_pr_template_names_the_approve_review_and_claims_nothing_about_self_approval` (contains "Approve" and "Review changes"; contains none of "own pull request", "self-approv", "cannot approve"), and `test_pr_template_is_generic` (no "Michael Hay", no repository name). Follow the style of the existing `test_pr_template_has_remaining_steps_and_decisions_table`. Failing first: run them before Tasks 3 to 5 are applied to the source and record the counts.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests -q -k "pr_template"` passes (counts reported); the note records the failing-first run.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: added the four tests (plus `import re` and two helpers) to `bundles/base/tests/test_bundle.py`, following `test_pr_template_has_remaining_steps_and_decisions_table`. In `test_pr_template_is_generic` the word "manifold" is not in the forbidden list because the template legitimately names `.manifold/guard-log.jsonl` (the install's folder, not this repository's name). Failing first (before Tasks 3 to 5 touched the template; Task 2 only touched REVIEW_CYCLE): `.venv/bin/python -m pytest bundles/base/tests -q -k "pr_template"` gave 3 failed, 2 passed (the existing test and the generic test pass with the old text). After Tasks 3 to 5: same command, 5 passed, 2078 deselected. Commit: see CP1 log.
 
 ---
 
