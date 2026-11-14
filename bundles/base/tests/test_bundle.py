@@ -2350,6 +2350,37 @@ def test_pr_template_has_visible_instructions_and_one_slug_shape():
     assert not _SLUG_RE.search("".join(_HTML_COMMENT_RE.findall(t)))  # a slug only in a comment would be hidden
 
 
+def _ci_confirmation_places():
+    """The five places that describe the CI confirmation: template CI step, template remaining step, cycle table row, slug section, ready line, coordinator."""
+    visible = _HTML_COMMENT_RE.sub("", _pr_template())
+    ci_instructions = visible.split("## CI on the pushed commit")[1].split("**Confirmed by:**")[0].split("**Instructions:**")[1]
+    remaining = visible.split("## What remains for you")[1].split("## Decisions for you")[0]
+    cycle = _bundle_text("process", "REVIEW_CYCLE.md")
+    (row,) = [ln for ln in cycle.splitlines() if ln.startswith("| The CI confirmation |")]
+    slugs = cycle.split("## Human fields and slugs")[1].split("\n## ")[0]
+    ready = cycle.split("## The ready check")[1].split("\n## ")[0]
+    (ready3,) = [ln for ln in ready.splitlines() if ln.startswith("3. ")]
+    coordinator = _bundle_text("agents", "coordinator.agent.md").split("## CI of the exact commit")[1].split("\n## ")[0]
+    return ci_instructions, remaining, row, slugs, ready3, coordinator
+
+
+def test_ci_confirmation_is_the_line_and_the_tick_in_every_place():
+    """Phase 4 CP7 (review F1, INT-27 S1): the CI confirmation is two acts, the line and the tick, said once and agreed everywhere."""
+    ci, remaining, row, slugs, ready3, coordinator = _ci_confirmation_places()
+    (step2,) = [ln for ln in ci.splitlines() if ln.startswith("2. ")]
+    assert "**Confirmed by**" in step2 and "tick" in step2  # both acts in one step
+    (step3,) = [ln for ln in ci.splitlines() if ln.startswith("3. ")]
+    assert "do not tick" in step3
+    (rem2,) = [ln for ln in remaining.splitlines() if ln.startswith("2. ")]
+    assert "**Instructions**" in rem2 and "two acts" in rem2 and "no second copy" in rem2.lower()
+    assert "write your name" not in rem2.lower() and "tick the box" not in rem2.lower()  # no second procedure here
+    for place in (row, ready3, coordinator):
+        assert "**Confirmed by**" in place and "tick" in place, place
+    assert "**Confirmed by**" in slugs and "second act" in slugs and "tick" in slugs
+    assert "a tick in the pull request, never a commit" not in row  # the confirmation is not "a tick" only
+    assert "ticked by a human," in ready3 and "no slug" in ready3
+
+
 def test_pr_template_state_cells_name_both_values():
     """Phase 4 CP1 (INT-27 S4): the State cell says what to write; the instructions name both values."""
     t = _pr_template()

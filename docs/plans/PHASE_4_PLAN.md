@@ -769,7 +769,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** Recommended choice: keep both the tick and the `Confirmed by` line. In the CI **Instructions**, make step 2 read: if every run is `completed` with the conclusion `success`, write your name and the date on the **Confirmed by** line, replacing the whole slug, and then tick the box "CI of commit <full hash> is green" under "Rule exceptions"; step 3 keeps "do not write your name and do not tick" for a failed, unfinished or missing run. In remaining-steps instruction 2 keep the pointer to the CI **Instructions** ("There is no second copy here") and add "(two acts: the line and the tick)". Change no other line. Edit only the file under `bundles/base/`; the `docs/templates/` copy is refreshed in Task 56.
 **Acceptance:** `grep -n "Confirmed by" bundles/base/templates/PULL_REQUEST_TEMPLATE.md` shows the instruction naming both acts in one place; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): CI **Instructions** step 2 now says: write your name and the date on the **Confirmed by** line, replacing the whole slug, and then tick the box "CI of commit <full hash> is green" under "What remains for you"; "Both acts are yours: the line and the tick." Step 3 now reads "do not write your name and do not tick". Remaining-steps instruction 2 keeps "There is no second copy here" and gained "(two acts: the line and the tick)". Deviation in wording only: the task text says the box is "under 'Rule exceptions'"; in the template it is under "What remains for you" (the "Rule exceptions" heading holds no checkbox), so the text names "What remains for you". `grep -n "Confirmed by"` shows step 2 (line 51) naming both acts; `python3 bundles/base/tools/build.py --check` -> `lint ok`. Commit: with Tasks 43 to 45.
 
 ---
 
@@ -780,7 +782,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** In the table row, replace "a tick in the pull request, never a commit" with "the **Confirmed by** line and the tick of the CI line in the pull request, never a commit". In "Human fields and slugs", keep the CI confirmation in the list and add one clause that the tick of the CI line is the second act, described in the template's CI **Instructions**. In ready-check line 3, change "ticked by a human" to "ticked by a human, with the **Confirmed by** line holding a name and date and no slug". Change nothing else.
 **Acceptance:** `grep -n "Confirmed by" bundles/base/process/REVIEW_CYCLE.md` shows the three places agreeing; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): table row now "the **Confirmed by** line and the tick of the CI line in the pull request, never a commit"; the slug section's list keeps the CI confirmation and adds "(its **Confirmed by** line; ticking the CI line is the second act, described in the template's CI **Instructions**)"; ready-check line 3 now "ticked by a human, with the **Confirmed by** line holding a name and date and no slug, in the pull request (the tick is in the pull request, never a commit)". `grep -n "Confirmed by" bundles/base/process/REVIEW_CYCLE.md` -> lines 47, 54, 66 (plus the unrelated line 114); `build.py --check` -> `lint ok`. Commit: with Tasks 42, 44, 45.
 
 ---
 
@@ -791,7 +795,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** Where the coordinator writes the CI shape, state that the human writes the **Confirmed by** line (replacing the whole slug) and then ticks the CI box, and that the coordinator does neither. Keep the sentence that the coordinator never replaces a slug, writes a name or date, ticks, or writes "approved".
 **Acceptance:** `grep -n "Confirmed by" bundles/base/agents/coordinator.agent.md` shows both acts; `python3 bundles/base/tools/build.py --check` prints `lint ok` (both flavors are built from this one source).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): in the CI shape bullet the coordinator text now adds "the human writes the **Confirmed by** line (replacing the whole slug) and then ticks the CI box, and you do neither"; the "What you do not do" sentence (never replace a slug, write a name or date, tick, or write "approved") is untouched. `grep -n "Confirmed by" bundles/base/agents/coordinator.agent.md` shows line 57 with both acts; `build.py --check` -> `lint ok`. Commit: with Tasks 42, 43, 45.
 
 ---
 
@@ -802,7 +808,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** Add the test: the CI **Instructions** in `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` name the `Confirmed by` line and the tick in one step; remaining-steps instruction 2 points to them and names no second procedure; the `REVIEW_CYCLE.md` table row, the slug section and ready-check line 3, and the coordinator text each mention both the `Confirmed by` line and the tick; no one of them says the confirmation is "a tick" only. Edit no existing test.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -k ci_confirmation_is_the_line_and_the_tick` shows 1 passed; the same run before Tasks 42 to 44 shows 1 failed (record both in the note).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): failing-first: the new test was copied with `Edit` into a detached worktree at `a68f92e` (before Tasks 42 to 44) and `<repo>/.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -p no:cacheprovider -k ci_confirmation_is_the_line_and_the_tick` there -> **1 failed, 367 deselected**. After Tasks 42 to 44, in this checkout: `.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -k "ci_confirmation_is_the_line_and_the_tick or pr_template"` -> **6 passed, 362 deselected** (the new test plus the five existing `pr_template` tests, none edited). Commit: with Tasks 42 to 44.
 
 ---
 
