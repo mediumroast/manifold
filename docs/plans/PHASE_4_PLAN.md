@@ -1,11 +1,11 @@
 # PHASE_4_PLAN.md
 
 **Approved by:**
-**Source intent:** INT-27 `intent/INT-27-clear-human-instructions-in-the-pr.md`, INT-2 `intent/INT-2-test-hardening-and-contracts.md`, INT-3 `intent/INT-3-test-data-sets.md` (all three `status: accepted`, `accepted_by: Michael Hay on Nov 14, 2026`; see "Intent review"). INT-7 `intent/INT-7-github-app.md` was considered and kept out (Open question 15).
+**Source intent:** INT-27 `intent/INT-27-clear-human-instructions-in-the-pr.md`, INT-2 `intent/INT-2-test-hardening-and-contracts.md`, INT-3 `intent/INT-3-test-data-sets.md` (all three `status: accepted`, `accepted_by: Michael Hay on Nov 14, 2026`; see "Intent review"). INT-7 `intent/INT-7-github-app.md` (`status: accepted`, `accepted_by: Michael Hay 2026-11-01`) is pulled in as a thin slice only, by the owner's decision on Nov 14, 2026 (Open question 15, option (b)); see "Intent review".
 
 ## Objective
 
-A person who has never read the process documents can finish every human step of a coordinator-written pull request from the text in the pull request alone (INT-27). The server's tool behavior is pinned by recorded contract tests, the write and error paths that are not yet tested are tested, and the import rule is enforced by a test (INT-2). A curated messy and a curated hostile instance are committed, a real-data rule and scan exist, and an external test organization (Megaroast, four repositories) is set up as the real-shaped testbed (INT-3). The bundle is then released as v0.3.1 (INT-27 owner answer). Phase 5 server work (the content store refactor, INT-4, and later) then has a safety net.
+A person who has never read the process documents can finish every human step of a coordinator-written pull request from the text in the pull request alone (INT-27). The server's tool behavior is pinned by recorded contract tests, the write and error paths that are not yet tested are tested, and the import rule is enforced by a test (INT-2). A curated messy and a curated hostile instance are committed, a real-data rule and scan exist, and an external test organization (Megaroast, four repositories that already exist) is checked and recorded as the real-shaped testbed (INT-3), and a private GitHub App named `manifold` is created in it by the owner with only the permissions this phase uses, installed on the Megaroast test repositories, and shown to mint short-lived installation tokens (thin slice of INT-7). The bundle is then released as v0.3.1 (INT-27 owner answer). Phase 5 server work (the content store refactor, INT-4, and later) then has a safety net.
 
 ## Intent review
 
@@ -38,11 +38,29 @@ Intent accepted by: Michael Hay on Nov 14, 2026 (recorded in the intent file's `
 ### INT-3 Test data sets, real and synthetic
 **Asks:** A seeded generator for instances of any size, a small set of committed curated instances for awkward and hostile content, and a written rule for when real data may be used and how it is scrubbed.
 **Owner's answers (in the intent file):** use the external test organization Megaroast as the testbed, with four repositories: (1) a fork of the company's `company_dns`, (2) a new repository that pulls the GUI out of `company_dns` as a standalone, (3) a holdout QA repository, (4) an example manifold repository; consider a simple GitHub App; sizes and committed-versus-generated are "start with Megaroast, see above".
-**Plan changes:** (1) The sized generator is deferred (Open question 17); the curated messy and hostile instances stay because S2 and the awkward-case constraint do not depend on size. (2) The Megaroast repositories derive from the owner's company repository, so the real-data rule is now used, not only written: nothing from them enters this repository, and the permission and visibility are the owner's decisions (Open question 16). (3) The only forbidden-terms scan today is for the bundle (`FORBIDDEN_TERMS` in `bundles/base/tools/build.py`); the data sets need their own scan, and a list of real names cannot itself be committed in a public repository (Open question 12). (4) The GitHub App is not pulled in (Open question 15).
+**Plan changes:** (1) The sized generator is deferred (Open question 17); the curated messy and hostile instances stay because S2 and the awkward-case constraint do not depend on size. (2) The Megaroast repositories derive from the owner's company repository, so the real-data rule is now used, not only written: nothing from them enters this repository, and the permission and visibility are the owner's decisions (Open question 16). (3) The only forbidden-terms scan today is for the bundle (`FORBIDDEN_TERMS` in `bundles/base/tools/build.py`); the data sets need their own scan, and a list of real names cannot itself be committed in a public repository (Open question 12). (4) The four Megaroast repositories already exist (owner's statement, Nov 14, 2026), so the creation tasks became confirmation tasks (CP4). (5) The GitHub App is a thin slice (CP5, below).
 Intent accepted by: Michael Hay on Nov 14, 2026 (recorded in the intent file's `accepted_by`)
 
-### INT-7 (considered, not accepted into this phase)
-See Open question 15, "Decision recorded by the coordinator and planner on the owner's delegation". INT-7 stays `accepted` and unplanned.
+### INT-7 A GitHub App named manifold (thin slice only)
+**Asks (whole intent):** a private GitHub App `manifold` with only needed permissions, short-lived tokens, attributable actions, removable; later sign-in (device flow, browser), either-rule for components, revocation timing.
+**Owner's decision:** on Nov 14, 2026 the owner overruled the earlier recorded decision to keep INT-7 out (Open question 15) and pulled in "a thin slice" because the Megaroast repositories already exist and the work should not be thrown away; the owner states the name `manifold` is available in the Megaroast organization, which the owner owns.
+**The slice (CP5):** the owner creates the private App in Megaroast, installs it on the Megaroast test repositories, and mints a short-lived installation token by hand with only the permissions Phase 4 uses (Metadata read, Task 35). No server code calls GitHub and no key reaches the server in this phase.
+**Seed mapping:**
+
+| INT-7 seed | In this phase |
+|------------|---------------|
+| S1 Create and install | Tasks 33, 34 (settings page shows only the listed permission; installed only on selected Megaroast repositories). Must never "a permission no feature uses": Task 33 acceptance. |
+| S2 Act as the App | Partly: Task 35 (owner mints a token, makes one read call, the token expires after one hour per GitHub's documentation). Must never "key or token in a log or the instance repository": Tasks 33, 36. The server acting as the App is deferred, owner to confirm (Open question 20). |
+| S3 Remove it | Deferred, owner to confirm (Open question 20): uninstalling would remove the testbed's App; the server has no GitHub code to report "access gone". |
+| S4 Sign in from the command line | Deferred, owner to confirm. |
+| S5 Either a grant or repository write | Deferred, owner to confirm. |
+| S6 Repository the App cannot see | Deferred, owner to confirm. |
+| S7 Access lost on GitHub, within a stated time | Deferred, owner to confirm. |
+| S8 Claude Desktop is a known gap | Deferred, owner to confirm (a guide; no feature yet). |
+
+**Constraints covered:** least privilege and "every permission has a feature" (Task 33); private first (Task 33); no long-lived secret in a repository and the key outside it (Tasks 33, 36); short-lived tokens only (Task 35); the name (the owner's statement, confirmed at creation, Task 33); "what an App cannot do verified before a plan relies on it" (only what the slice uses is read, Task 32; the rest stays unverified); the key never held by an agent (all tasks). **Deferred:** one App per company created by the company (the slice App belongs to the test organization only), identity and automation settings split, sign-in rule and lifetime, either-rule, protected mapping, revocation promise, no GitHub token kept, Secrets (write).
+**INT-7 open questions:** (1) owner of the first App: Megaroast (owner's statement); whether ownership can be transferred later is unverified: confirm with GitHub's documentation. (2) Manifest flow versus by hand: the slice goes by hand through the settings page; the manifest flow is deferred. (3) Organization-owner approval: the owner owns Megaroast, so none blocks this slice; the question stays open for a company organization. (4), (5): deferred. (6) Secrets (write): no.
+Intent accepted by: Michael Hay on Nov 1, 2026 (recorded in the intent file's `accepted_by`)
 
 ## Scope
 
@@ -50,13 +68,17 @@ See Open question 15, "Decision recorded by the coordinator and planner on the o
 
 - CP1 (INT-27): visible **Instructions** and one slug shape in the pull request template, the plan, test-plan and intent templates, `REVIEW_CYCLE.md`, the coordinator and the rule/agent text that reads a blank approval; `/phase-status` reports unreplaced slugs. Both flavors from one source.
 - CP2 (INT-2): import-rule test, contract-test harness and recordings for every tool, the missing write-failure and HTTP-error tests, the conformance run (if the owner agrees).
-- CP3 (INT-3): curated messy and hostile instances with a loader and tests, the real-data rule, scan and sign-off record, and the Megaroast testbed (four repositories created by the owner, checked from a scratch clone).
-- CP4 (release): the bundle version becomes 0.3.1 and the owner tags it.
+- CP3 (INT-3): curated messy and hostile instances with a loader and tests, the real-data rule, scan and sign-off record.
+- CP4 (INT-3): the Megaroast testbed: the owner confirms the four existing repositories, their visibility and that the holdout QA repository is untouched; the example instance is checked from a scratch clone.
+- CP5 (INT-7 thin slice): the owner creates the private App `manifold` in Megaroast, installs it on the test repositories and mints one short-lived installation token by hand; the scan learns key and token shapes. Placed after CP4 because the installation needs the confirmed repository list and the owner's answer on permission and visibility (Open question 16) before an App is installed on repositories derived from a company's code; nothing in CP4 needs the App (the default is Metadata read only, Open question 21). No server code, bundle file or dependency changes.
+- CP6 (release): the bundle version becomes 0.3.1 and the owner tags it. The thin slice changes no shipped file, so 0.3.1 carries only CP1.
 
 **Out of scope:**
 
 - The content store refactor (INT-4) and the GitHub-API store (INT-14): they change the server this phase protects, so they follow it.
-- INT-7 (the GitHub App) and the GitHub part of INT-6 (creating the instance repository through the App): the server makes no GitHub call today and no feature of this phase uses an App. The reasoning and the alternatives are in Open question 15; the owner may overrule.
+- The rest of INT-7 beyond the thin slice: browser or device-flow sign-in, the sign-in rule and lifetime, the either-rule for components, the protected mapping, revocation and re-check timing, the manifest flow, one App per company, Secrets (write), removing the App (S3), and any server code that uses the App or holds its key. Listed per seed in "Intent review"; owner to confirm (Open question 20).
+- The GitHub part of INT-6 (creating the instance repository through the App) and INT-14, INT-15, INT-16: no Phase 4 task needs Contents or Pull requests permission, so the App does not request them.
+- A helper that mints installation tokens (Task 35 is a manual owner act): deferred to the INT-7 phase that gives the server the key. Python's standard library cannot sign an RS256 token, and the server must not gain a runtime dependency; the later plan decides between a subprocess to `openssl` and a locked dependency.
 - The work inside the Megaroast repositories (extracting the GUI from `company_dns`, the holdout scenarios, the example instance's content): it belongs in those repositories under their own plans. This plan only needs the four repositories to exist.
 - The sized synthetic generator of INT-3 S1 (small, medium, large): deferred, owner to confirm (Open question 17). Its tasks are in this file at commit `f939205` (old Tasks 23, 25 and 26).
 - INT-24 (review and answer in the UX): needs a UI; INT-27 stays plain text.
@@ -66,15 +88,15 @@ See Open question 15, "Decision recorded by the coordinator and planner on the o
 - Performance and load tests, a UI, language-model-generated content (INT-2 and INT-3 Out of scope).
 - Noticed, not done: `docs/process/BRANCH_RULES.md` records `RepositoryRole` 5 and `require_extra_approval_for_unattributed_changes` as unverified; Task 12 adds only what Task 1 reads.
 
-**Needs from other repositories:** The four Megaroast repositories (CP3, Tasks 29 to 32) must exist before Task 33. They are created by the owner in the external organization, not by this plan's code changes.
+**Needs from other repositories:** The four Megaroast repositories already exist (owner's statement); CP4 (Tasks 29 to 31) confirms them before Task 34 installs the App on them, and the owner's `manifold` App creation in the Megaroast organization (Task 33) before Task 35.
 
-**Provides to other repositories:** Repositories that install the bundle receive the new template, process and agent text and the extended `/phase-status`, as release 0.3.1. Megaroast becomes the first test organization that INT-7 names in its "Affected users and systems", so a later INT-7 plan starts with an organization that exists.
+**Provides to other repositories:** Repositories that install the bundle receive the new template, process and agent text and the extended `/phase-status`, as release 0.3.1. Megaroast gets the first `manifold` App, so a later INT-7 plan starts with an organization and an App that exist.
 
 **Constraints:**
 INT-27: a human keeps the final say (instructions tell, never do; the coordinator never approves, moves out of draft, merges, ticks or fills a human field); instructions are in the pull request itself, not a link; ready still means reviewed (no ready-check line dropped or loosened); approval follows `AGENTS.md` "Review process" (solo is not made to look like a team); facts are not duplicated (point to `REVIEW_CYCLE.md` "Where each fact is recorded"); shipped text stays generic (`M. Kusanagi` is a neutral placeholder); both flavors from one source, deterministic build, standard library only for any script; concise, numbered, plain words, no bare internal IDs; no outward action without the owner (editing a live pull request, the ruleset, the workflow); no unverified claim about GitHub.
 INT-2: no network and no real git remote in tests, finishing in a laptop-tolerable time; recorded responses contain no real data (the fictional example instance only); a change to a recording is a visible, reviewed decision, never automatic; only the entry module imports the web framework, enforced by a test; no flaky tests; tests run on the Python versions the server supports.
 INT-3: nothing real enters a public repository without the owner's written permission and a checked scrub (until then only synthetic data); deterministic, same seed gives the same instance byte for byte (applies if the generator is kept); small enough to commit, or generated on demand when large; covers dotted and similar slugs, a page with no frontmatter, duplicates, stale pages, very long pages, non-English text and text aimed at an AI; no personal data, not even fake data that looks like a real person's.
-INT-7 (applies to the interim route and to any later App): least privilege; private first; no long-lived secret in the instance repository, the private key outside it; short-lived tokens only; the name `manifold` available or a fallback chosen; what an App cannot do is verified before any plan relies on it; one App per company, created by the company. This plan creates no App and writes no key, token or secret anywhere.
+INT-7 (applies to the thin slice): least privilege, each permission listed with the feature that needs it, none without a feature; private first, not published to the marketplace and not installable by others; no long-lived secret in the instance repository, the private key kept outside it and read from the environment or a secret file; short-lived tokens only, nothing caches them past expiry; the name `manifold` available to the owner (here the owner's statement, confirmed at creation) or a fallback chosen before anything is built; what an App cannot do is verified before any plan relies on it; the App's private key stays with its owner and agents never hold it; GitHub.com only. Owner's rule for this plan: the owner creates the App, installs it and handles the key and every token; no agent reads, prints, holds or stores either, and neither is ever written to a committed file, chat or a log.
 
 ## Concerns flagged
 
@@ -84,19 +106,19 @@ INT-7 (applies to the interim route and to any later App): least privilege; priv
 4. **A slug in a plan's Approved by line must still count as blank** for `coder` and `test-coder` and for `/phase-status` (it already treats a `<...>` value as blank). Tasks 8 and 11 make that explicit; if it is missed, a slug would read as an approval.
 5. **The conformance suite and CI.** Whether it runs offline against a locally started server, and what runtime it needs, is unread (unverified: confirm with the MCP project documentation, Task 14). Making it a required check is a ruleset change, the owner's act.
 6. **The server tests do not block a merge today.** The required checks are only `test (3.10)` and `test (3.12)` from `ci.yml` (the bundle tests); the `server.yml` jobs are not required (`docs/process/BRANCH_RULES.md`). INT-2 S2 says a conformance failure "blocks the merge", and the contract tests of CP2 would not block one either. Making them required is the owner's act on GitHub, out of scope here (Open question 19).
-7. **Real data in the Megaroast repositories.** They derive from the owner's company repository. INT-3 forbids real content in a public repository without the owner's written permission and a checked scrub. Whether the Megaroast repositories are public, and whether the company permits the derivation at all, is not stated anywhere I read (Open question 16). Until the owner answers, nothing from those repositories is committed here, no test reads them, and Tasks 29 to 33 do not start.
-8. **The holdout QA repository.** `AGENTS.md` "Held-out scenarios": builders do not read, copy or ask for the quality side's scenarios. Task 31 therefore creates repository 3 empty and no builder agent session in this repository clones or reads it.
-9. **INT-7 not pulled in** (Open question 15): the owner's idea to accelerate it is respected as a decision the owner can overrule; the cost of overruling is stated there.
+7. **Real data in the Megaroast repositories.** They derive from the owner's company repository. INT-3 forbids real content in a public repository without the owner's written permission and a checked scrub. Whether the Megaroast repositories are public, and whether the company permits the derivation at all, is not stated anywhere I read (Open question 16). The repositories already exist; nothing from them is committed here and no test reads them. Until the owner answers, Task 28 rows are left unfilled, and Tasks 31 and 34 do not start.
+8. **The holdout QA repository.** `AGENTS.md` "Held-out scenarios": builders do not read, copy or ask for the quality side's scenarios. Task 30 therefore has the owner confirm it is untouched by builders, and no builder agent session in this repository clones or reads it. The App (Task 34) is not installed on it, so no token from this phase can reach it.
+9. **INT-7 is a thin slice** (Open question 15, overruled by the owner). Risks: (a) creating an App in the Megaroast organization needs the owner to be an organization owner or an app manager (GitHub's registration documentation, read Nov 14, 2026); the owner states they own the organization, not yet observed. (b) The private key is the one secret of the phase; it is generated by GitHub at creation, downloaded by the owner, and kept outside every repository. If it is exposed, the owner revokes it in the App's settings and generates a new one (unverified: confirm with GitHub's documentation, Task 32). (c) The name `manifold` is unique across GitHub (documentation): availability rests only on the owner's statement and is confirmed or refused at creation (Task 33); if refused, the owner picks a fallback and the plan's text is amended. (d) An App no Phase 4 feature consumes strains INT-7's "every permission has a feature": the slice requests Metadata read only, and the feature that uses it is Task 35's verification and Task 34's check of the installed repository list (Open question 21 on Contents read). (e) Deferred seeds are listed in "Intent review" and are not silently dropped.
 
 ## Prerequisites
 
 - [x] Phase 3 merged (`4516792`); release 0.3.0 (`4f8b448`); `bundles/base/VERSION` reads `0.3.0`.
 - [x] Project commands known: `AGENTS.md` "Project commands" (read; `pytest` here means the server tests command).
 - [ ] The `.venv` exists (`python3 -m venv .venv`, then the install line in `AGENTS.md`; none exists in this worktree).
-- [ ] The owner answered the Open questions still empty: 3 and 6 before CP1; 10 before Task 20 (CP2); 12, 16, 17 and 18 before CP3.
+- [ ] The owner answered the Open questions still empty: 3 and 6 before CP1; 10 before Task 20 (CP2); 12, 17 and 18 before CP3; 16 and 21 before CP4 and CP5; 20 before CP5.
 - [ ] For Task 1: the owner's go-ahead to read GitHub's documentation and the repository's settings with `gh` (GET only).
 - [ ] For Task 22 only: the owner's go-ahead to edit `.github/workflows/server.yml`.
-- [ ] For Tasks 28 to 33 (outward actions in the Megaroast organization, using the owner's own GitHub login): the owner's go-ahead for each task. No agent reads, prints or stores a token; `gh auth token` is not run; no key or token is written to the repository or to chat.
+- [ ] For Tasks 29 to 31 and 33 to 35 (owner acts in the Megaroast organization, with the owner's own GitHub login): the owner's go-ahead for each task. No agent reads, prints or stores a token or the App's private key; `gh auth token` is not run; no key or token is written to the repository or to chat. The owner keeps the key outside every repository, in a secret file whose path is held in the environment variable `MANIFOLD_APP_KEY_FILE` (name only; chosen here, used by no code).
 - [ ] CP1 is its own pull request and is merged before CP2 starts (Open question 1).
 
 ## File inventory
@@ -116,8 +138,9 @@ INT-7 (applies to the interim route and to any later App): least privilege; priv
 | `server/tests/test_write_failures.py`, `server/tests/test_http_errors.py` | CREATE | INT-2 S3 and the HTTP layer |
 | `.github/workflows/server.yml` | MODIFY | optional advisory conformance job (Task 22) |
 | `server/tests/datasets/` (`curated/`, `loader.py`, `scan.py`, `README.md`, `SIGNOFFS.md`, `test_datasets.py`) | CREATE | INT-3 (no generator: Open question 17) |
-| `bundles/base/VERSION`, `.manifold/manifest.json` | MODIFY | release 0.3.1 (Tasks 34, 35), as in `4f8b448` |
-| Megaroast repositories 1 to 4 (outside this repository) | CREATE by the owner | INT-3 testbed; nothing from them is committed here |
+| `server/tests/datasets/scan.py`, `README.md`, `test_datasets.py` | MODIFY | private-key and token shapes, App facts without secrets (Tasks 36, 37) |
+| `bundles/base/VERSION`, `.manifold/manifest.json` | MODIFY | release 0.3.1 (Tasks 38, 39), as in `4f8b448` |
+| Megaroast repositories 1 to 4 and the `manifold` App (outside this repository) | exist / CREATE by the owner | INT-3 testbed and INT-7 slice; nothing from them, no key and no token is committed here |
 
 ## Tasks
 
@@ -239,7 +262,7 @@ INT-7 (applies to the interim route and to any later App): least privilege; priv
 **Files:** `bundles/base/scripts/phase_status.py`, `bundles/base/commands/phase-status.md`, `bundles/base/commands/phase-status.prompt.md`, `bundles/base/tests/test_phase_status.py`
 **Action:** MODIFY
 **Change:** Add `SLUG_RE = re.compile(r"<Insert [^<>]*>")` and a function `slugs(lines, label)` that returns, for each match on a line, the field name taken from the text before the first colon on that line with asterisks removed (for example `Approved by`, `Confirmed by`, `Human confirmation`, `Intent accepted by`). In `report`, add a section "Unreplaced slugs" over the plan and test plan, listing `file:line field`; add each to `reasons` so the level reads below mergeable. Add an optional `--pr-body <file>` (parsed like `--root` in `main`) that scans a saved copy of the description the same way and prints the same list; with the option absent the output states that the pull request description was not read. Standard library only, read-only, sorted output. Update `argument-hint` in both command files to `<phase number> [--pr-body <file>]`. Add tests: a plan with a slug reports it and level below mergeable; a plan with the slug replaced lists none; `--pr-body` with two slugs lists both by field name; output is identical on two runs.
-**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` passes (counts reported); `.venv/bin/python bundles/base/scripts/phase_status.py 4` run on this plan lists no unreplaced slug (the three "Intent accepted by" lines now hold the owner's recorded value, and the plan's own **Approved by** line is blank, not a slug), and run on a copy of the plan in the scratchpad where one "Intent accepted by" line holds the slug it lists exactly that line; it is read-only (`git status --short` unchanged).
+**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` passes (counts reported); `.venv/bin/python bundles/base/scripts/phase_status.py 4` run on this plan lists no unreplaced slug (the four "Intent accepted by" lines now hold the owner's recorded value, and the plan's own **Approved by** line is blank, not a slug), and run on a copy of the plan in the scratchpad where one "Intent accepted by" line holds the slug it lists exactly that line; it is read-only (`git status --short` unchanged).
 **Todo:** [ ]
 
 ---
@@ -360,9 +383,9 @@ INT-7 (applies to the interim route and to any later App): least privilege; priv
 
 **Verification:** `cd server && ../.venv/bin/python -m pytest -q` passes (counts reported, with the number of xfail cases named); `.venv/bin/python -m pytest tests/live -q` and `.venv/bin/python tools/vendor_web.py --check` unchanged; the owner changes one field name in one tool locally and sees exactly that tool's test fail naming the field (not committed).
 
-### CP3 — Test data sets and the Megaroast testbed (INT-3)
+### CP3 — Curated test data sets (INT-3)
 
-INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open question 17). S2 (hostile text) is Tasks 23, 24, 25 and 27. S3 (a real source is scrubbed before use) is Tasks 26, 28 and 33, and now applies to the Megaroast repositories.
+INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open question 17). S2 (hostile text) is Tasks 23, 24, 25 and 27. S3 (a real source is scrubbed before use) is Tasks 26, 28 and 31, and applies to the Megaroast repositories.
 
 ### Task 23 — Create the curated messy and hostile instances
 **Source:** INT-3 S2, Constraints (awkward cases, no personal data)
@@ -414,79 +437,132 @@ INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open 
 
 ---
 
+**Verification:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q` passes (counts reported); `cd server && ../.venv/bin/python -m pytest -q` passes; `git diff --stat` for the checkpoint lists only `server/tests/datasets/`.
+
+### CP4 — The Megaroast testbed (INT-3)
+
+The four repositories already exist (owner's statement, Nov 14, 2026). The tasks confirm and record; nothing is created, and no repository name is written here until Open question 18 is answered (rows and notes use the role names: fork, standalone GUI, holdout QA, example instance).
+
 ### Task 28 — Record the owner's decisions on permission and visibility
 **Source:** INT-3 Constraints (written permission, checked scrub); Concerns 7
 **Files:** `server/tests/datasets/SIGNOFFS.md`
 **Action:** MODIFY
 **Who:** the owner writes the rows; the coder only prepares the empty table (Task 26) and an **Instructions** line above it.
-**Change:** Add one row per Megaroast repository that derives from the company repository (repositories 1 and 2, and 4 if its content derives from it): source, owner, permission date, the repository's visibility (private or public), and "nothing committed here". The owner writes the name and date; the coder does not fill any cell. If the owner answers Open question 16 "no permission", Tasks 29 to 33 are marked `[~]` and stop.
+**Change:** Add one row per Megaroast repository that derives from the company repository (the fork, the standalone GUI, and the example instance if its content derives from it): source (by role), owner, permission date, the repository's visibility (private or public), and "nothing committed here". The owner writes the name and date; the coder does not fill any cell. If the owner answers Open question 16 "no permission", Tasks 31 and 34 to 37 are marked `[~]` and stop.
 **Acceptance:** each row is filled by the owner; `git diff` shows no content from any Megaroast repository, only the table rows.
 **Todo:** [ ]
 
 ---
 
-### Task 29 — Create Megaroast repository 1, the fork of the company's `company_dns`
-**Source:** INT-3 owner answer (repository 1)
-**Files:** none in this repository
-**Action:** none (outward action in the Megaroast organization)
-**Who:** the owner, using their own GitHub login (the coder does not run it).
-**Change:** The owner forks the source repository into the Megaroast organization, private if Open question 16 says so, for example `gh repo fork <owner>/company_dns --org Megaroast` (flag `--org` verified in `gh repo fork --help`, gh 2.86.0), or by the GitHub page. No token or key is passed to, printed by or stored by an agent.
-**Acceptance:** the owner confirms in chat the repository's URL and visibility; `gh repo view Megaroast/<name> --json visibility` (read-only, run by the owner) shows the visibility chosen in Task 28 (`visibility` is listed among the `--json` fields in `gh repo view --json`).
+### Task 29 — Confirm the three working Megaroast repositories exist
+**Source:** INT-3 owner answer (the fork, the standalone GUI, the example instance)
+**Files:** none in this repository; the note goes here (counts and non-sensitive facts only)
+**Action:** none (owner check)
+**Who:** the owner, with their own GitHub login; the coder does not run it.
+**Change:** The owner confirms in chat that the fork of `company_dns`, the standalone GUI repository and the example manifold instance exist in the Megaroast organization, and reads each one's visibility with `gh repo view <Megaroast>/<name> --json visibility` (read-only; `visibility` is a listed `--json` field, gh 2.86.0). The note records: three repositories exist, and the visibility of each by role. No URL is needed in the note while Open question 18 is open.
+**Acceptance:** the note says "3 of 3 exist" with each visibility, and the visibility matches the Task 28 rows; `git diff` shows no Megaroast content.
 **Todo:** [ ]
 
 ---
 
-### Task 30 — Create Megaroast repository 2, the standalone GUI
-**Source:** INT-3 owner answer (repository 2)
-**Files:** none in this repository
-**Action:** none (outward action in the Megaroast organization)
-**Who:** the owner.
-**Change:** The owner creates an empty repository for the GUI, private if Open question 16 says so, for example `gh repo create Megaroast/<name> --private` (flag verified in `gh repo create --help`). Pulling the GUI out of `company_dns` is work inside that repository under its own plan and is out of scope here; this task needs only that the repository exists with a README.
-**Acceptance:** the owner confirms the URL and visibility.
-**Todo:** [ ]
-
----
-
-### Task 31 — Create Megaroast repository 3, the holdout QA repository
-**Source:** INT-3 owner answer (repository 3); `AGENTS.md` "Held-out scenarios"
-**Files:** none in this repository
-**Action:** none (outward action in the Megaroast organization)
+### Task 30 — Confirm the holdout QA repository exists and is untouched by builders
+**Source:** INT-3 owner answer (holdout QA repository); `AGENTS.md` "Held-out scenarios"
+**Files:** none in this repository; the note goes here
+**Action:** none (owner check)
 **Who:** the owner. Builder agents never read, clone or ask for its content.
-**Change:** The owner creates an empty private repository (`gh repo create Megaroast/<name> --private`). Which repositories the scenarios in it test, and who writes them, is the quality side's decision and is not planned here. No file of this repository is read by any session working on this plan.
-**Acceptance:** the owner confirms the URL; it is private. The coder's report states that it did not read it.
+**Change:** The owner confirms the holdout QA repository exists, is private, and that no builder session (this repository's agents) has been given access to it. The App is not installed on it (Task 34). Which repositories its scenarios test, and who writes them, is the quality side's decision and is not planned here.
+**Acceptance:** the note records "exists, private, not read by builders"; the coder's report states that it did not read it.
 **Todo:** [ ]
 
 ---
 
-### Task 32 — Create Megaroast repository 4, the example manifold instance
-**Source:** INT-3 owner answer (repository 4)
-**Files:** none in this repository
-**Action:** none (outward action in the Megaroast organization)
-**Who:** the owner.
-**Change:** The owner makes a local instance from the example or the starter with the documented route (`./manifold init`, `docs/quickstart.md`; read both before running it, since neither was run for this plan), and creates the private repository from it, for example `gh repo create Megaroast/<name> --private --source=<instance folder> --push` (flags `--source` and `--push` verified in `gh repo create --help`). The instance registers repositories 1 and 2 as components. The creation through the App is INT-6's GitHub part and is not used.
-**Acceptance:** the owner confirms the URL; a clone of it has `manifold.yaml` listing two components (Task 33 checks it).
-**Todo:** [ ]
-
----
-
-### Task 33 — Check the example instance from a scratch clone
+### Task 31 — Check the example instance from a scratch clone
 **Source:** INT-3 S3; INT-2 constraint (tests are offline, so this is a manual check, not a test)
 **Files:** none changed; the note goes here (no repository content in it)
 **Action:** none (manual check)
-**Who:** the owner runs the clone, or the coder after the owner's explicit go-ahead; the clone goes to the scratchpad, outside this repository, and uses the owner's existing login (`gh repo clone Megaroast/<name> <scratch folder>`; no token is read or printed).
+**Who:** the owner runs the clone, or the coder after the owner's explicit go-ahead; the clone goes to the scratchpad, outside this repository, and uses the owner's existing login (`gh repo clone <Megaroast>/<name> <scratch folder>`, form verified in `gh repo clone --help`; no token is read or printed). The App is not used here.
 **Change:** Start the server against the clone as `docs/quickstart.md` describes (read it first; the exact start command is not recorded here), then call `wiki_health` and `wiki_inventory_tool`. Run `scan.py` (Task 26) with `MANIFOLD_SCAN_TERMS` pointing at the owner's private list over the clone, to learn what a scrub would still have to remove; the findings are counted in the note and never quoted. Do not copy any file from the clone into this repository.
-**Acceptance:** the note records the commands, that health reports healthy, the two components listed and the count of scan findings per kind; `git status --short` in this repository is unchanged.
+**Acceptance:** the note records the commands, that health reports healthy, the number of components `wiki_inventory_tool` lists (the owner expects two) and the count of scan findings per kind; `git status --short` in this repository is unchanged.
 **Todo:** [ ]
 
 ---
 
-**Verification:** `cd server && ../.venv/bin/python -m pytest -q` passes with counts; `python3 bundles/base/tools/build.py --check` prints `lint ok` and `.venv/bin/python -m pytest bundles/base/tests -q` still passes (no bundle change in this checkpoint); `git diff --stat` for the checkpoint lists only `server/tests/datasets/`; the owner confirms the four repositories exist with the visibility recorded in `SIGNOFFS.md`.
+**Verification:** `git diff --stat` for the checkpoint lists only `server/tests/datasets/SIGNOFFS.md`; the owner confirms in chat that the three working repositories and the holdout QA repository exist with the visibility recorded in `SIGNOFFS.md`; `git status --short` is otherwise unchanged.
 
-### CP4 — Release 0.3.1 (INT-27 owner answer)
+### CP5 — The GitHub App thin slice (INT-7)
 
-Placed last because the owner said to release after the work is done. Only CP1 changes shipped files, so the owner may instead take it right after CP1 merges.
+Every task that creates the App, installs it or touches its key or a token is the owner's act. The key lives outside every repository in the file named by `MANIFOLD_APP_KEY_FILE` (a variable name only; nothing reads it). No agent holds the key or a token.
 
-### Task 34 — Bump the bundle version to 0.3.1
+### Task 32 — Read what GitHub says about creating an App and minting a token
+**Source:** INT-7 constraints "What an App cannot do ... verified before any plan relies on it", "Every permission has a feature"
+**Files:** none changed; the note goes here
+**Action:** none (read)
+**Change:** Read GitHub's documentation and record each fact with its source, or "unverified: confirm with <source>". Read already (Nov 14, 2026): (a) an organization owner, or a person the organization lets manage all its apps, registers an App under Organization settings, Developer settings, GitHub Apps, New GitHub App; the name must be unique across GitHub, not longer than 34 characters; "Where can this GitHub App be installed?" offers "Only on this account" (private) or "Any account"; each repository permission is Read-only, Read & write or No access (registering a GitHub App). (b) An installation access token is requested with `POST /app/installations/INSTALLATION_ID/access_tokens`, authenticated with a JWT as a Bearer token; it expires after one hour; the request can narrow it to listed repositories (at most 500) and to chosen permissions, never beyond the App's (generating an installation access token). Still to read: the JWT's claims and signing algorithm (the page refers to a separate guide; unverified: confirm with GitHub's guide on generating a JWT for a GitHub App); that Metadata read is always granted to an App and what it allows; whether the installation endpoint `GET /installation/repositories` needs only Metadata; how a lost private key is revoked and replaced; whether a private App can be transferred to another organization later.
+**Acceptance:** the note lists each fact above with its source or "unverified"; the permission list in Task 33 is justified by it.
+**Todo:** [ ]
+
+---
+
+### Task 33 — The owner creates the private App `manifold` in Megaroast
+**Source:** INT-7 S1; constraints least privilege, private first, the name, no long-lived secrets in a repository
+**Files:** none in this repository
+**Action:** none (outward action in the Megaroast organization)
+**Who:** the owner, by the settings page of the Megaroast organization (path in Task 32). The coder and every agent do not do this, and do not see the key.
+**Change:** The owner, following these steps: (1) New GitHub App; name `manifold`. GitHub refuses the name if it is taken (documentation: unique across GitHub); the owner states it is available, and records the outcome. If refused, the owner chooses a fallback name and says so in chat before anything else is built. (2) Installability: "Only on this account" (private). (3) No webhook (uncheck Active), no callback URL, no user authorization, no device flow (none is used by this slice). (4) Permissions, only these: **Metadata: Read-only**, needed by Task 34 (checking the installed repository list and visibility) and Task 35 (the verification call that lists the repositories the token can see). No other permission, in particular no Contents, Pull requests, Issues, Administration or Secrets: no Phase 4 task needs them (Open question 21). (5) Create the App, generate one private key, and save the file outside every repository (the path in `MANIFOLD_APP_KEY_FILE`). The key is never pasted into chat, a log, a pull request or any file in a repository.
+**Acceptance:** the owner confirms in chat (a) the App exists and is private, (b) the settings page's permission list shows Metadata read-only and nothing else, (c) the name is `manifold` or the chosen fallback, (d) the key file is outside every repository. No key, App secret or token appears in chat.
+**Todo:** [ ]
+
+---
+
+### Task 34 — The owner installs the App on the Megaroast test repositories
+**Source:** INT-7 S1 ("installed only on the chosen repository")
+**Files:** none in this repository
+**Action:** none (outward action in the Megaroast organization)
+**Who:** the owner.
+**Change:** The owner installs the App on the Megaroast organization with "Only select repositories", choosing the fork, the standalone GUI and the example instance, and not the holdout QA repository (Concerns 8). No organization-owner approval step is expected because the owner owns the organization; if one appears, the owner records it.
+**Acceptance:** the owner confirms the installation's repository count is 3 and the holdout QA repository is not among them; the note records the count and "permissions: Metadata read-only". No names or IDs in the note while Open question 18 is open.
+**Todo:** [ ]
+
+---
+
+### Task 35 — The owner mints one short-lived installation token and uses it once
+**Source:** INT-7 S2 (token expiry); constraint "short-lived tokens only"
+**Files:** none in this repository
+**Action:** none (owner act; no helper script is written in this phase)
+**Who:** the owner, on their own machine. No agent runs, reads or sees it.
+**Change:** Using the key file named by `MANIFOLD_APP_KEY_FILE`, the owner signs a JWT as GitHub's guide describes (Task 32 reads it; how to sign it with the tools on the owner's machine is unverified), exchanges it at `POST /app/installations/INSTALLATION_ID/access_tokens` (documented, Task 32) asking for `permissions` limited to Metadata read, then makes one request with the token that lists the repositories the installation can see, and discards the token. The token is never written to a file, chat or log. After one hour the owner repeats the one request and observes the refusal (the documented expiry).
+**Acceptance:** the owner confirms in chat: the exchange succeeded, the listing shows 3 repositories, and the same token is refused after one hour (HTTP status only, no token). No script is added to the repository.
+**Todo:** [ ]
+
+---
+
+### Task 36 — Teach the scan to flag private keys and installation tokens
+**Source:** INT-7 S2 Must never; constraint "No long-lived secrets in the instance repository"
+**Files:** `server/tests/datasets/scan.py`, `server/tests/datasets/test_datasets.py`
+**Action:** MODIFY
+**Change:** In `scan.py` add to the token-shape patterns of Task 26: a PEM private-key header line (`-----BEGIN` followed by any words and `PRIVATE KEY-----`), and the GitHub token prefixes `ghs_`, `ghp_`, `gho_` and `github_pat_` followed by at least 20 word characters (the prefixes are unverified: confirm with GitHub's documentation on token formats before relying on them). Add `test_scan_flags_a_private_key_header_and_github_token_shapes` that feeds `scan` a temporary file holding a fake PEM header and fake prefixed strings built in the test by string concatenation (so no real or whole-looking secret is committed), and checks `curated/` stays clean.
+**Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q -k scan` passes (counts reported); failing first, counts recorded.
+**Todo:** [ ]
+
+---
+
+### Task 37 — Record the App facts, without any secret, in the datasets README
+**Source:** INT-7 constraints (permission listed with its feature; private; key outside); INT-3 "Megaroast testbed" section
+**Files:** `server/tests/datasets/README.md`
+**Action:** MODIFY
+**Change:** In the "Megaroast testbed" section add a subsection "GitHub App `manifold` (Megaroast)": the App is private; its only permission is Metadata (read), with the feature that needs it (checking which repositories an installation sees); it is installed on three of the four repositories, never the holdout QA repository; installation tokens last one hour (documentation, Task 32); the private key is kept by the owner outside every repository and no agent or test reads it; and the list of INT-7 seeds not covered by this phase (copied from "Intent review"). No App ID, installation ID, key, token or repository name.
+**Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q` passes; `.venv/bin/python server/tests/datasets/scan.py server/tests/datasets` prints no finding; `grep -n "PRIVATE KEY\|ghs_\|ghp_" server/tests/datasets/README.md` prints nothing.
+**Todo:** [ ]
+
+---
+
+**Verification:** `cd server && ../.venv/bin/python -m pytest -q` passes with counts; `python3 bundles/base/tools/build.py --check` prints `lint ok` and `.venv/bin/python -m pytest bundles/base/tests -q` still passes (no bundle or other server file changed); `git diff --stat` for the checkpoint lists only `server/tests/datasets/`; `git grep -n "BEGIN .*PRIVATE KEY"` over the whole repository matches only the detection pattern in `server/tests/datasets/scan.py` (no key file, no fake key in the test: it is built by concatenation); the owner's confirmations of Tasks 33 to 35 are in chat.
+
+### CP6 — Release 0.3.1 (INT-27 owner answer)
+
+Placed last because the owner said to release after the work is done. Only CP1 changes shipped files (the thin slice, CP4 and CP5 change no file under `bundles/base/`), so the owner may instead take the release right after CP1 merges.
+
+### Task 38 — Bump the bundle version to 0.3.1
 **Source:** INT-27 Open question "Which release carries this?" (owner: "call the release V0.3.1"); commit `4f8b448` (how 0.3.0 was bumped)
 **Files:** `bundles/base/VERSION`
 **Action:** MODIFY
@@ -496,7 +572,7 @@ Placed last because the owner said to release after the work is done. Only CP1 c
 
 ---
 
-### Task 35 — Refresh this repository's own install to 0.3.1
+### Task 39 — Refresh this repository's own install to 0.3.1
 **Source:** commit `4f8b448` (second commit)
 **Files:** `.manifold/manifest.json` (generated; plus any other file `install.py --status` reports)
 **Action:** MODIFY
@@ -506,12 +582,12 @@ Placed last because the owner said to release after the work is done. Only CP1 c
 
 ---
 
-### Task 36 — Merge and tag v0.3.1
+### Task 40 — Merge and tag v0.3.1
 **Source:** `.github/workflows/release.yml` (trigger: a pushed tag `v*`)
 **Files:** none
 **Action:** none (outward action)
 **Who:** the owner merges the pull request and creates the tag; the coordinator and coder do not tag and do not push a tag. The tag ruleset `protect-release-tags` exists and its rules are unverified (`docs/process/BRANCH_RULES.md`).
-**Change:** After the pull request with Tasks 34 and 35 is merged, the owner creates the tag `v0.3.1` on the merge commit and pushes it. The workflow then lints, tests, builds the ZIP and creates the release.
+**Change:** After the pull request with Tasks 38 and 39 is merged, the owner creates the tag `v0.3.1` on the merge commit and pushes it. The workflow then lints, tests, builds the ZIP and creates the release.
 **Acceptance:** the owner confirms the `release` workflow run for `v0.3.1` succeeded and the release lists `manifold-base-*.zip` and `SHA256SUMS` (names as in `release.yml`).
 **Todo:** [ ]
 
@@ -520,7 +596,7 @@ Placed last because the owner said to release after the work is done. Only CP1 c
 **Verification:** `git tag` lists `v0.3.1` (run by the owner); `cat bundles/base/VERSION` on the tagged commit prints `0.3.1`.
 
 ## Completion checklist
-- [ ] All tasks marked [x] by the coder (Tasks 28 to 32 and 36 by the owner's confirmation; Task 33 by the owner's go-ahead)
+- [ ] All tasks marked [x] by the coder (Tasks 28 to 30, 33 to 35 and 40 by the owner's confirmation; Tasks 31 by the owner's go-ahead; Task 32 is a recorded read)
 - [ ] `python3 bundles/base/tools/build.py --check` prints `lint ok`
 - [ ] `.venv/bin/python -m pytest bundles/base/tests -q` and `cd server && ../.venv/bin/python -m pytest -q` pass clean (no regressions; xfail cases named)
 - [ ] No [~] blocked items outstanding
@@ -530,7 +606,7 @@ Placed last because the owner said to release after the work is done. Only CP1 c
 
 ## Open questions
 
-Each has an `Answer:` line for the owner. Where the owner already answered in an intent file, the line quotes it and names the file. Still empty: 3, 6, 10, 12, 16, 17, 18, 19. Decided on delegation, owner may overrule: 7, 8, 9, 15.
+Each has an `Answer:` line for the owner. Where the owner already answered in an intent file, the line quotes it and names the file. Still empty: 3, 6, 10, 12, 16, 17, 18, 19, 20, 21 (ten). Decided on delegation, owner may overrule: 7, 8, 9. Overruled by the owner: 15.
 
 1. **Split INT-27 from the server work?** What: do INT-27 (bundle text, CP1) and INT-2/INT-3 (server tests, CP2 and CP3) go in one phase, one pull request, or separately? Why: INT-27 is your current pain and must not wait on, or be held by, a large server review (the review loop allows three runs); the two have different release surfaces. Consequence: one pull request means one long review and a bigger risk of a late finding blocking the small fix; two pull requests cost one more cycle. Recommendation: keep one plan so the intents are reviewed once, but deliver CP1 as its own pull request first and merge it before CP2 starts; if you prefer, CP2 and CP3 move unchanged to `PHASE_5_PLAN.md`. Default: that recommendation.
    Answer: Keep one plan (Michael Hay, 2026-11-13, entered by the coordinator at the owner's instruction in chat: "Keep one plan").
@@ -558,20 +634,25 @@ Each has an `Answer:` line for the owner. Where the owner already answered in an
 12. **Where does the list of terms to scan for live, and may real data ever be fetched (INT-3)?** What: the scan for real names and hosts needs a list, and a list of real names cannot be committed to a public repository. Recommendation: pattern checks in the repository (emails, non-test hosts, token shapes) plus a private list in a file outside the repository, named by `MANIFOLD_SCAN_TERMS`; "fetched" large data sets are not used. Consequence if not: the scan is weak, or it leaks the terms. Default: that recommendation.
     Answer:
 13. **Is any real data on offer (INT-3)?** What: will the new company or other products offer real data, and under what terms. Why: the scrub procedure is only written, not used, until someone offers. Consequence: none now; this phase commits synthetic data only. Recommendation and default: no real data in this phase; the rule and scan ship so the first offer has a procedure.
-    Answer: Yes, in a form the question did not foresee (owner, `intent/INT-3-...md`: "We can use the Megaroast organization to provide a testbed for external repos."). The rule and scan are therefore used in this phase (Tasks 26, 28, 33). Whether the company permits the derived repositories and whether any of them is public is Open question 16.
+    Answer: Yes, in a form the question did not foresee (owner, `intent/INT-3-...md`: "We can use the Megaroast organization to provide a testbed for external repos."). The rule and scan are therefore used in this phase (Tasks 26, 28, 31). Whether the company permits the derived repositories and whether any of them is public is Open question 16.
 14. **Which release carries this?** What: CP1 changes shipped bundle text and so needs a version decision; CP2 and CP3 change no shipped file. Recommendation: you choose the number after CP1 merges (release is out of scope here). Default: no release task in this plan.
-    Answer: Release as v0.3.1 after the work is done (owner, `intent/INT-27-...md`: "after we're done with the work we call the release V0.3.1 to signify we're patching the bundle"). CP4 (Tasks 34 to 36) does this; the owner tags.
-15. **Decision recorded by the coordinator and planner on the owner's delegation: is the GitHub App (INT-7) pulled into this phase?** The owner left the call to the coordinator and the planner. Read: INT-7, INT-6 (GitHub part), INT-1, INT-14, INT-15, INT-16, and the server source.
+    Answer: Release as v0.3.1 after the work is done (owner, `intent/INT-27-...md`: "after we're done with the work we call the release V0.3.1 to signify we're patching the bundle"). CP6 (Tasks 38 to 40) does this; the owner tags.
+15. **Is the GitHub App (INT-7) pulled into this phase? Decided: option (b), a thin slice.** The record below is the earlier decision of the coordinator and planner on the owner's delegation, which the owner overruled on Nov 14, 2026 (see the Answer line). The owner left the call to the coordinator and the planner. Read: INT-7, INT-6 (GitHub part), INT-1, INT-14, INT-15, INT-16, and the server source.
     **Facts.** (1) The server makes no GitHub call: `server/tests/test_offline_clean.py` forbids an HTTP client library in the server, and `server/manifold_cli/init_cmd.py` says "No GitHub, no outside request". Git runs as a local subprocess only (`server/wiki_backend/git.py`). (2) The features that would use an App are drafts or unplanned: INT-14 (draft, needs "the App or a personal access token"), INT-15, INT-16, INT-6's GitHub part ("comes after INT-7"). (3) INT-7's own rules: "Every permission has a feature", S1 "Must never: Request a permission that no feature uses", "What an App cannot do ... is verified before any plan relies on it", "One App per company, created by the company", and its open questions (which organization owns it, manifest flow or by hand, organization-owner approval, one App or two) are marked "resolve in planning" and "needs a spike". (4) INT-14's constraint already accepts a personal access token "for a quick start", never stored in the instance repository.
     **Options.** (a) All of INT-7 in this phase: eight scenario seeds, sign-in and device flow, either-rule, revocation; it needs the spike, the INT-1 roles and server code that does not exist, and delays CP2 and CP3, whose purpose is a safety net before server change. Rejected. (b) A thin slice: create the App in Megaroast with only Metadata (read) and install it on the example instance repository; no sign-in, no device flow. It would cover INT-7 S1 (create and install, permissions listed), S3 (remove it, by hand), the "private first" and "name" constraints, and open questions 1, 2 and 6 by spike. It would leave S2 (the server acting as the App: no server code uses it), S4 to S8, the either-rule, the sign-in rule, the revocation promise and the Secrets question. Cost: about six more owner-gated tasks (a spike read, name check, create, install, uninstall test, record) and an App no feature uses, which breaks INT-7's own "every permission has a feature" and "verified before any plan relies on it" for the permissions beyond Metadata. (c) Keep INT-7 out, and give the Megaroast testbed existing means: git and `gh` under the owner's own login, no token read or stored by any agent (Tasks 29 to 33).
-    **Decision: (c).** The testbed needs only to create four repositories and clone one; the owner's login does that today (`gh auth status` on this machine shows a keyring login for the owner's account; `gh repo fork --org`, `gh repo create --private --source --push` and `gh repo clone` exist in gh 2.86.0). Nothing in this phase would consume an App. Megaroast stays valuable to INT-7: it is the "first test organization" INT-7 names, so a later INT-7 plan, which should start with its spike, finds it ready. If the owner wants (b), the plan gains a CP5 of about six tasks and Tasks 29 to 33 are unchanged.
+    **Earlier decision (overruled): (c).** The testbed needs only to create four repositories and clone one; the owner's login does that today (`gh auth status` on this machine shows a keyring login for the owner's account; `gh repo fork --org`, `gh repo create --private --source --push` and `gh repo clone` exist in gh 2.86.0). Nothing in this phase would consume an App. Megaroast stays valuable to INT-7: it is the "first test organization" INT-7 names, so a later INT-7 plan, which should start with its spike, finds it ready. If the owner wants (b), the plan gains a checkpoint of about six tasks (it did: CP5, Tasks 32 to 37).
     **Unverified, to confirm in INT-7's own spike and not relied on here:** that the name `manifold` is free as a GitHub App name (unverified: confirm on GitHub's App creation page, an owner act); what an App cannot do (approve its own pull requests, create repositories, which permission creating a repository needs: unverified: confirm with GitHub's documentation on App permissions); whether an organization owner must approve the permissions for Megaroast (unverified: confirm with GitHub's documentation on installing an App in an organization).
-    Answer (owner, to overrule or confirm):
-16. **Real data in the Megaroast repositories.** What: (a) does the company that owns `company_dns` permit a fork and a GUI derived from it in the Megaroast organization, in writing; (b) will each of the four repositories be private; (c) may anything from them ever be copied into this public repository (default: no, nothing). Why: INT-3 forbids real content in a public repository without written permission and a checked scrub; the repositories derive from a company's code. Consequence: without an answer, Tasks 28 to 33 do not start and the rest of the phase goes on. Recommendation: private for all four; permission written in `SIGNOFFS.md` (Task 28); nothing copied here. Default: that.
+    **Why the earlier decision was overruled.** The owner weighed the Megaroast repositories already existing against the cost of an App no server code uses, and chose to avoid throwing the work away. The owner also stated that the name `manifold` is available as a private App name because the owner owns the Megaroast organization. The slice, its seed mapping and its deferrals are in "Intent review" and CP5; the risks are Concerns 9.
+    Answer (Michael Hay, 2026-11-14, entered by the coordinator at the owner's instruction in chat): "Pull in a thin slice of INT-7 because the Megaroast repo already exists and I don't want throw away work. As to the point of the private github app manifold name being available or not in a private app well it is. I own the org." The decision is option (b), the thin slice. Whether the name is free is confirmed at creation (Task 33); the plan states only the owner's words.
+16. **Real data in the Megaroast repositories.** What: (a) does the company that owns `company_dns` permit a fork and a GUI derived from it in the Megaroast organization, in writing; (b) will each of the four repositories be private; (c) may anything from them ever be copied into this public repository (default: no, nothing). Why: INT-3 forbids real content in a public repository without written permission and a checked scrub; the repositories derive from a company's code. Consequence: without an answer, the Task 28 rows stay empty, Tasks 31 and 34 do not start, and the rest of the phase goes on. (The owner has said the four repositories already exist; that does not answer (a) to (c).) Recommendation: private for all four; permission written in `SIGNOFFS.md` (Task 28); nothing copied here. Default: that.
     Answer:
 17. **The sized synthetic generator (INT-3 S1: small, medium, large, same seed gives the same tree).** What: defer it, since the owner chose to start with Megaroast, or keep it as before. Why: S1 is an accepted seed and is not dropped silently; the curated messy and hostile sets (S2) stay either way. Consequence: deferring leaves no large instance for a later performance or store test (INT-4); keeping it adds about three tasks (the old Tasks 23, 25 and 26 in this file at commit `f939205`). Recommendation and default: defer, and add it when INT-4 needs a size.
     Answer:
 18. **Names.** What: the exact names of the four Megaroast repositories, and whether the committed `README.md` of Task 26 may name them (default: it names the organization and the four roles, not the repository names). Why: the source repository belongs to a company. Consequence: Task 26 writes roles only until you answer.
     Answer:
 19. **Should the server tests become a required check?** What: add `server tests (3.11)` and `server tests (3.12)` of `server.yml` to the ruleset's required checks (a ruleset change, your act on GitHub). Why: today a failing server test does not block a merge (Concerns 6), so CP2's contract tests would be advisory in effect. Consequence: not required, a broken tool can merge; required, a flaky test blocks every pull request. Recommendation: yes, after CP2 has passed on several pull requests. Default: no change in this phase.
+    Answer:
+20. **Are the INT-7 deferrals right?** What: this phase covers INT-7 S1 and the first half of S2 (Task 35) only. Deferred to a later phase: the server acting as the App (rest of S2), removing the App (S3), sign-in from the command line (S4), either-rule (S5), repository the App cannot see (S6), revocation timing (S7), the Claude Desktop note (S8), the browser or device-flow sign-in, sign-in lifetime, the manifest flow, one App per company, Secrets (write), and a token-minting helper (needs RS256 signing, which Python's standard library lacks, and the server must not gain a dependency). Why: INT-7 says nothing is dropped silently. Consequence: confirmed, a later INT-7 plan takes them; if you want S3 (uninstall and re-install the App) now, add one owner task to CP5. Recommendation and default: the deferrals as listed.
+    Answer:
+21. **Does any Phase 4 task need more than Metadata (read)?** What: Task 31 clones with your own login, so no. Contents (read) would let a narrowed token clone the example instance in Task 31, and would be the only added permission. Why: INT-7 requires each permission to have a feature; a clone by token is a feature only if you want the testbed to exercise tokens. Consequence: yes, Task 33 adds Contents read-only and Task 31 gains an optional token route; no, Metadata only. Pull requests and Contents write stay out either way. Recommendation and default: no, Metadata only.
     Answer:
