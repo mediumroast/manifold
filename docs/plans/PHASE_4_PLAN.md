@@ -923,7 +923,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** Add the test: the Approve review step in the template and in `REVIEW_CYCLE.md` holds either an `https://docs.github.com/` link or the word "unverified"; none of "bypass", "own pull request", "self-approv" or "cannot approve" appears in either shipped file. Edit no existing test.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -k approve_review_step` shows 1 passed (1 failed before Task 53; record both).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): failing-first: the test was copied with `Edit` into the detached worktree at `a68f92e` (before Task 53) and `<repo>/.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -p no:cacheprovider -k approve_review_step` there -> **1 failed, 369 deselected**. After Task 53, in this checkout, same `-k` -> **1 passed, 369 deselected**. Commit: with Task 53.
 
 ---
 

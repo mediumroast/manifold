@@ -2399,6 +2399,19 @@ def test_pr_template_names_the_approve_review_and_claims_nothing_about_self_appr
         assert forbidden not in lowered, forbidden
 
 
+def test_approve_review_step_is_linked_or_marked_unverified():
+    """Phase 4 CP7 (review F8, INT-27 S5): the Approve review step cites GitHub's documentation or says it is unverified; no bypass or self-approval claim."""
+    (step,) = [ln for ln in _pr_template().splitlines() if ln.startswith("4. GitHub's Approve review")]
+    (row,) = [ln for ln in _bundle_text("process", "REVIEW_CYCLE.md").splitlines() if ln.startswith("| GitHub's Approve review |")]
+    for place in (step, row):
+        assert "Review changes" in place or "Approve" in place
+        assert "https://docs.github.com/" in place or "unverified" in place, place
+    for name in (("templates", "PULL_REQUEST_TEMPLATE.md"), ("process", "REVIEW_CYCLE.md")):
+        lowered = _bundle_text(*name).lower()
+        for forbidden in ("bypass", "own pull request", "self-approv", "cannot approve"):
+            assert forbidden not in lowered, (name, forbidden)
+
+
 def test_pr_template_is_generic():
     """Phase 4 CP1 (INT-27): shipped text names no person and no repository."""
     t = _pr_template()

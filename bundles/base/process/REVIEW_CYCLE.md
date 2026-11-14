@@ -47,7 +47,7 @@ Each kind of fact has one home. Every other document links here and never copies
 | The CI confirmation | the **Confirmed by** line and the tick of the CI line in the pull request, never a commit | a human |
 | Approval of a plan | its **Approved by** line | a human |
 | Approval of the pull request | the checkbox in the pull request | a human |
-| GitHub's Approve review | a separate act in GitHub's "Review changes" control on the pull request, not a row or a tick of the description | a human |
+| GitHub's Approve review | a separate act in GitHub's "Review changes" control on the pull request (steps: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request), not a row or a tick of the description | a human |
 
 ## Human fields and slugs
 
