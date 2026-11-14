@@ -44,14 +44,14 @@ Each kind of fact has one home. Every other document links here and never copies
 |---|---|---|
 | What was found | `docs/plans/REVIEW_PLAN_<N>.md` | only the `reviewer` |
 | What was decided about a finding | the decision on each finding that is not repaired (deferred or rejected, with the reason), in a comment or checklist in the pull request that links the finding; the amendment's table of findings not repaired is the planner's proposal, not a second home; the amendment still carries the repair tasks | a human decides; the `coordinator` may record the decision |
-| The CI confirmation | a tick in the pull request, never a commit | a human |
+| The CI confirmation | the **Confirmed by** line and the tick of the CI line in the pull request, never a commit | a human |
 | Approval of a plan | its **Approved by** line | a human |
 | Approval of the pull request | the checkbox in the pull request | a human |
-| GitHub's Approve review | a separate act in GitHub's "Review changes" control on the pull request, not a row or a tick of the description | a human |
+| GitHub's Approve review | a separate act in GitHub's "Review changes" control on the pull request (steps: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request), not a row or a tick of the description | a human |
 
 ## Human fields and slugs
 
-Every place where a human writes a name and a date (an **Approved by** line, an **Amendment approved by** line, the CI confirmation, the **Human confirmation** line of the pull request, an intent's `accepted_by`) starts as one slug of one shape: `<Insert <role> on <date label>, ex. <Name> on <Mon-DD-YYYY>>`. Written out, for example: `<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>`. The detection pattern is `<Insert [^<>]*>`.
+Every place where a human writes a name and a date (an **Approved by** line, an **Amendment approved by** line, the CI confirmation (its **Confirmed by** line; ticking the CI line is the second act, described in the template's CI **Instructions**), the **Human confirmation** line of the pull request, an intent's `accepted_by`) starts as one slug of one shape: `<Insert <role> on <date label>, ex. <Name> on <Mon-DD-YYYY>>`. Written out, for example: `<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>`. The detection pattern is `<Insert [^<>]*>`.
 
 1. The human replaces the whole slug, brackets included, with their own name and the date.
 2. An agent never replaces a slug, writes a name or date in a human field, or ticks a box for a human.
@@ -63,7 +63,7 @@ Before a pull request is called ready, the `coordinator` writes, in the pull req
 
 1. A review of the final commit exists: the latest revision of `docs/plans/REVIEW_PLAN_<N>.md` names the commit at the head of the branch.
 2. Each finding has a decision recorded in the pull request (the reviewer's file keeps it `open`): repaired, deferred or rejected.
-3. CI of that exact commit has been read by the `coordinator` and ticked by a human in the pull request (the tick is in the pull request, never a commit). Every commit gets its own read and tick, including a commit that changes only text: the light path saves review effort, not the CI check. A run for an older commit is not the result.
+3. CI of that exact commit has been read by the `coordinator` and ticked by a human, with the **Confirmed by** line holding a name and date and no slug, in the pull request (the tick is in the pull request, never a commit). Every commit gets its own read and tick, including a commit that changes only text: the light path saves review effort, not the CI check. A run for an older commit is not the result.
 4. Approval follows the `Review process` section of `AGENTS.md` (the repository type and, for a team, the second-approver rule written there). No other approval rule is invented. GitHub's Approve review is a separate act from the description's ticks, and nothing written in the description satisfies it.
 
 Then a human decides. The `coordinator` does not move a pull request out of draft and does not merge.

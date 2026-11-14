@@ -48,8 +48,8 @@ The coordinator writes the evidence below and leaves the slug on the last line f
 
 **Instructions:**
 1. Open each link in the numbered runs above and check that the run finished successfully.
-2. If every run is `completed` with the conclusion `success`, write your name and the date on the **Confirmed by** line below, replacing the whole slug.
-3. If a run failed, is not `completed`, or is missing, do not write your name. Tell the coordinator.
+2. If every run is `completed` with the conclusion `success`, write your name and the date on the **Confirmed by** line below, replacing the whole slug, and then tick the box "CI of commit <full hash> is green" under "What remains for you". Both acts are yours: the line and the tick.
+3. If a run failed, is not `completed`, or is missing, do not write your name and do not tick. Tell the coordinator.
 
 **Confirmed by:** <Insert Name of confirmer on Date of confirmation, ex. M. Kusanagi on Jan-01-2027>
 
@@ -67,9 +67,9 @@ The coordinator writes the evidence below and leaves the slug on the last line f
 
 **Instructions:**
 1. Changed files (one line each): open the pull request's Files changed tab, read that file's diff, and look for what the line says to check. Tick the box only if you read it and accept it. If you do not accept it, leave it unticked and say why in a comment.
-2. CI line: follow the **Instructions** under "CI on the pushed commit". There is no second copy here.
+2. CI line: follow the **Instructions** under "CI on the pushed commit" (two acts: the line and the tick). There is no second copy here.
 3. Findings line: read the "Decisions for you" table below, then write "accept all" or name the exceptions.
-4. GitHub's Approve review: a separate act from every tick and row in this description, and nothing written here satisfies it. It is needed when the repository's rules require an approving review (see the `Review process` section of `AGENTS.md` and the branch rules). To give it, open the Files changed tab, click "Review changes", choose Approve and submit. If the control is missing or disabled for you, do not write a name or tick a box here instead; ask the owner how approval is met in this repository.
+4. GitHub's Approve review: a separate act from every tick and row in this description, and nothing written here satisfies it. It is needed when the repository's rules require an approving review (see the `Review process` section of `AGENTS.md` and the branch rules). To give it, open the Files changed tab, click "Review changes", choose Approve and submit (GitHub's steps: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request). If the control is missing or disabled for you, do not write a name or tick a box here instead; ask the owner how approval is met in this repository.
 
 - [ ] `<path>`: <what to check; ticking means you read the diff and accept it>
 - [ ] CI of commit <full hash> is green (read by the coordinator)
