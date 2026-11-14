@@ -13,7 +13,7 @@ Do not start executing a plan until it is approved. A plan is approved only when
 Executing a draft turns open questions into code that has to be unpicked, and the user loses the chance to correct the direction cheaply.
 
 ## Instead
-Read the plan's **Approved by** line first. If it is blank, ask: "Is this plan approved to execute?" and wait for a yes before you change anything, even when the user's request was "execute the plan". If the user wants changes, hand the plan back to the planner or amend it with their agreement.
+Read the plan's **Approved by** line first. If it is blank or still holds an `<Insert ...>` slug, ask: "Is this plan approved to execute?" and wait for a yes before you change anything, even when the user's request was "execute the plan". If the user wants changes, hand the plan back to the planner or amend it with their agreement.
 
 ## Enforce
 - review: the first coder action follows an explicit approval

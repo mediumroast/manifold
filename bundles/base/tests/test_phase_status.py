@@ -175,6 +175,120 @@ def test_a_clean_phase_reaches_only_the_level_the_files_support(tmp_path, capsys
     assert "REVIEW_PLAN_7.md not present" in out
 
 
+SLUG = "<Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>"
+EXAMPLE_PROSE = "**Change:** the slug `%s` is an example here, not a human field.\n" % SLUG
+
+
+def test_a_plan_with_a_slug_reports_it_and_is_below_mergeable(tmp_path, capsys):
+    """Phase 4 CP1 (INT-27 S6): an unreplaced slug on a human-field line is listed by field name."""
+    plan = ("**Approved by:** Pat on 2026-01-02\n\n" + EXAMPLE_PROSE +
+            "Intent accepted by: %s\n\n## Completion checklist\n\n- [x] done\n" % SLUG)
+    make_repo(tmp_path, plan=plan, test_plan=None, review=None)
+    code, out, _ = status(tmp_path, capsys)
+    assert code == 0
+    assert "Unreplaced slugs: 1" in out and "docs/plans/PHASE_7_PLAN.md:4 Intent accepted by" in out
+    assert "Level: below mergeable (1 unreplaced slug(s))" in out
+    assert "The pull request description was not read" in out  # no --pr-body given
+
+
+def test_a_slug_in_the_approved_by_line_is_blank_and_listed(tmp_path, capsys):
+    make_repo(tmp_path, plan="**Approved by:** %s\n" % SLUG, test_plan=None, review=None)
+    _, out, _ = status(tmp_path, capsys)
+    assert "Approved by: BLANK" in out and "PHASE_7_PLAN.md:1 Approved by" in out
+    make_repo_dir = tmp_path / "again"
+    make_repo_dir.mkdir()
+    make_repo(make_repo_dir, plan="**Approved by:** `%s`\n" % SLUG, test_plan=None, review=None)
+    _, out, _ = status(make_repo_dir, capsys)
+    assert "Approved by: BLANK" in out  # a slug inside a code span is still a slug
+
+
+def test_a_plan_with_the_slug_replaced_lists_none(tmp_path, capsys):
+    plan = "**Approved by:** Pat on 2026-01-02\n\n" + EXAMPLE_PROSE + "Intent accepted by: Pat on Jan-02-2026\n"
+    make_repo(tmp_path, plan=plan, test_plan=None, review=None)
+    code, out, _ = status(tmp_path, capsys)
+    assert code == 0 and "Unreplaced slugs: 0" in out and "Level: the files support mergeable" in out
+
+
+def test_pr_body_lists_each_slug_by_field_name(tmp_path, capsys):
+    make_repo(tmp_path, plan="**Approved by:** Pat on 2026-01-02\n", test_plan=None, review=None)
+    body = tmp_path / "pr.md"
+    body.write_text("# x\n**Confirmed by:** %s\n\n**Human confirmation:** %s\n<!-- **Confirmed by:** %s -->\n" % (SLUG, SLUG, SLUG),
+                    encoding="utf-8")
+    code = ps.main(["7", "--root", str(tmp_path), "--pr-body", str(body)])
+    out = capsys.readouterr().out
+    assert code == 0 and "Unreplaced slugs: 2" in out
+    assert "pr.md:2 Confirmed by" in out and "pr.md:4 Human confirmation" in out  # the commented one is hidden, not read
+    assert "was not read" not in out and "Level: below mergeable" in out
+    body.write_text("**Confirmed by:** Pat on Jan-02-2026\n**Human confirmation:** Pat on Jan-02-2026\n", encoding="utf-8")
+    ps.main(["7", "--root", str(tmp_path), "--pr-body", str(body)])
+    assert "Unreplaced slugs: 0" in capsys.readouterr().out
+
+
+def test_pr_body_output_is_identical_on_two_runs_and_a_missing_file_exits_2(tmp_path, capsys):
+    make_repo(tmp_path, plan="**Approved by:** Pat on 2026-01-02\n", test_plan=None, review=None)
+    body = tmp_path / "pr.md"
+    body.write_text("**Confirmed by:** %s\n" % SLUG, encoding="utf-8")
+    before = snapshot(tmp_path)
+    args = ["7", "--root", str(tmp_path), "--pr-body", str(body)]
+    ps.main(args)
+    first = capsys.readouterr()
+    ps.main(args)
+    assert first == capsys.readouterr()
+    assert snapshot(tmp_path) == before
+    assert ps.main(["7", "--root", str(tmp_path), "--pr-body", str(tmp_path / "none.md")]) == 2
+    assert "--pr-body file not found" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("line, label", [
+    ("**Confirmed by:** %s" % SLUG, "Confirmed by"),  # the forms that already worked
+    ("Confirmed by: %s" % SLUG, "Confirmed by"),
+    ("Approved by: `%s`" % SLUG, "Approved by"),
+    ('accepted_by: "%s"' % SLUG, "accepted_by"),
+    ("- **Confirmed by:** %s" % SLUG, "Confirmed by"),  # the four forms the review found missed
+    ("> **Confirmed by:** %s" % SLUG, "Confirmed by"),
+    ("| **Confirmed by** | %s |" % SLUG, "Confirmed by"),
+    ("**Confirmed by** %s" % SLUG, "Confirmed by"),
+    ("1. **Human confirmation:** %s" % SLUG, "Human confirmation"),
+])
+def test_slugs_are_found_behind_list_quote_and_table_markers(line, label):
+    """Phase 4 CP7 (review F5): a slug on a human-field line is reported whatever marker or delimiter the line has."""
+    assert ps.slugs(["x", line]) == [(2, label)]
+
+
+def test_pr_body_reports_every_slug(tmp_path, capsys):
+    """Phase 4 CP7 (review F5): the description is a generated page, so a slug on a line with no human label is reported too."""
+    make_repo(tmp_path, plan="**Approved by:** Pat on 2026-01-02\n", test_plan=None, review=None)
+    body = tmp_path / "pr.md"
+    body.write_text("# x\nPlease write your name here: %s\n- **Confirmed by:** %s\n" % (SLUG, SLUG), encoding="utf-8")
+    code = ps.main(["7", "--root", str(tmp_path), "--pr-body", str(body)])
+    out = capsys.readouterr().out
+    assert code == 0 and "Unreplaced slugs: 2" in out
+    assert "pr.md:2 (description)" in out and "pr.md:3 Confirmed by" in out
+
+
+def test_prose_slug_in_a_plan_is_still_not_reported(tmp_path, capsys):
+    """Phase 4 CP7 (review F5): the plan is prose with examples; only a human-field line counts there."""
+    plan = ("**Approved by:** Pat on 2026-01-02\n\n### Task 1 - x\n\n"
+            "**Change:** replace the line `Approved by: %s` with a name, as in `%s`.\n"
+            "- an example: **Change** %s\n**Todo:** [x]\n" % (SLUG, SLUG, SLUG))
+    make_repo(tmp_path, plan=plan, test_plan=None, review=None)
+    code, out, _ = status(tmp_path, capsys)
+    assert code == 0 and "Unreplaced slugs: 0" in out
+
+
+@pytest.mark.parametrize("name", ["phase-status.md", "phase-status.prompt.md"])
+def test_command_files_describe_pr_body_and_the_intent_limit(name):
+    """Phase 4 CP7 (review F7): description, argument-hint and body name --pr-body; intent files are said not to be read."""
+    text = (ROOT / "commands" / name).read_text(encoding="utf-8")
+    front, body = text.split("\n---\n", 1)
+    lines = {ln.split(":", 1)[0]: ln for ln in front.splitlines() if ":" in ln}
+    assert "--pr-body" in lines["description"] and "--pr-body" in lines["argument-hint"]
+    assert "--pr-body" in body
+    assert "does not read intent files" in body
+    if name.endswith(".prompt.md"):  # the Copilot file cannot be assumed to pass the option through ${input:phase}
+        assert "unverified" in body or "code.visualstudio.com" in body
+
+
 def test_missing_plan_exits_2_with_a_plain_message(tmp_path, capsys):
     make_repo(tmp_path, plan=None)
     code, out, err = status(tmp_path, capsys)
@@ -183,7 +297,7 @@ def test_missing_plan_exits_2_with_a_plain_message(tmp_path, capsys):
     assert "Traceback" not in err
 
 
-@pytest.mark.parametrize("argv", [[], ["x"], ["1", "2"], ["-3"], ["7", "--root"]])
+@pytest.mark.parametrize("argv", [[], ["x"], ["1", "2"], ["-3"], ["7", "--root"], ["7", "--pr-body"]])
 def test_bad_arguments_exit_2_without_a_traceback(capsys, argv):
     assert ps.main(argv) == 2
     captured = capsys.readouterr()
