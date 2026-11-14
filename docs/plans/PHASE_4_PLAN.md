@@ -860,7 +860,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** In `slugs`, before reading the field, strip a leading list marker (`-`, `*`, a number and `.`), quote marker (`>`) and table marker (`|`) and surrounding asterisks, and accept the label followed by a colon, by a `|` cell border or by a space (so `- **Confirmed by:** <slug>`, `> **Confirmed by:** <slug>`, `| **Confirmed by** | <slug> |` and `**Confirmed by** <slug>` are reported). Keep the human-field rule: a line whose label is not in `HUMAN_LABELS` is still not reported. Add a keyword argument `every=False`; when `--pr-body` input is read, call it with `every=True` and report every slug on any line (the description is a generated page; the field shown is the label if one is found, else `(description)`). Do not use `.replace(` (an existing test bans it in this script). Standard library only, read-only, sorted output.
 **Acceptance:** `.venv/bin/python bundles/base/scripts/phase_status.py 4 --pr-body docs/templates/PULL_REQUEST_TEMPLATE.md` still lists lines 54 and 105 (line numbers may shift after Tasks 42 and 53, so compare by label); `python3 bundles/base/tools/build.py --check` prints `lint ok`.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): `phase_status.py` gained `human_label` (skips a leading quote, table or list marker and the asterisks around the label; accepts a colon, a table border or a space after it; module-level `MARKER_RE` and `LABEL_RE`, built from `HUMAN_LABELS`) and `slugs(lines, every=False)`; `--pr-body` input calls `slugs(..., every=True)`, which reports a slug on any line under its label or `(description)`. Plan and test-plan files keep the label-only rule. No `.replace(` (`grep -c "\.replace(" bundles/base/scripts/phase_status.py` -> 0), standard library only, no write call, output still sorted. `.venv/bin/python bundles/base/scripts/phase_status.py 4 --pr-body bundles/base/templates/PULL_REQUEST_TEMPLATE.md` -> `Unreplaced slugs: 2`, `:54 Confirmed by`, `:105 Human confirmation` (the same two by label and line, also on the `docs/templates/` copy); `python3 bundles/base/tools/build.py --check` -> `lint ok`. Tests: see Task 50. Commit: with Task 50.
 
 ---
 
@@ -871,7 +873,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** MODIFY
 **Change:** The first test feeds the four forms from the review (list item, quote, table row, no colon) plus the three forms that already worked and expects each to be reported with its label; the second feeds a description with a slug on a line with no human label and expects it reported under `--pr-body`; the third feeds a plan whose task `Change` line quotes a slug as an example and expects none. Edit no existing test.
 **Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` shows all passed with the three new tests counted; the first two fail on the script before Task 49 (record the counts).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): the first test is parametrized over nine lines (the four forms the review found missed, one numbered-list form, and the four forms that already worked), so it counts as nine cases; the third has no failing-first requirement (it guards that the label-only rule for plans is kept). Failing-first, before Task 49, in this checkout: `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` -> **6 failed, 32 passed** (5 of the 9 cases of the first test: list item, quote, table row, no colon, numbered list; and `test_pr_body_reports_every_slug`; the 4 forms that already worked and the third test passed). After Task 49, same command -> **38 passed** (the 26 earlier tests of this file, the 9 cases, and the 2 other new tests; the existing tests are unedited).
 
 ---
 

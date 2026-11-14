@@ -30,6 +30,9 @@ SLUG_RE = re.compile(r"<Insert [^<>]*>")
 # The fields where a human writes a name and a date. A slug anywhere else (a worked example in prose) is not reported.
 HUMAN_LABELS = frozenset({"Approved by", "Amendment approved by", "Confirmed by", "Human confirmation",
                           "Intent accepted by", "accepted_by"})
+# A line's start: optional quote, table and list markers, then the label (asterisks around it allowed), then a colon, a table border or a space.
+MARKER_RE = re.compile(r"^[\s>|]*(?:(?:[-*]|[0-9]+\.)\s+)?[\s>|]*")
+LABEL_RE = re.compile(r"^\**\s*(%s)\**\s*(?::|\||\s|$)" % "|".join(re.escape(x) for x in sorted(HUMAN_LABELS, key=len, reverse=True)))
 
 
 def blank_comments(text: str) -> str:
@@ -46,21 +49,36 @@ def is_blank_approval(value: str) -> bool:
     return not value or (value.startswith("<") and value.endswith(">")) or bool(SLUG_RE.search(value))
 
 
-def slugs(lines):
-    """(line, field) for each unreplaced slug on a human-field line, in line order.
+def human_label(line: str):
+    """The human-field label a line starts with, or None.
 
-    The field is the text before the first colon, asterisks removed. A line whose field is not a human
-    field (for example a task's Change line that quotes a slug as an example) is not reported. A slug
+    A leading list marker (-, *, a number and a dot), quote marker (>) or table marker (|) and the asterisks
+    around the label are skipped. The label may be followed by a colon, a table border or a space.
+    """
+    m = LABEL_RE.match(line[MARKER_RE.match(line).end():])
+    return m.group(1) if m else None
+
+
+def slugs(lines, every=False):
+    """(line, field) for each unreplaced slug, in line order.
+
+    By default only a line that starts with a human-field label counts (see human_label); a line with any
+    other start (for example a task's Change line that quotes a slug as an example) is not reported. A slug
     inside a code span on a human-field line is reported (GitHub may hide a bare tag; the span is allowed).
+    With every=True (the pull request description, a generated page) a slug on any line is reported, under
+    its label if the line has one, else under "(description)".
     """
     rows = []
     for number, line in enumerate(lines, 1):
-        if ":" not in line:
+        found = SLUG_RE.findall(line)
+        if not found:
             continue
-        field = line.split(":", 1)[0].strip("* ")
-        if field not in HUMAN_LABELS:
-            continue
-        rows += [(number, field) for _ in SLUG_RE.findall(line)]
+        field = human_label(line)
+        if field is None:
+            if not every:
+                continue
+            field = "(description)"
+        rows += [(number, field) for _ in found]
     return rows
 
 
@@ -167,7 +185,7 @@ def report(number: int, root: Path, pr_body: Path | None = None):
     if pr_body is not None:
         if not pr_body.is_file():
             return [], "phase_status: --pr-body file not found: %s" % pr_body
-        found += [(str(pr_body), line, field) for line, field in slugs(read_lines(pr_body))]
+        found += [(str(pr_body), line, field) for line, field in slugs(read_lines(pr_body), every=True)]
     out.append("Unreplaced slugs: %d" % len(found))
     out += ["  %s:%d %s" % row for row in sorted(found)]
     if pr_body is None:

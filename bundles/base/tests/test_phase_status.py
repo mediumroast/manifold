@@ -239,6 +239,43 @@ def test_pr_body_output_is_identical_on_two_runs_and_a_missing_file_exits_2(tmp_
     assert "--pr-body file not found" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("line, label", [
+    ("**Confirmed by:** %s" % SLUG, "Confirmed by"),  # the forms that already worked
+    ("Confirmed by: %s" % SLUG, "Confirmed by"),
+    ("Approved by: `%s`" % SLUG, "Approved by"),
+    ('accepted_by: "%s"' % SLUG, "accepted_by"),
+    ("- **Confirmed by:** %s" % SLUG, "Confirmed by"),  # the four forms the review found missed
+    ("> **Confirmed by:** %s" % SLUG, "Confirmed by"),
+    ("| **Confirmed by** | %s |" % SLUG, "Confirmed by"),
+    ("**Confirmed by** %s" % SLUG, "Confirmed by"),
+    ("1. **Human confirmation:** %s" % SLUG, "Human confirmation"),
+])
+def test_slugs_are_found_behind_list_quote_and_table_markers(line, label):
+    """Phase 4 CP7 (review F5): a slug on a human-field line is reported whatever marker or delimiter the line has."""
+    assert ps.slugs(["x", line]) == [(2, label)]
+
+
+def test_pr_body_reports_every_slug(tmp_path, capsys):
+    """Phase 4 CP7 (review F5): the description is a generated page, so a slug on a line with no human label is reported too."""
+    make_repo(tmp_path, plan="**Approved by:** Pat on 2026-01-02\n", test_plan=None, review=None)
+    body = tmp_path / "pr.md"
+    body.write_text("# x\nPlease write your name here: %s\n- **Confirmed by:** %s\n" % (SLUG, SLUG), encoding="utf-8")
+    code = ps.main(["7", "--root", str(tmp_path), "--pr-body", str(body)])
+    out = capsys.readouterr().out
+    assert code == 0 and "Unreplaced slugs: 2" in out
+    assert "pr.md:2 (description)" in out and "pr.md:3 Confirmed by" in out
+
+
+def test_prose_slug_in_a_plan_is_still_not_reported(tmp_path, capsys):
+    """Phase 4 CP7 (review F5): the plan is prose with examples; only a human-field line counts there."""
+    plan = ("**Approved by:** Pat on 2026-01-02\n\n### Task 1 - x\n\n"
+            "**Change:** replace the line `Approved by: %s` with a name, as in `%s`.\n"
+            "- an example: **Change** %s\n**Todo:** [x]\n" % (SLUG, SLUG, SLUG))
+    make_repo(tmp_path, plan=plan, test_plan=None, review=None)
+    code, out, _ = status(tmp_path, capsys)
+    assert code == 0 and "Unreplaced slugs: 0" in out
+
+
 def test_missing_plan_exits_2_with_a_plain_message(tmp_path, capsys):
     make_repo(tmp_path, plan=None)
     code, out, err = status(tmp_path, capsys)
