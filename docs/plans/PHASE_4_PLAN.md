@@ -733,3 +733,216 @@ Each has an `Answer:` line for the owner. Where the owner already answered in an
     Answer: Yes the deferrals are right.
 21. **Does any Phase 4 task need more than Metadata (read)?** What: Task 31 clones with your own login, so no. Contents (read) would let a narrowed token clone the example instance in Task 31, and would be the only added permission. Why: INT-7 requires each permission to have a feature; a clone by token is a feature only if you want the testbed to exercise tokens. Consequence: yes, Task 33 adds Contents read-only and Task 31 gains an optional token route; no, Metadata only. Pull requests and Contents write stay out either way. Recommendation and default: no, Metadata only. Plan note: any permission beyond Metadata (read) is a plan amendment that needs the owner's amendment approval before Task 33 changes.
     Answer: Metadata only unless we run into a problem
+
+## Review amendment (round 1)
+
+**Source:** `docs/plans/REVIEW_PLAN_4.md`, revision 1 (reviewed commit `9895935`, CP1 only; four Important, five Nit)
+**Amendment approved by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Instructions:** read this amendment, then replace the whole slug above, brackets included, with your name and the date. The planner and every other agent leave it as it is; the coder will not run the repair checkpoint while it holds a slug.
+
+Owner decision applied (chat, 2026-11-14: "Repair all"): every finding is repaired, except where noted below. The completed CP1 tasks, their notes and acceptance lines are not changed; the failing-first run for F6 goes in Task 41's own note. Choices the owner may overrule are in the open questions.
+
+Files added to the inventory by this amendment (all MODIFY, source under `bundles/base/`; the installed copies are refreshed by Task 56 with `install.py`, never by hand): `bundles/base/agents/planner.agent.md`, `bundles/base/agents/reviewer.agent.md`, `bundles/base/HOWTO.md`, `bundles/base/templates/INTENT_TEMPLATE.md` (comment only), `bundles/base/commands/phase-status.md`, `bundles/base/commands/phase-status.prompt.md`. `bundles/base/agents/coordinator.agent.md`, `PULL_REQUEST_TEMPLATE.md`, `REVIEW_CYCLE.md`, `phase_status.py` and the two test files are already in the inventory. Shipped text stays generic (no owner name, no "Phase 4", no "INT-27").
+
+F3 is a coordinator action, not a coder task: the coordinator records the two refused `no-heredocs` commands of the coder (and the refused `cp`, once the owner says what it was) in `docs/agents/claude-desktop-failures.md`, by `docs/process/BREACH_PROCEDURE.md` ("How to record", step 1: the record is `docs/agents/<harness>-failures.md`) and from `docs/templates/AGENT_FAILURES_TEMPLATE.md` for the entry shape; both files exist, and `docs/agents/claude-desktop-failures.md` exists. The coder's "Rule exceptions" line is corrected in the pull request.
+
+### CP7 — Repairs from review round 1
+
+### Task 41 — Record a failing-first run of the five new phase-status tests
+
+**Source:** `REVIEW_PLAN_4.md F6`
+**Files:** none changed in the repository; the result goes in this task's note
+**Action:** none (run and record)
+**Change:** `git worktree add --detach <scratchpad>/old c6b059e`; in it, copy the five tests added in Task 11 from `bundles/base/tests/test_phase_status.py` as it is now (`git diff c6b059e..HEAD -- bundles/base/tests/test_phase_status.py` names them) into that worktree's copy with the `Edit` tool; run `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` there (use this checkout's `.venv/bin/python` by absolute path); record the counts; `git worktree remove --force <scratchpad>/old`. No shell redirect. If a step cannot be done, do not work around a guard refusal: name the step and why. Edit no test in this checkout.
+**Acceptance:** the note holds the command and a failed count for the five tests on the `c6b059e` script, or one sentence naming the step that could not be done and why; `git status --short` shows no change caused by this task.
+**Todo:** [ ]
+
+---
+
+### Task 42 — Say "tick the box and write the line" once, in the template's CI instructions
+
+**Source:** `REVIEW_PLAN_4.md F1`
+**Files:** `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` (the **Instructions** under "CI on the pushed commit", lines 49-52; remaining-steps instruction 2, line 70)
+**Action:** MODIFY
+**Change:** Recommended choice: keep both the tick and the `Confirmed by` line. In the CI **Instructions**, make step 2 read: if every run is `completed` with the conclusion `success`, write your name and the date on the **Confirmed by** line, replacing the whole slug, and then tick the box "CI of commit <full hash> is green" under "Rule exceptions"; step 3 keeps "do not write your name and do not tick" for a failed, unfinished or missing run. In remaining-steps instruction 2 keep the pointer to the CI **Instructions** ("There is no second copy here") and add "(two acts: the line and the tick)". Change no other line. Edit only the file under `bundles/base/`; the `docs/templates/` copy is refreshed in Task 56.
+**Acceptance:** `grep -n "Confirmed by" bundles/base/templates/PULL_REQUEST_TEMPLATE.md` shows the instruction naming both acts in one place; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
+**Todo:** [ ]
+
+---
+
+### Task 43 — Make the review cycle agree on the two acts
+
+**Source:** `REVIEW_PLAN_4.md F1`
+**Files:** `bundles/base/process/REVIEW_CYCLE.md` (single-home table row "The CI confirmation", line 47; the name-and-date list in "Human fields and slugs", line 54; ready-check line 3, line 66)
+**Action:** MODIFY
+**Change:** In the table row, replace "a tick in the pull request, never a commit" with "the **Confirmed by** line and the tick of the CI line in the pull request, never a commit". In "Human fields and slugs", keep the CI confirmation in the list and add one clause that the tick of the CI line is the second act, described in the template's CI **Instructions**. In ready-check line 3, change "ticked by a human" to "ticked by a human, with the **Confirmed by** line holding a name and date and no slug". Change nothing else.
+**Acceptance:** `grep -n "Confirmed by" bundles/base/process/REVIEW_CYCLE.md` shows the three places agreeing; `python3 bundles/base/tools/build.py --check` prints `lint ok`.
+**Todo:** [ ]
+
+---
+
+### Task 44 — Make the coordinator's CI text name both acts
+
+**Source:** `REVIEW_PLAN_4.md F1`
+**Files:** `bundles/base/agents/coordinator.agent.md` (lines 57-58, the numbered CI shape and the "for a human to tick" line)
+**Action:** MODIFY
+**Change:** Where the coordinator writes the CI shape, state that the human writes the **Confirmed by** line (replacing the whole slug) and then ticks the CI box, and that the coordinator does neither. Keep the sentence that the coordinator never replaces a slug, writes a name or date, ticks, or writes "approved".
+**Acceptance:** `grep -n "Confirmed by" bundles/base/agents/coordinator.agent.md` shows both acts; `python3 bundles/base/tools/build.py --check` prints `lint ok` (both flavors are built from this one source).
+**Todo:** [ ]
+
+---
+
+### Task 45 — Add a test for the two-acts wording
+
+**Source:** `REVIEW_PLAN_4.md F1`
+**Files:** `bundles/base/tests/test_bundle.py` (CREATE `test_ci_confirmation_is_the_line_and_the_tick_in_every_place`, beside `test_pr_template_has_visible_instructions_and_one_slug_shape`)
+**Action:** MODIFY
+**Change:** Add the test: the CI **Instructions** in `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` name the `Confirmed by` line and the tick in one step; remaining-steps instruction 2 points to them and names no second procedure; the `REVIEW_CYCLE.md` table row, the slug section and ready-check line 3, and the coordinator text each mention both the `Confirmed by` line and the tick; no one of them says the confirmation is "a tick" only. Edit no existing test.
+**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -k ci_confirmation_is_the_line_and_the_tick` shows 1 passed; the same run before Tasks 42 to 44 shows 1 failed (record both in the note).
+**Todo:** [ ]
+
+---
+
+### Task 46 — Word the planner, reviewer and coordinator lines to match the slug rule
+
+**Source:** `REVIEW_PLAN_4.md F2`
+**Files:** `bundles/base/agents/coordinator.agent.md` (line 36), `bundles/base/agents/planner.agent.md` (line 76), `bundles/base/agents/reviewer.agent.md` (line 82)
+**Action:** MODIFY
+**Change:** In each line, replace "blank" with the rule's own words: "blank or still holding a slug" (coordinator: the amendment's **Amendment approved by** is blank or holds a slug; planner: leaves **Amendment approved by** as the template has it, a slug, and never deletes or fills it; reviewer: "a blank Approved by, or one still holding a slug, is the right state of a new test plan"). Generic text only.
+**Acceptance:** `grep -nE "blank" bundles/base/agents/coordinator.agent.md bundles/base/agents/planner.agent.md bundles/base/agents/reviewer.agent.md` shows each remaining "blank" on an approval line followed by "or still holding a slug" (read each hit); `python3 bundles/base/tools/build.py --check` prints `lint ok`.
+**Todo:** [ ]
+
+---
+
+### Task 47 — Word the guide and the intent template comment to match
+
+**Source:** `REVIEW_PLAN_4.md F2`
+**Files:** `bundles/base/HOWTO.md` (lines 35-36), `bundles/base/templates/INTENT_TEMPLATE.md` (the comment at line 18)
+**Action:** MODIFY
+**Change:** In `HOWTO.md` step 3 write "if it is blank or still holds a slug, asks ..." and "Write your name and the date on **Approved by**: replace the whole slug." In the `INTENT_TEMPLATE.md` comment, say to replace the whole slug on `accepted_by` with the name and date; do not move or reword the frontmatter, and the opening `---` stays the first line.
+**Acceptance:** `grep -n "replace the whole slug" bundles/base/HOWTO.md bundles/base/templates/INTENT_TEMPLATE.md` prints both files; `head -1 bundles/base/templates/INTENT_TEMPLATE.md` prints `---`.
+**Todo:** [ ]
+
+---
+
+### Task 48 — Add a test for the "blank or slug" wording
+
+**Source:** `REVIEW_PLAN_4.md F2`
+**Files:** `bundles/base/tests/test_bundle.py` (CREATE `test_agent_and_guide_text_counts_a_slug_as_blank`, beside `test_blank_approval_text_counts_a_slug_as_blank`)
+**Action:** MODIFY
+**Change:** Add the test over `coordinator.agent.md`, `planner.agent.md`, `reviewer.agent.md` and `HOWTO.md` (and the Copilot and skills flavors where the build writes them): each approval-line sentence that says "blank" also says "slug"; `HOWTO.md` holds "replace the whole slug"; the intent template comment holds the same phrase. Edit no existing test.
+**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -k agent_and_guide_text_counts_a_slug` shows 1 passed (1 failed before Tasks 46 and 47; record both).
+**Todo:** [ ]
+
+---
+
+### Task 49 — Read slugs behind list, quote and table markers, and without a colon
+
+**Source:** `REVIEW_PLAN_4.md F5`
+**Files:** `bundles/base/scripts/phase_status.py` (`slugs`, lines 49-61)
+**Action:** MODIFY
+**Change:** In `slugs`, before reading the field, strip a leading list marker (`-`, `*`, a number and `.`), quote marker (`>`) and table marker (`|`) and surrounding asterisks, and accept the label followed by a colon, by a `|` cell border or by a space (so `- **Confirmed by:** <slug>`, `> **Confirmed by:** <slug>`, `| **Confirmed by** | <slug> |` and `**Confirmed by** <slug>` are reported). Keep the human-field rule: a line whose label is not in `HUMAN_LABELS` is still not reported. Add a keyword argument `every=False`; when `--pr-body` input is read, call it with `every=True` and report every slug on any line (the description is a generated page; the field shown is the label if one is found, else `(description)`). Do not use `.replace(` (an existing test bans it in this script). Standard library only, read-only, sorted output.
+**Acceptance:** `.venv/bin/python bundles/base/scripts/phase_status.py 4 --pr-body docs/templates/PULL_REQUEST_TEMPLATE.md` still lists lines 54 and 105 (line numbers may shift after Tasks 42 and 53, so compare by label); `python3 bundles/base/tools/build.py --check` prints `lint ok`.
+**Todo:** [ ]
+
+---
+
+### Task 50 — Add tests for the new slug forms
+
+**Source:** `REVIEW_PLAN_4.md F5`
+**Files:** `bundles/base/tests/test_phase_status.py` (CREATE `test_slugs_are_found_behind_list_quote_and_table_markers`, `test_pr_body_reports_every_slug`, `test_prose_slug_in_a_plan_is_still_not_reported`)
+**Action:** MODIFY
+**Change:** The first test feeds the four forms from the review (list item, quote, table row, no colon) plus the three forms that already worked and expects each to be reported with its label; the second feeds a description with a slug on a line with no human label and expects it reported under `--pr-body`; the third feeds a plan whose task `Change` line quotes a slug as an example and expects none. Edit no existing test.
+**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` shows all passed with the three new tests counted; the first two fail on the script before Task 49 (record the counts).
+**Todo:** [ ]
+
+---
+
+### Task 51 — Update the phase-status command text for `--pr-body` and the intent limit
+
+**Source:** `REVIEW_PLAN_4.md F7`, `REVIEW_PLAN_4.md F5` (intent files are not read)
+**Files:** `bundles/base/commands/phase-status.md` (`description`, line 2, and the body sentence), `bundles/base/commands/phase-status.prompt.md` (`description`, line 3, the body and the `Limit:` paragraph)
+**Action:** MODIFY
+**Change:** In both files change the `description` to "List what is still open in a phase (read-only). Usage /phase-status <phase number> [--pr-body <file>]" and the body sentence to say the script reads the plan, test plan and review files, and the pull request description when `--pr-body <file>` is given, and does not read intent files (an unreplaced `accepted_by` slug is found only by reading the intent). In the Copilot prompt, state whether `${input:phase}` can carry `4 --pr-body <file>`: read the VS Code prompt-file documentation (reference for `${input:...}`) and state what it says with its source; if it cannot be read, write "unverified: confirm with the VS Code prompt-file documentation" in the `Limit:` paragraph and do not claim it works. Keep `.claude/commands/phase-status.md` for Task 56 (refresh).
+**Acceptance:** `grep -n "pr-body" bundles/base/commands/phase-status.md bundles/base/commands/phase-status.prompt.md` shows it in `description`, `argument-hint` and the body of each file; the Copilot file holds either the documented sentence with its source or the word "unverified".
+**Todo:** [ ]
+
+---
+
+### Task 52 — Add a test for the command text
+
+**Source:** `REVIEW_PLAN_4.md F7`
+**Files:** `bundles/base/tests/test_phase_status.py` (CREATE `test_command_files_describe_pr_body_and_the_intent_limit`)
+**Action:** MODIFY
+**Change:** Add the test: both command files carry `--pr-body` in `description`, `argument-hint` and the body, and the sentence that intent files are not read; the Copilot file carries either a cited sentence or "unverified" about the input. Edit no existing test.
+**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q -k command_files_describe` shows 1 passed (1 failed before Task 51; record both).
+**Todo:** [ ]
+
+---
+
+### Task 53 — Cite or mark the Approve review click path
+
+**Source:** `REVIEW_PLAN_4.md F8`
+**Files:** `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` (remaining-steps instruction 4, line 72), `bundles/base/process/REVIEW_CYCLE.md` (line 50)
+**Action:** MODIFY
+**Change:** Read GitHub's documentation page on reviewing proposed changes in a pull request (the coder finds the page; record its URL and what it says about the Files changed tab, "Review changes" and the Approve choice in this task's note). If it confirms the click path, add the link after the sentence in the template and in `REVIEW_CYCLE.md`. If it cannot be read or does not say it, add "(unverified: confirm with GitHub's documentation)" after the click path in both places. Make no claim about whether an author can approve their own pull request (the existing test forbids "own pull request", "self-approv" and "cannot approve"). Name no repository, owner or bypass in this shipped text: the owner's bypass route stays in this repository's own pull request text and `docs/process/BRANCH_RULES.md` (not shipped, not changed here).
+**Acceptance:** `grep -n "Review changes" bundles/base/templates/PULL_REQUEST_TEMPLATE.md bundles/base/process/REVIEW_CYCLE.md` shows a link or the word "unverified" in both; `git diff bundles/base | grep -iE "bypass|Michael|mediumroast"` prints nothing.
+**Todo:** [ ]
+
+---
+
+### Task 54 — Add a test for the Approve review wording
+
+**Source:** `REVIEW_PLAN_4.md F8`
+**Files:** `bundles/base/tests/test_bundle.py` (CREATE `test_approve_review_step_is_linked_or_marked_unverified`)
+**Action:** MODIFY
+**Change:** Add the test: the Approve review step in the template and in `REVIEW_CYCLE.md` holds either an `https://docs.github.com/` link or the word "unverified"; none of "bypass", "own pull request", "self-approv" or "cannot approve" appears in either shipped file. Edit no existing test.
+**Acceptance:** `.venv/bin/python -m pytest bundles/base/tests/test_bundle.py -q -k approve_review_step` shows 1 passed (1 failed before Task 53; record both).
+**Todo:** [ ]
+
+---
+
+### Task 55 — Put the slug in a code span, only if the owner's preview shows it hidden
+
+**Source:** `REVIEW_PLAN_4.md F4`
+**Files:** `bundles/base/templates/PULL_REQUEST_TEMPLATE.md` (the two slug lines, 54 and 105), `bundles/base/tests/test_bundle.py` (`test_pr_template_has_visible_instructions_and_one_slug_shape`, pattern check only)
+**Action:** MODIFY
+**Gate (owner):** the owner pastes the template into a comment on any pull request or issue and reads the preview without posting it. Who: the owner only; no agent previews, posts or reads a comment for this. Run this task only if the preview shows the `<Insert ...>` text hidden or the line empty. If the slug is visible, mark this task `[~]` with the owner's result in the note and do nothing else.
+**Change:** Wrap each of the two slugs in a code span (backticks). Change the pattern check of the named test to accept the span (the detection regex in `phase_status.py` already finds a slug inside a code span, so no script change). Record the owner's preview result in this task's note. Same wording for the other slugs in the plan, test-plan and intent templates is not changed here: they are read as text in the repository, not in the rendered description.
+**Acceptance:** `.venv/bin/python bundles/base/scripts/phase_status.py 4 --pr-body bundles/base/templates/PULL_REQUEST_TEMPLATE.md` still lists both slugs; `.venv/bin/python -m pytest bundles/base/tests -q -k "pr_template"` passes.
+**Todo:** [ ]
+
+---
+
+### Task 56 — Refresh this repository's own install from the build
+
+**Source:** `REVIEW_PLAN_4.md F1, F2, F7, F8` (and F4 if Task 55 ran)
+**Files:** `docs/templates/PULL_REQUEST_TEMPLATE.md`, `docs/templates/INTENT_TEMPLATE.md`, `docs/process/REVIEW_CYCLE.md`, `.claude/agents/*` (coordinator, planner, reviewer), `.claude/commands/phase-status.md`, `.manifold/phase_status.py`, `.manifold/manifest.json`, and the HOWTO copy if installed
+**Action:** MODIFY (generated by `install.py`, never by hand)
+**Change:** Exactly as Task 13 did: `python3 bundles/base/tools/build.py --out <scratchpad>/dist`, unzip into a fresh scratchpad folder, read `install.py --help`, run `install.py --target . --format claude --profile build` as a dry run (expect UPDATE for only the files above, SKIP for the rest), then with `--apply` and no `--force`. If the guard refuses a write to an agent definition from this non-main worktree, STOP, report the refused path and that a human must grant a path exception (`.manifold/guard-allow.json`); do not work around it. Stage explicit paths only.
+**Acceptance:** `cmp bundles/base/templates/PULL_REQUEST_TEMPLATE.md docs/templates/PULL_REQUEST_TEMPLATE.md`, the same for `INTENT_TEMPLATE.md`, and `cmp bundles/base/process/REVIEW_CYCLE.md docs/process/REVIEW_CYCLE.md` print nothing; `cmp bundles/base/scripts/phase_status.py .manifold/phase_status.py` prints nothing; every installed file's sha256 equals its entry in `.manifold/manifest.json`; `install.py --status` from the unzipped bundle reports no MODIFIED file.
+**Todo:** [ ]
+
+---
+
+**Verification:** from the repository root, `python3 bundles/base/tools/build.py --check` prints `lint ok`; `.venv/bin/python -m pytest bundles/base/tests -q` passes (counts reported, new tests counted); `.venv/bin/python tools/vendor_web.py --check` prints "vendored files match a fresh build"; `.venv/bin/python bundles/base/scripts/phase_status.py 4 --pr-body docs/templates/PULL_REQUEST_TEMPLATE.md` lists the same two slugs by label; then the `reviewer` writes a second review revision (revision 2) of `REVIEW_PLAN_4.md` for the repair commits.
+
+Rule exceptions (Tasks 41 to 56): to be filled in by the coder.
+
+**Findings not repaired:**
+
+| Finding | End | Reason |
+|---|---|---|
+| `F3` | repaired outside this plan | a coordinator action (see above), not a coder task |
+| `F9` | rejected (no repair) | history is not rewritten; Task 13 out of order is recorded; only the owner's answer to Open question 6 is open |
+
+**Open questions:**
+
+1. **Keep both the `Confirmed by` line and the tick for the CI confirmation, or only one?** What: Tasks 42 to 45 make the person write the line and tick the box, said in one place. Why: the review found the text told the person to write the line, while the ready check needs a tick. Consequence: if you choose one, Tasks 42 to 45 change (drop the other act from the template, `REVIEW_CYCLE.md`, the coordinator text and the test) and the ready check moves to that single act. Recommendation: both (your own worked example in the intent has the line; the ready check needs a tick). Default: both.
+   Answer:
+2. **What was the refused `cp` the coder tried?** What: it is not in the guard log, so the coordinator cannot record it. Why: F3. Consequence: without your answer it is left out of the failures record and noted as unknown. Recommendation: say what it copied, or "unknown". Default: recorded as unknown.
+   Answer:
+3. **What does GitHub's comment preview show for the slug?** What: paste the template in a comment, read the preview, do not post, and report whether the `Confirmed by` slug is visible. Why: F4 (Task 55). Consequence: hidden means Task 55 runs; visible means it is marked `[~]`; no answer leaves F4 open and the release goes out with the risk. Recommendation: preview before release (about a minute). Default: Task 55 stays unrun and F4 stays open.
+   Answer:
+4. Open question 6 of the plan above (how `/phase-status` reads the description) still has an empty answer (F9). Nothing changes if you leave it; the default (option a) was built.
+
