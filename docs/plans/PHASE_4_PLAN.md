@@ -1,6 +1,6 @@
 # PHASE_4_PLAN.md
 
-**Approved by:**
+**Approved by:** Michael Hay on Nov 14, 2026
 **Source intent:** INT-27 `intent/INT-27-clear-human-instructions-in-the-pr.md`, INT-2 `intent/INT-2-test-hardening-and-contracts.md`, INT-3 `intent/INT-3-test-data-sets.md` (all three `status: accepted`, `accepted_by: Michael Hay on Nov 14, 2026`; see "Intent review"). INT-7 `intent/INT-7-github-app.md` (`status: accepted`, `accepted_by: Michael Hay 2026-11-01`) is pulled in as a thin slice only, by the owner's decision on Nov 14, 2026 (Open question 15, option (b)); see "Intent review".
 
 ## Objective
@@ -12,51 +12,55 @@ A person who has never read the process documents can finish every human step of
 The owner accepted the three intents on Nov 14, 2026 and wrote answers inline on each one. The plan is approved only by the owner's own name on **Approved by** above; no agent fills it.
 
 ### INT-27 Tell the human exactly what to do, and where to write, in the pull request
+
 **Asks:** Put visible, numbered **Instructions** next to every human step of the pull request (CI line, ready-check table, ticks, GitHub's Approve review), and one replaceable `<Insert ...>` slug in every place a human writes a name and date, so an unfilled field is found by a script. It never lets an agent fill a human's part.
 **Owner's answers (in the intent file):** one slug shape, an unreplaced slug counts as missing, the plan, test-plan and intent human lines are covered, instructions are visible text, they ship in the bundle for every repository, and the work is released as v0.3.1. The self-approval question is not answered (Open question 3).
 **Plan changes:** (1) Its scenario S6 asks `/phase-status` to list unreplaced slugs, but that script reads only files in the repository and the pull request description is not one; the plan adds an optional `--pr-body <file>` input (Open question 6). (2) Task 1 reads GitHub's documentation on self-approval first. (3) A `<...>` slug may be hidden by GitHub's Markdown rendering; Task 1 checks (unverified until then).
 Intent accepted by: Michael Hay on Nov 14, 2026 (recorded in the intent file's `accepted_by`)
 
 ### INT-2 Test hardening and contract tests for the server
+
 **Asks:** Pin what every MCP tool promises its callers as recorded request/response tests that change only by a reviewed edit, run the official MCP conformance checks, close gaps in write and error paths, and enforce by test that only the entry module imports the web framework.
 **Owner's answers (in the intent file):** all three questions (recording format and place, conformance required or advisory, coverage gate) are answered "survey the repository first; the implementation has moved on; planning must find how much work is needed; I believe some rules may exist". The survey was done for this plan; its findings and the decision per question are below.
 **Survey (read on 2026-11-14; 678 test functions in 60 files under `server/tests/`):**
 
-| Question | Found | Decision (owner may overrule) |
-|----------|-------|-------------------------------|
-| Recorded contracts | No recording, snapshot or golden file in `server/tests` (searched for those words). Every tool is exercised by behavior tests (`test_tool_policy.py` lists valid arguments for each of the 16 tools, `test_tool_authz.py`, `test_handoff_*.py`, `test_onboarding.py`, `test_example_acme.py`), but `wiki_export_helper_tool` and `wiki_list_helpers_tool` appear only in `test_tool_policy.py` (who may call them, not what they return). Reusable: `ToolWorld.call` in `server/tests/conftest.py`, the `acme` fixture in `test_example_acme.py`, the tool set equality in `test_tool_policy.py`. | The harness and recordings are needed (S1); the work stays, built on those three patterns (Open question 7). |
-| Import rule | Only `server/server.py` imports `fastmcp` or `starlette` (searched `server/`). No test enforces it; `test_offline_clean.py` has the AST scan to copy but covers only HTTP clients. | A small test is needed (S4), Task 15. |
-| Failed-write tests | Stale etag (`test_pickup_stale_etag_rejected`) and bad frontmatter (`test_write_validation.py`) are tested for refusal. No test injects a full disk or a git refusal, or checks that the tree, sidebar and log are unchanged afterwards. | Task 20 stays, narrowed to the missing cases. |
-| HTTP errors | Host, origin and 401, 403, 421 refusals are covered (`test_request_guard.py`, `test_auth*.py`, `test_docs_route_policy.py`); `/ingest` traversal returns 400 (`test_server_smoke.py`). Nothing for malformed JSON, an unknown tool, a missing or wrong-typed argument, `GET /mcp` or an oversized body. | Task 21 stays, only for those cases. |
-| Conformance suite | No conformance run anywhere. `server.yml` job `image` checks only an `initialize` call by `curl`. Not read yet: whether the official suite can run offline (unverified until Task 14). | Advisory, and only if Task 14 shows it runs offline (Open question 8). |
-| Coverage gate | No coverage tool or percentage anywhere: not in `server/requirements-dev.txt`, `.github/workflows/*`, `REVIEW.md`, `CONTRIBUTING.md`. The only coverage text is the template section "Coverage judgement" (a judgement of cases, not a number), and the rule `no-generated-artifacts-in-commits` (do not commit coverage data). The "thresholds" in `SATISFACTION_REPORT_TEMPLATE.md` belong to the quality side. | No percentage gate. The gates are "every registered tool has a recording" and the import rule (Open question 9). |
-| What blocks a merge today | Required checks are only `test (3.10)` and `test (3.12)` of `ci.yml`, the bundle tests (`docs/process/BRANCH_RULES.md`). The `server.yml` jobs are not required, so a failing server test does not block a merge. | Concerns 6 and Open question 19; the ruleset is the owner's act. |
+| Question                  | Found                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Decision (owner may overrule)                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Recorded contracts        | No recording, snapshot or golden file in `server/tests` (searched for those words). Every tool is exercised by behavior tests (`test_tool_policy.py` lists valid arguments for each of the 16 tools, `test_tool_authz.py`, `test_handoff_*.py`, `test_onboarding.py`, `test_example_acme.py`), but `wiki_export_helper_tool` and `wiki_list_helpers_tool` appear only in `test_tool_policy.py` (who may call them, not what they return). Reusable: `ToolWorld.call` in `server/tests/conftest.py`, the `acme` fixture in `test_example_acme.py`, the tool set equality in `test_tool_policy.py`. | The harness and recordings are needed (S1); the work stays, built on those three patterns (Open question 7).     |
+| Import rule               | Only `server/server.py` imports `fastmcp` or `starlette` (searched `server/`). No test enforces it; `test_offline_clean.py` has the AST scan to copy but covers only HTTP clients.                                                                                                                                                                                                                                                                                                                                                                                                                | A small test is needed (S4), Task 15.                                                                            |
+| Failed-write tests        | Stale etag (`test_pickup_stale_etag_rejected`) and bad frontmatter (`test_write_validation.py`) are tested for refusal. No test injects a full disk or a git refusal, or checks that the tree, sidebar and log are unchanged afterwards.                                                                                                                                                                                                                                                                                                                                                          | Task 20 stays, narrowed to the missing cases.                                                                    |
+| HTTP errors               | Host, origin and 401, 403, 421 refusals are covered (`test_request_guard.py`, `test_auth*.py`, `test_docs_route_policy.py`); `/ingest` traversal returns 400 (`test_server_smoke.py`). Nothing for malformed JSON, an unknown tool, a missing or wrong-typed argument, `GET /mcp` or an oversized body.                                                                                                                                                                                                                                                                                           | Task 21 stays, only for those cases.                                                                             |
+| Conformance suite         | No conformance run anywhere. `server.yml` job `image` checks only an `initialize` call by `curl`. Not read yet: whether the official suite can run offline (unverified until Task 14).                                                                                                                                                                                                                                                                                                                                                                                                            | Advisory, and only if Task 14 shows it runs offline (Open question 8).                                           |
+| Coverage gate             | No coverage tool or percentage anywhere: not in `server/requirements-dev.txt`, `.github/workflows/*`, `REVIEW.md`, `CONTRIBUTING.md`. The only coverage text is the template section "Coverage judgement" (a judgement of cases, not a number), and the rule `no-generated-artifacts-in-commits` (do not commit coverage data). The "thresholds" in `SATISFACTION_REPORT_TEMPLATE.md` belong to the quality side.                                                                                                                                                                                 | No percentage gate. The gates are "every registered tool has a recording" and the import rule (Open question 9). |
+| What blocks a merge today | Required checks are only `test (3.10)` and `test (3.12)` of `ci.yml`, the bundle tests (`docs/process/BRANCH_RULES.md`). The `server.yml` jobs are not required, so a failing server test does not block a merge.                                                                                                                                                                                                                                                                                                                                                                                 | Concerns 6 and Open question 19; the ruleset is the owner's act.                                                 |
 
 **Plan changes:** (1) Its scenario S3 ("a failed write leaves the instance clean", including "git refuses") conflicts with what the code documents today: `git_commit` is deliberately non-fatal and the file stays on disk after a refused commit (`server/wiki_backend/write.py`, `git.py`); also `write_page_of_kinds` creates the parent folder before the etag and frontmatter checks. The plan writes the tests, and any test that fails is reported as a defect, not fixed here (Concerns 1). (2) The conformance suite is not read yet (unverified); Task 14 reads it before any CI change. (3) "Python versions the server supports" means 3.11 and 3.12 (`server/requirements.txt`, `.github/workflows/server.yml`).
 Intent accepted by: Michael Hay on Nov 14, 2026 (recorded in the intent file's `accepted_by`)
 
 ### INT-3 Test data sets, real and synthetic
+
 **Asks:** A seeded generator for instances of any size, a small set of committed curated instances for awkward and hostile content, and a written rule for when real data may be used and how it is scrubbed.
 **Owner's answers (in the intent file):** use the external test organization Megaroast as the testbed, with four repositories: (1) a fork of the company's `company_dns`, (2) a new repository that pulls the GUI out of `company_dns` as a standalone, (3) a holdout QA repository, (4) an example manifold repository; consider a simple GitHub App; sizes and committed-versus-generated are "start with Megaroast, see above".
 **Plan changes:** (1) The sized generator is deferred (Open question 17); the curated messy and hostile instances stay because S2 and the awkward-case constraint do not depend on size. (2) The Megaroast repositories derive from the owner's company repository, so the real-data rule is now used, not only written: nothing from them enters this repository, and the permission and visibility are the owner's decisions (Open question 16). (3) The only forbidden-terms scan today is for the bundle (`FORBIDDEN_TERMS` in `bundles/base/tools/build.py`); the data sets need their own scan, and a list of real names cannot itself be committed in a public repository (Open question 12). (4) The four Megaroast repositories already exist (owner's statement, Nov 14, 2026), so the creation tasks became confirmation tasks (CP4). (5) The GitHub App is a thin slice (CP5, below).
 Intent accepted by: Michael Hay on Nov 14, 2026 (recorded in the intent file's `accepted_by`)
 
 ### INT-7 A GitHub App named manifold (thin slice only)
+
 **Asks (whole intent):** a private GitHub App `manifold` with only needed permissions, short-lived tokens, attributable actions, removable; later sign-in (device flow, browser), either-rule for components, revocation timing.
 **Owner's decision:** on Nov 14, 2026 the owner overruled the earlier recorded decision to keep INT-7 out (Open question 15) and pulled in "a thin slice" because the Megaroast repositories already exist and the work should not be thrown away; the owner states the name `manifold` is available in the Megaroast organization, which the owner owns.
 **The slice (CP5):** the owner creates the private App in Megaroast, installs it on the Megaroast test repositories, and mints a short-lived installation token by hand with only the permissions Phase 4 uses (Metadata read, Task 35). No server code calls GitHub and no key reaches the server in this phase.
 **Seed mapping:**
 
-| INT-7 seed | In this phase |
-|------------|---------------|
-| S1 Create and install | Tasks 33, 34 (settings page shows only the listed permission; installed only on selected Megaroast repositories). Must never "a permission no feature uses": Task 33 acceptance. |
-| S2 Act as the App | Partly: Task 35 (owner mints a token, makes one read call, the token expires after one hour per GitHub's documentation). Must never "key or token in a log or the instance repository": Tasks 33, 36. The server acting as the App is deferred, owner to confirm (Open question 20). |
-| S3 Remove it | Deferred, owner to confirm (Open question 20): uninstalling would remove the testbed's App; the server has no GitHub code to report "access gone". |
-| S4 Sign in from the command line | Deferred, owner to confirm. |
-| S5 Either a grant or repository write | Deferred, owner to confirm. |
-| S6 Repository the App cannot see | Deferred, owner to confirm. |
-| S7 Access lost on GitHub, within a stated time | Deferred, owner to confirm. |
-| S8 Claude Desktop is a known gap | Deferred, owner to confirm (a guide; no feature yet). |
+| INT-7 seed                                     | In this phase                                                                                                                                                                                                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| S1 Create and install                          | Tasks 33, 34 (settings page shows only the listed permission; installed only on selected Megaroast repositories). Must never "a permission no feature uses": Task 33 acceptance.                                                                                                     |
+| S2 Act as the App                              | Partly: Task 35 (owner mints a token, makes one read call, the token expires after one hour per GitHub's documentation). Must never "key or token in a log or the instance repository": Tasks 33, 36. The server acting as the App is deferred, owner to confirm (Open question 20). |
+| S3 Remove it                                   | Deferred, owner to confirm (Open question 20): uninstalling would remove the testbed's App; the server has no GitHub code to report "access gone".                                                                                                                                   |
+| S4 Sign in from the command line               | Deferred, owner to confirm.                                                                                                                                                                                                                                                          |
+| S5 Either a grant or repository write          | Deferred, owner to confirm.                                                                                                                                                                                                                                                          |
+| S6 Repository the App cannot see               | Deferred, owner to confirm.                                                                                                                                                                                                                                                          |
+| S7 Access lost on GitHub, within a stated time | Deferred, owner to confirm.                                                                                                                                                                                                                                                          |
+| S8 Claude Desktop is a known gap               | Deferred, owner to confirm (a guide; no feature yet).                                                                                                                                                                                                                                |
 
 **Constraints covered:** least privilege and "every permission has a feature" (Task 33); private first (Task 33); no long-lived secret in a repository and the key outside it (Tasks 33, 36); short-lived tokens only (Task 35); the name (the owner's statement, confirmed at creation, Task 33); "what an App cannot do verified before a plan relies on it" (only what the slice uses is read, Task 32; the rest stays unverified); the key never held by an agent (all tasks). **Deferred:** one App per company created by the company (the slice App belongs to the test organization only), identity and automation settings split, sign-in rule and lifetime, either-rule, protected mapping, revocation promise, no GitHub token kept, Secrets (write).
 **INT-7 open questions:** (1) owner of the first App: Megaroast (owner's statement); whether ownership can be transferred later is unverified: confirm with GitHub's documentation. (2) Manifest flow versus by hand: the slice goes by hand through the settings page; the manifest flow is deferred. (3) Organization-owner approval: the owner owns Megaroast, so none blocks this slice; the question stays open for a company organization. (4), (5): deferred. (6) Secrets (write): no.
@@ -123,24 +127,24 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 
 ## File inventory
 
-| Path | Action | Reason |
-|------|--------|--------|
-| `bundles/base/templates/PULL_REQUEST_TEMPLATE.md`, `docs/templates/PULL_REQUEST_TEMPLATE.md` | MODIFY | instructions, slugs, state values (the two copies stay identical) |
-| `bundles/base/templates/PHASE_PLAN_TEMPLATE.md`, `PHASE_TEST_PLAN_TEMPLATE.md`, `INTENT_TEMPLATE.md` and their `docs/templates/` copies | MODIFY | slug and instructions on the human lines (if Open question 4 is yes) |
-| `bundles/base/process/REVIEW_CYCLE.md` and `docs/process/REVIEW_CYCLE.md` | MODIFY | slug rule, Approve review, ready check |
-| `bundles/base/agents/coordinator.agent.md`, `coder.agent.md`, `test-coder.agent.md`, `bundles/base/rules/core/approved-plan-before-execution.md` | MODIFY | CI line shape, never fill a slug, a slug is blank |
-| `bundles/base/scripts/phase_status.py`, `bundles/base/commands/phase-status.md`, `phase-status.prompt.md` | MODIFY | report unreplaced slugs, `--pr-body` |
-| `bundles/base/tests/test_bundle.py`, `bundles/base/tests/test_phase_status.py` | MODIFY | tests next to each change |
-| `docs/process/BRANCH_RULES.md` | MODIFY | the Approve review facts read in Task 1 (not shipped) |
-| `.claude/agents/*`, `.claude/commands/phase-status.md`, `.manifold/*`, `docs/process/*`, `docs/templates/*`, `AGENTS.md` managed block | MODIFY | refresh of this repository's own install (generated by `install.py`) |
-| `server/tests/test_import_rule.py` | CREATE | INT-2 S4 |
-| `server/tests/contracts/` (`harness.py`, `record.py`, `test_tool_contracts.py`, `test_harness.py`, `<tool>.json` files) | CREATE | INT-2 S1 |
-| `server/tests/test_write_failures.py`, `server/tests/test_http_errors.py` | CREATE | INT-2 S3 and the HTTP layer |
-| `.github/workflows/server.yml` | MODIFY | optional advisory conformance job (Task 22) |
-| `server/tests/datasets/` (`curated/`, `loader.py`, `scan.py`, `README.md`, `SIGNOFFS.md`, `test_datasets.py`) | CREATE | INT-3 (no generator: Open question 17) |
-| `server/tests/datasets/scan.py`, `README.md`, `test_datasets.py` | MODIFY | private-key and token shapes, App facts without secrets (Tasks 36, 37) |
-| `bundles/base/VERSION`, `.manifold/manifest.json` | MODIFY | release 0.3.1 (Tasks 38, 39), as in `4f8b448` |
-| Megaroast repositories 1 to 4 and the `manifold` App (outside this repository) | exist / CREATE by the owner | INT-3 testbed and INT-7 slice; nothing from them, no key and no token is committed here |
+| Path                                                                                                                                             | Action                      | Reason                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------- |
+| `bundles/base/templates/PULL_REQUEST_TEMPLATE.md`, `docs/templates/PULL_REQUEST_TEMPLATE.md`                                                     | MODIFY                      | instructions, slugs, state values (the two copies stay identical)                       |
+| `bundles/base/templates/PHASE_PLAN_TEMPLATE.md`, `PHASE_TEST_PLAN_TEMPLATE.md`, `INTENT_TEMPLATE.md` and their `docs/templates/` copies          | MODIFY                      | slug and instructions on the human lines (if Open question 4 is yes)                    |
+| `bundles/base/process/REVIEW_CYCLE.md` and `docs/process/REVIEW_CYCLE.md`                                                                        | MODIFY                      | slug rule, Approve review, ready check                                                  |
+| `bundles/base/agents/coordinator.agent.md`, `coder.agent.md`, `test-coder.agent.md`, `bundles/base/rules/core/approved-plan-before-execution.md` | MODIFY                      | CI line shape, never fill a slug, a slug is blank                                       |
+| `bundles/base/scripts/phase_status.py`, `bundles/base/commands/phase-status.md`, `phase-status.prompt.md`                                        | MODIFY                      | report unreplaced slugs, `--pr-body`                                                    |
+| `bundles/base/tests/test_bundle.py`, `bundles/base/tests/test_phase_status.py`                                                                   | MODIFY                      | tests next to each change                                                               |
+| `docs/process/BRANCH_RULES.md`                                                                                                                   | MODIFY                      | the Approve review facts read in Task 1 (not shipped)                                   |
+| `.claude/agents/*`, `.claude/commands/phase-status.md`, `.manifold/*`, `docs/process/*`, `docs/templates/*`, `AGENTS.md` managed block           | MODIFY                      | refresh of this repository's own install (generated by `install.py`)                    |
+| `server/tests/test_import_rule.py`                                                                                                               | CREATE                      | INT-2 S4                                                                                |
+| `server/tests/contracts/` (`harness.py`, `record.py`, `test_tool_contracts.py`, `test_harness.py`, `<tool>.json` files)                          | CREATE                      | INT-2 S1                                                                                |
+| `server/tests/test_write_failures.py`, `server/tests/test_http_errors.py`                                                                        | CREATE                      | INT-2 S3 and the HTTP layer                                                             |
+| `.github/workflows/server.yml`                                                                                                                   | MODIFY                      | optional advisory conformance job (Task 22)                                             |
+| `server/tests/datasets/` (`curated/`, `loader.py`, `scan.py`, `README.md`, `SIGNOFFS.md`, `test_datasets.py`)                                    | CREATE                      | INT-3 (no generator: Open question 17)                                                  |
+| `server/tests/datasets/scan.py`, `README.md`, `test_datasets.py`                                                                                 | MODIFY                      | private-key and token shapes, App facts without secrets (Tasks 36, 37)                  |
+| `bundles/base/VERSION`, `.manifold/manifest.json`                                                                                                | MODIFY                      | release 0.3.1 (Tasks 38, 39), as in `4f8b448`                                           |
+| Megaroast repositories 1 to 4 and the `manifold` App (outside this repository)                                                                   | exist / CREATE by the owner | INT-3 testbed and INT-7 slice; nothing from them, no key and no token is committed here |
 
 ## Tasks
 
@@ -158,6 +162,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ### CP1 — Clear instructions in the pull request (INT-27)
 
 ### Task 1 — Read what GitHub says about approving and about the slug
+
 **Source:** INT-27 S5 Must never; Open questions on self-approval and slug format
 **Files:** none changed; the note goes here
 **Action:** none (read)
@@ -168,6 +173,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 2 — Add the slug rule and the Approve review to the review cycle
+
 **Source:** INT-27 S3, S5, S6, S7; "Facts are not duplicated"
 **Files:** `bundles/base/process/REVIEW_CYCLE.md`
 **Action:** MODIFY
@@ -178,6 +184,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 3 — Split the CI section of the pull request template and add its instructions
+
 **Source:** INT-27 S1, S2, S3, S7 (the owner's worked example)
 **Files:** `bundles/base/templates/PULL_REQUEST_TEMPLATE.md`
 **Action:** MODIFY
@@ -188,6 +195,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 4 — Make the ready-check State cell and the confirmation line say what to write
+
 **Source:** INT-27 S3, S4
 **Files:** `bundles/base/templates/PULL_REQUEST_TEMPLATE.md`
 **Action:** MODIFY
@@ -198,6 +206,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 5 — Add instructions to each tickable line and a step for the Approve review
+
 **Source:** INT-27 S1, S5; Problem items 2 and 4
 **Files:** `bundles/base/templates/PULL_REQUEST_TEMPLATE.md`
 **Action:** MODIFY
@@ -208,6 +217,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 6 — Add tests for the pull request template
+
 **Source:** INT-27 S1, S3, S4, S7
 **Files:** `bundles/base/tests/test_bundle.py`
 **Action:** MODIFY
@@ -218,6 +228,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 7 — Put the slug and instructions on the plan, test-plan and intent human lines
+
 **Source:** INT-27 Open question on the other human lines (apply if answered yes)
 **Files:** `bundles/base/templates/PHASE_PLAN_TEMPLATE.md` (**Approved by**, **Amendment approved by**), `PHASE_TEST_PLAN_TEMPLATE.md` (**Approved by**), `INTENT_TEMPLATE.md` (`accepted_by`)
 **Action:** MODIFY
@@ -228,6 +239,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 8 — State that an unreplaced slug counts as a blank approval
+
 **Source:** INT-27 S6, S7; Concerns 4
 **Files:** `bundles/base/rules/core/approved-plan-before-execution.md`, `bundles/base/agents/coder.agent.md` (line 24 and 34), `bundles/base/agents/test-coder.agent.md` (line 33)
 **Action:** MODIFY
@@ -238,6 +250,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 9 — Teach the coordinator the new CI line, the slugs and the rule that it never fills one
+
 **Source:** INT-27 S2, S6, S7
 **Files:** `bundles/base/agents/coordinator.agent.md` ("CI of the exact commit", "Ready check", "What you do not do")
 **Action:** MODIFY
@@ -248,6 +261,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 10 — Add tests for Tasks 2, 7, 8 and 9
+
 **Source:** INT-27 S6, S7
 **Files:** `bundles/base/tests/test_bundle.py`
 **Action:** MODIFY
@@ -258,6 +272,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 11 — Report unreplaced slugs in `/phase-status`
+
 **Source:** INT-27 S6
 **Files:** `bundles/base/scripts/phase_status.py`, `bundles/base/commands/phase-status.md`, `bundles/base/commands/phase-status.prompt.md`, `bundles/base/tests/test_phase_status.py`
 **Action:** MODIFY
@@ -268,6 +283,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 12 — Record the Approve review facts in the branch rules
+
 **Source:** INT-27 Affected files (`docs/process/BRANCH_RULES.md`); Open question on self-approval
 **Files:** `docs/process/BRANCH_RULES.md` (not shipped)
 **Action:** MODIFY
@@ -278,6 +294,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 13 — Refresh this repository's own install from the build
+
 **Source:** INT-27 Affected files (installed copies); Phase 3 Task 18 route
 **Files:** `docs/templates/*`, `docs/process/REVIEW_CYCLE.md`, `.claude/agents/*`, `.claude/commands/phase-status.md`, `.manifold/*`, `AGENTS.md` managed block (all generated)
 **Action:** MODIFY
@@ -292,6 +309,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ### CP2 — Contract tests and hardening for the server (INT-2)
 
 ### Task 14 — Read the MCP conformance suite
+
 **Source:** INT-2 S2; Open question on required versus advisory
 **Files:** none changed; the note goes here
 **Action:** none (read)
@@ -302,6 +320,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 15 — Enforce by test that only the entry module imports the web framework
+
 **Source:** INT-2 S4 and Constraints
 **Files:** `server/tests/test_import_rule.py` (CREATE)
 **Action:** CREATE
@@ -312,6 +331,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 16 — Create the contract harness and the explicit recorder
+
 **Source:** INT-2 S1, Constraints (reviewed change, fictional instance, offline)
 **Files:** `server/tests/contracts/harness.py`, `server/tests/contracts/record.py` (CREATE)
 **Action:** CREATE
@@ -322,6 +342,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 17 — Record and test the contracts of the read tools
+
 **Source:** INT-2 S1
 **Files:** `server/tests/contracts/test_tool_contracts.py`, the `<tool>.<case>.json` files for `wiki_ping_tool`, `wiki_read_tool`, `wiki_inventory_tool`, `wiki_freshness_tool`, `wiki_onboarding_tool`, `wiki_reconcile_plan_tool`, `wiki_bundle_info_tool`, `wiki_list_helpers_tool`, `wiki_export_helper_tool`, `wiki_export_component_helpers_tool` (CREATE)
 **Action:** CREATE
@@ -332,6 +353,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 18 — Record and test the contracts of the write, handoff and component tools
+
 **Source:** INT-2 S1, Problem (write paths thin)
 **Files:** `server/tests/contracts/*.json` for `wiki_write_page_tool` (create, update, stale etag, protected-field change, invalid frontmatter), `wiki_log_append_tool`, `wiki_agent_catalog_tool`, `wiki_handoff_tool` (each of the seven actions in `TOOL_POLICY`: create, claim, request-review, confirm, reject, close, list), `wiki_register_component_tool`, `wiki_component_manage_tool` (update, archive, restore) (CREATE)
 **Action:** CREATE
@@ -342,6 +364,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 19 — Add the harness self-tests and the coverage test
+
 **Source:** INT-2 S1 (We will know when; Must never)
 **Files:** `server/tests/contracts/test_harness.py` (CREATE)
 **Action:** CREATE
@@ -352,6 +375,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 20 — Test that a failed write leaves the instance as it was
+
 **Source:** INT-2 S3 and Must never; Concerns 1
 **Files:** `server/tests/test_write_failures.py` (CREATE)
 **Action:** CREATE
@@ -362,6 +386,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 21 — Test the HTTP layer's refusals and errors
+
 **Source:** INT-2 Problem (HTTP layer thin)
 **Files:** `server/tests/test_http_errors.py` (CREATE)
 **Action:** CREATE
@@ -372,6 +397,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 ---
 
 ### Task 22 — Add the conformance run to CI as an advisory job (only if the owner agrees)
+
 **Source:** INT-2 S2; Open question on required versus advisory
 **Files:** `.github/workflows/server.yml`
 **Action:** MODIFY
@@ -388,6 +414,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open question 17). S2 (hostile text) is Tasks 23, 24, 25 and 27. S3 (a real source is scrubbed before use) is Tasks 26, 28 and 31, and applies to the Megaroast repositories.
 
 ### Task 23 — Create the curated messy and hostile instances
+
 **Source:** INT-3 S2, Constraints (awkward cases, no personal data)
 **Files:** `server/tests/datasets/curated/messy/` and `server/tests/datasets/curated/hostile/` (CREATE)
 **Action:** CREATE
@@ -398,6 +425,7 @@ INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open 
 ---
 
 ### Task 24 — Add the loader that gives a git-backed copy
+
 **Source:** INT-3 S2, Constraints (very long pages)
 **Files:** `server/tests/datasets/loader.py` (CREATE)
 **Action:** CREATE
@@ -408,6 +436,7 @@ INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open 
 ---
 
 ### Task 25 — Test that hostile text is returned as plain content
+
 **Source:** INT-3 S2
 **Files:** `server/tests/datasets/test_datasets.py` (CREATE)
 **Action:** CREATE
@@ -418,6 +447,7 @@ INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open 
 ---
 
 ### Task 26 — Write the real-data rule, the scan and the sign-off record
+
 **Source:** INT-3 S3, Constraints (nothing real without written permission and a checked scrub)
 **Files:** `server/tests/datasets/README.md`, `server/tests/datasets/SIGNOFFS.md`, `server/tests/datasets/scan.py` (CREATE)
 **Action:** CREATE
@@ -428,6 +458,7 @@ INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open 
 ---
 
 ### Task 27 — Test that the curated sets cover the awkward cases and hold no personal data
+
 **Source:** INT-3 Constraints (awkward cases, no personal data)
 **Files:** `server/tests/datasets/test_datasets.py`
 **Action:** MODIFY
@@ -444,6 +475,7 @@ INT-3 scenario seeds: S1 (instance by size) is deferred, owner to confirm (Open 
 The four repositories already exist (owner's statement, Nov 14, 2026). The tasks confirm and record; nothing is created, and no repository name is written here until Open question 18 is answered (rows and notes use the role names: fork, standalone GUI, holdout QA, example instance).
 
 ### Task 28 — Record the owner's decisions on permission and visibility
+
 **Source:** INT-3 Constraints (written permission, checked scrub); Concerns 7
 **Files:** `server/tests/datasets/SIGNOFFS.md`
 **Action:** MODIFY
@@ -455,6 +487,7 @@ The four repositories already exist (owner's statement, Nov 14, 2026). The tasks
 ---
 
 ### Task 29 — Confirm the three working Megaroast repositories exist
+
 **Source:** INT-3 owner answer (the fork, the standalone GUI, the example instance)
 **Files:** none in this repository; the note goes here (counts and non-sensitive facts only)
 **Action:** none (owner check)
@@ -466,6 +499,7 @@ The four repositories already exist (owner's statement, Nov 14, 2026). The tasks
 ---
 
 ### Task 30 — Confirm the holdout QA repository exists and is untouched by builders
+
 **Source:** INT-3 owner answer (holdout QA repository); `AGENTS.md` "Held-out scenarios"
 **Files:** none in this repository; the note goes here
 **Action:** none (owner check)
@@ -477,6 +511,7 @@ The four repositories already exist (owner's statement, Nov 14, 2026). The tasks
 ---
 
 ### Task 31 — Check the example instance from a scratch clone
+
 **Source:** INT-3 S3; INT-2 constraint (tests are offline, so this is a manual check, not a test)
 **Files:** none changed; the note goes here (no repository content in it)
 **Action:** none (manual check)
@@ -494,6 +529,7 @@ The four repositories already exist (owner's statement, Nov 14, 2026). The tasks
 Every task that creates the App, installs it or touches its key or a token is the owner's act. The key lives outside every repository in the file named by `MANIFOLD_APP_KEY_FILE` (a variable name only; nothing reads it). No agent holds the key or a token.
 
 ### Task 32 — Read what GitHub says about creating an App and minting a token
+
 **Source:** INT-7 constraints "What an App cannot do ... verified before any plan relies on it", "Every permission has a feature"
 **Files:** none changed; the note goes here
 **Action:** none (read)
@@ -504,6 +540,7 @@ Every task that creates the App, installs it or touches its key or a token is th
 ---
 
 ### Task 33 — The owner creates the private App `manifold` in Megaroast
+
 **Source:** INT-7 S1; constraints least privilege, private first, the name, no long-lived secrets in a repository
 **Files:** none in this repository
 **Action:** none (outward action in the Megaroast organization)
@@ -515,6 +552,7 @@ Every task that creates the App, installs it or touches its key or a token is th
 ---
 
 ### Task 34 — The owner installs the App on the Megaroast test repositories
+
 **Source:** INT-7 S1 ("installed only on the chosen repository")
 **Files:** none in this repository
 **Action:** none (outward action in the Megaroast organization)
@@ -526,6 +564,7 @@ Every task that creates the App, installs it or touches its key or a token is th
 ---
 
 ### Task 35 — The owner mints one short-lived installation token and uses it once
+
 **Source:** INT-7 S2 (token expiry); constraint "short-lived tokens only"
 **Files:** none in this repository
 **Action:** none (owner act; no helper script is written in this phase)
@@ -537,6 +576,7 @@ Every task that creates the App, installs it or touches its key or a token is th
 ---
 
 ### Task 36 — Teach the scan to flag private keys and installation tokens
+
 **Source:** INT-7 S2 Must never; constraint "No long-lived secrets in the instance repository"
 **Files:** `server/tests/datasets/scan.py`, `server/tests/datasets/test_datasets.py`
 **Action:** MODIFY
@@ -547,6 +587,7 @@ Every task that creates the App, installs it or touches its key or a token is th
 ---
 
 ### Task 37 — Record the App facts, without any secret, in the datasets README
+
 **Source:** INT-7 constraints (permission listed with its feature; private; key outside); INT-3 "Megaroast testbed" section
 **Files:** `server/tests/datasets/README.md`
 **Action:** MODIFY
@@ -563,6 +604,7 @@ Every task that creates the App, installs it or touches its key or a token is th
 Placed last because the owner said to release after the work is done. Only CP1 changes shipped files (the thin slice, CP4 and CP5 change no file under `bundles/base/`), so the owner may instead take the release right after CP1 merges.
 
 ### Task 38 — Bump the bundle version to 0.3.1
+
 **Source:** INT-27 Open question "Which release carries this?" (owner: "call the release V0.3.1"); commit `4f8b448` (how 0.3.0 was bumped)
 **Files:** `bundles/base/VERSION`
 **Action:** MODIFY
@@ -573,6 +615,7 @@ Placed last because the owner said to release after the work is done. Only CP1 c
 ---
 
 ### Task 39 — Refresh this repository's own install to 0.3.1
+
 **Source:** commit `4f8b448` (second commit)
 **Files:** `.manifold/manifest.json` (generated; plus any other file `install.py --status` reports)
 **Action:** MODIFY
@@ -583,6 +626,7 @@ Placed last because the owner said to release after the work is done. Only CP1 c
 ---
 
 ### Task 40 — Merge and tag v0.3.1
+
 **Source:** `.github/workflows/release.yml` (trigger: a pushed tag `v*`)
 **Files:** none
 **Action:** none (outward action)
@@ -596,6 +640,7 @@ Placed last because the owner said to release after the work is done. Only CP1 c
 **Verification:** `git tag` lists `v0.3.1` (run by the owner); `cat bundles/base/VERSION` on the tagged commit prints `0.3.1`.
 
 ## Completion checklist
+
 - [ ] All tasks marked [x] by the coder (Tasks 28 to 30, 33 to 35 and 40 by the owner's confirmation; Tasks 31 by the owner's go-ahead; Task 32 is a recorded read)
 - [ ] `python3 bundles/base/tools/build.py --check` prints `lint ok`
 - [ ] `.venv/bin/python -m pytest bundles/base/tests -q` and `cd server && ../.venv/bin/python -m pytest -q` pass clean (no regressions; xfail cases named)
@@ -624,15 +669,15 @@ Each has an `Answer:` line for the owner. Where the owner already answered in an
 7. **Contract recording format and place (INT-2).** What: one JSON file per tool and case under `server/tests/contracts/`, normalising commit hashes and timestamps, recorded by an explicit command that refuses to run in CI or under pytest. Why: a change to a recording must be a visible, reviewed diff. Consequence if not: a regenerated file can hide a broken tool. Recommendation and default: this format.
    Answer: Delegated to planning by the owner (`intent/INT-2-test-hardening-and-contracts.md`: "Survey the manifold repo ... the planning should determine how much additional work is required."). Decision after the survey (see "Intent review", INT-2): keep this format; no recording exists today, and the harness reuses `ToolWorld.call`, the `acme` fixture and the tool-set check of `test_tool_policy.py`. The owner may overrule.
 8. **Conformance suite: required check or advisory (INT-2)?** What: whether the official MCP conformance run blocks the merge. Why: a flaky required check blocks every pull request, and making it required is a ruleset change that only you make. Consequence: too strict, merges stop; too loose, a protocol break can merge. Recommendation: advisory (non-required job, Task 22) until it has run green on several pull requests; then you decide. Default: advisory, and Task 22 only if Task 14 shows it runs offline.
-   Answer: Delegated to planning by the owner (same words, `intent/INT-2-...md`). Decision after the survey: advisory. No conformance run exists in the repository (only the `initialize` call by `curl` in the `image` job of `server.yml`), and the server tests themselves are not required checks today (Concerns 6), so a required conformance check would be stricter than the rest. The owner may overrule.
+   Answer: Delegated to planning by the owner (same words, `intent/INT-2-...md`). Decision after the survey: advisory. No conformance run exists in the repository (only the `initialize` call by `curl` in the `image` job of `server.yml`), and the server tests themselves are not required checks today (Concerns 6), so a required conformance check would be stricter than the rest. The owner may overrule. Answer: I agree with the deferrals.
 9. **Coverage gate (INT-2)?** What: whether a coverage percentage blocks the merge. Why: the question is open in the intent; no coverage tool is in `server/requirements-dev.txt`, so adding one changes the locked dependencies. Consequence: a gate with no tool is wishful; adding a tool is a dependency change. Recommendation and default: no coverage gate in this phase; the contract list (every tool has a recording) and the import rule are the gates.
-   Answer: Delegated to planning by the owner ("I believe we may already have some rules in the repo so the planner must find out", `intent/INT-2-...md`). Found: no coverage tool, configuration or percentage in `server/requirements-dev.txt`, `server/pytest.ini`, `.github/workflows/*`, `REVIEW.md`, `CONTRIBUTING.md` or `bundles/base/rules/`; the only coverage-related text is the template section "Coverage judgement" (a judgement, not a number) and the rule against committing coverage data. Decision: no coverage gate in this phase. The owner may overrule.
+   Answer: Delegated to planning by the owner ("I believe we may already have some rules in the repo so the planner must find out", `intent/INT-2-...md`). Found: no coverage tool, configuration or percentage in `server/requirements-dev.txt`, `server/pytest.ini`, `.github/workflows/*`, `REVIEW.md`, `CONTRIBUTING.md` or `bundles/base/rules/`; the only coverage-related text is the template section "Coverage judgement" (a judgement, not a number) and the rule against committing coverage data. Decision: no coverage gate in this phase. The owner may overrule. Answer: I agree with the recommendation
 10. **What happens to a write-failure test that exposes a defect (Concerns 1)?** What: for each case where the server leaves a file, folder, sidebar entry or log line after a refused write, do you change the code (a `bug-coder` fix, a behavior change) or narrow INT-2's S3 to what the code promises? Why: git refusing is documented as non-fatal today. Consequence: either way the test must match the decision, and an `xfail` left in place hides it. Recommendation: treat a stray folder, partial file, sidebar entry or log line as defects to fix by `bug-coder` after this phase, and keep "file stays when only the commit fails" as the documented behavior, written down in the test. Default: record each as `xfail(strict=True)` with the reason and ask.
-    Answer:
+    Answer: I agree with the recommendation
 11. **What are small, medium and large (INT-3)?** What: the number of components and pages. Why: tests and demos ask by name. Consequence: the large size affects test run time. Recommendation: small 3 components and about 20 pages, medium 12 and 200, large 50 and 2000, all generated on demand in the test's temporary folder and never committed. Default: that recommendation (and the 20-second limit in Task 26).
     Answer: Superseded by the owner (`intent/INT-3-test-data-sets.md`: "Let's just start with Megaroast for now using 4 repos within the organization."). No sizes are defined in this phase; see Open question 17 for the deferred generator.
 12. **Where does the list of terms to scan for live, and may real data ever be fetched (INT-3)?** What: the scan for real names and hosts needs a list, and a list of real names cannot be committed to a public repository. Recommendation: pattern checks in the repository (emails, non-test hosts, token shapes) plus a private list in a file outside the repository, named by `MANIFOLD_SCAN_TERMS`; "fetched" large data sets are not used. Consequence if not: the scan is weak, or it leaks the terms. Default: that recommendation.
-    Answer:
+    Answer: I agree with the recommendation
 13. **Is any real data on offer (INT-3)?** What: will the new company or other products offer real data, and under what terms. Why: the scrub procedure is only written, not used, until someone offers. Consequence: none now; this phase commits synthetic data only. Recommendation and default: no real data in this phase; the rule and scan ship so the first offer has a procedure.
     Answer: Yes, in a form the question did not foresee (owner, `intent/INT-3-...md`: "We can use the Megaroast organization to provide a testbed for external repos."). The rule and scan are therefore used in this phase (Tasks 26, 28, 31). Whether the company permits the derived repositories and whether any of them is public is Open question 16.
 14. **Which release carries this?** What: CP1 changes shipped bundle text and so needs a version decision; CP2 and CP3 change no shipped file. Recommendation: you choose the number after CP1 merges (release is out of scope here). Default: no release task in this plan.
@@ -645,14 +690,14 @@ Each has an `Answer:` line for the owner. Where the owner already answered in an
     **Why the earlier decision was overruled.** The owner weighed the Megaroast repositories already existing against the cost of an App no server code uses, and chose to avoid throwing the work away. The owner also stated that the name `manifold` is available as a private App name because the owner owns the Megaroast organization. The slice, its seed mapping and its deferrals are in "Intent review" and CP5; the risks are Concerns 9.
     Answer (Michael Hay, 2026-11-14, entered by the coordinator at the owner's instruction in chat): "Pull in a thin slice of INT-7 because the Megaroast repo already exists and I don't want throw away work. As to the point of the private github app manifold name being available or not in a private app well it is. I own the org." The decision is option (b), the thin slice. Whether the name is free is confirmed at creation (Task 33); the plan states only the owner's words.
 16. **Real data in the Megaroast repositories.** What: (a) does the company that owns `company_dns` permit a fork and a GUI derived from it in the Megaroast organization, in writing; (b) will each of the four repositories be private; (c) may anything from them ever be copied into this public repository (default: no, nothing). Why: INT-3 forbids real content in a public repository without written permission and a checked scrub; the repositories derive from a company's code. Consequence: without an answer, the Task 28 rows stay empty, Tasks 31 and 34 do not start, and the rest of the phase goes on. (The owner has said the four repositories already exist; that does not answer (a) to (c).) Recommendation: private for all four; permission written in `SIGNOFFS.md` (Task 28); nothing copied here. Default: that.
-    Answer:
+    Answer: I own the repos personally and can provide permission. For this phase we will keep all repos in Megaroast private.  When Manifold is ready for V1 release we will make the repos, including Manifold, public as a demonstration of function.  This is why it is preferred to work with the dummy organization so early: No wasted work.
 17. **The sized synthetic generator (INT-3 S1: small, medium, large, same seed gives the same tree).** What: defer it, since the owner chose to start with Megaroast, or keep it as before. Why: S1 is an accepted seed and is not dropped silently; the curated messy and hostile sets (S2) stay either way. Consequence: deferring leaves no large instance for a later performance or store test (INT-4); keeping it adds about three tasks (the old Tasks 23, 25 and 26 in this file at commit `f939205`). Recommendation and default: defer, and add it when INT-4 needs a size.
-    Answer:
+    Answer: Defer it
 18. **Names.** What: the exact names of the four Megaroast repositories, and whether the committed `README.md` of Task 26 may name them (default: it names the organization and the four roles, not the repository names). Why: the source repository belongs to a company. Consequence: Task 26 writes roles only until you answer.
-    Answer:
+    Answer: It is ok to name it since the intention is to eventually provide a public demoonstration.
 19. **Should the server tests become a required check?** What: add `server tests (3.11)` and `server tests (3.12)` of `server.yml` to the ruleset's required checks (a ruleset change, your act on GitHub). Why: today a failing server test does not block a merge (Concerns 6), so CP2's contract tests would be advisory in effect. Consequence: not required, a broken tool can merge; required, a flaky test blocks every pull request. Recommendation: yes, after CP2 has passed on several pull requests. Default: no change in this phase.
     Answer:
 20. **Are the INT-7 deferrals right?** What: this phase covers INT-7 S1 and the first half of S2 (Task 35) only. Deferred to a later phase: the server acting as the App (rest of S2), removing the App (S3), sign-in from the command line (S4), either-rule (S5), repository the App cannot see (S6), revocation timing (S7), the Claude Desktop note (S8), the browser or device-flow sign-in, sign-in lifetime, the manifest flow, one App per company, Secrets (write), and a token-minting helper (needs RS256 signing, which Python's standard library lacks, and the server must not gain a dependency). Why: INT-7 says nothing is dropped silently. Consequence: confirmed, a later INT-7 plan takes them; if you want S3 (uninstall and re-install the App) now, add one owner task to CP5. Recommendation and default: the deferrals as listed.
-    Answer:
+    Answer: Yes the deferrals are right.
 21. **Does any Phase 4 task need more than Metadata (read)?** What: Task 31 clones with your own login, so no. Contents (read) would let a narrowed token clone the example instance in Task 31, and would be the only added permission. Why: INT-7 requires each permission to have a feature; a clone by token is a feature only if you want the testbed to exercise tokens. Consequence: yes, Task 33 adds Contents read-only and Task 31 gains an optional token route; no, Metadata only. Pull requests and Contents write stay out either way. Recommendation and default: no, Metadata only.
-    Answer:
+    Answer: Metadata only unless we run into a problem
