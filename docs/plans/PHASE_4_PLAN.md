@@ -756,7 +756,9 @@ F3 is a coordinator action, not a coder task: the coordinator records the two re
 **Action:** none (run and record)
 **Change:** `git worktree add --detach <scratchpad>/old c6b059e`; in it, copy the five tests added in Task 11 from `bundles/base/tests/test_phase_status.py` as it is now (`git diff c6b059e..HEAD -- bundles/base/tests/test_phase_status.py` names them) into that worktree's copy with the `Edit` tool; run `.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q` there (use this checkout's `.venv/bin/python` by absolute path); record the counts; `git worktree remove --force <scratchpad>/old`. No shell redirect. If a step cannot be done, do not work around a guard refusal: name the step and why. Edit no test in this checkout.
 **Acceptance:** the note holds the command and a failed count for the five tests on the `c6b059e` script, or one sentence naming the step that could not be done and why; `git status --short` shows no change caused by this task.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note (2026-11-14): `git worktree add --detach <scratchpad>/old c6b059e`; with `Edit` I inserted into that copy of `test_phase_status.py` the five tests Task 11 added (the new `SLUG` and `EXAMPLE_PROSE` constants and the five test functions; the extra `["7", "--pr-body"]` case of the existing parametrized test was not copied, it is a case of an existing test); then `cd <scratchpad>/old && /Users/mihay42/dev/manifold/.claude/worktrees/branch-version-check-7b10f3/.venv/bin/python -m pytest bundles/base/tests/test_phase_status.py -q -p no:cacheprovider` -> **5 failed, 21 passed** (the 5 are exactly the five new tests; the 21 are the old tests). The five fail on the `c6b059e` script (its usage line has no `--pr-body` and it prints no "Unreplaced slugs" section). Then `git worktree remove --force <scratchpad>/old`; `git worktree list` no longer lists it. `git status --short` empty. No test edited in this checkout. Commit: with this plan note.
 
 ---
 
