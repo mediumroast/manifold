@@ -71,6 +71,29 @@ def mask_product_versions(result):
     return result
 
 
+# Lists the tools build from a directory walk (`Path.rglob` / `Path.glob`), whose order the file
+# system decides (it differs between macOS, Linux and Python versions).  {tool: {field: sort key}};
+# a key of None sorts the items themselves (strings).  Other lists are ordered by the tool's own
+# code (a sort, a fixed table) and stay in the order the tool gives, so an order change there is
+# still a difference.  Source: wiki_backend/inventory.py (rglob) and freshness.py (glob).
+UNORDERED_LISTS = {
+    "wiki_inventory_tool": {"all_files": None, "components": "path", "handoffs": "path"},
+    "wiki_freshness_tool": {"fresh": None, "stale": "component", "unknown": "component"},
+}
+
+
+def order_unordered_lists(tool, result):
+    """The result with the lists of UNORDERED_LISTS sorted by their key, so the file order cannot matter."""
+    fields = UNORDERED_LISTS.get(tool)
+    if not fields or not isinstance(result, dict):
+        return result
+    result = dict(result)
+    for field, key in fields.items():
+        if isinstance(result.get(field), list):
+            result[field] = sorted(result[field], key=(lambda item: item[key]) if key else None)
+    return result
+
+
 def _kind(value):
     if value is None:
         return "null"
@@ -190,4 +213,4 @@ def run_case(world, case):
         for step in case.get("setup", []):
             world.call("contract", step["tool"], **_resolve(world, step["arguments"]))
         result = world.call("contract", case["tool"], **_resolve(world, case["arguments"]))
-    return mask_product_versions(normalise(result, world.root))
+    return order_unordered_lists(case["tool"], mask_product_versions(normalise(result, world.root)))

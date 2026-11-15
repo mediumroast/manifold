@@ -117,3 +117,47 @@ def test_nothing_regenerates_a_recording_during_a_test_run():
     done = subprocess.run([sys.executable, str(harness.CONTRACT_DIR / "record.py"), "--write"],
                           env=env, capture_output=True, text=True)
     assert done.returncode == 2
+
+
+# The tools that list a directory walk.  The walk order is the file system's, so the same instance
+# gave a different order on macOS, Linux 3.11 and Linux 3.12 (GitHub Actions run 43727526573).
+WALKING_RECORDINGS = ["wiki_inventory_tool.ok", "wiki_freshness_tool.ok"]
+SHUFFLE_SEED = 20261115  # fixed; the instance has 12 wiki pages and 3 components, so the walk lists 12 files
+
+
+def _walk_in(order, monkeypatch):
+    """Make `Path.rglob` and `Path.glob` return their results reversed, or shuffled with SHUFFLE_SEED."""
+    import random
+
+    rng = random.Random(SHUFFLE_SEED)
+
+    def patch(real):
+        def walk(self, pattern, *args, **kwargs):
+            found = list(real(self, pattern, *args, **kwargs))
+            if order == "reversed":
+                found.reverse()
+            else:
+                rng.shuffle(found)
+            return iter(found)
+        return walk
+
+    monkeypatch.setattr(Path, "rglob", patch(Path.rglob))
+    monkeypatch.setattr(Path, "glob", patch(Path.glob))
+
+
+@pytest.mark.parametrize("name", WALKING_RECORDINGS)
+@pytest.mark.parametrize("order", ["reversed", "shuffled"])
+def test_a_recording_does_not_pin_the_directory_order(contract_world, monkeypatch, name, order):
+    recording = harness.load(harness.CONTRACT_DIR / (name + ".json"))
+    _walk_in(order, monkeypatch)
+    harness.compare(recording["tool"], recording["result"], harness.run_case(contract_world, recording))
+
+
+def test_the_directory_order_test_can_fail(contract_world, monkeypatch):
+    """Without the sort in the harness the reversed walk differs from the recording (the test above has teeth)."""
+    recording = harness.load(harness.CONTRACT_DIR / "wiki_inventory_tool.ok.json")
+    monkeypatch.setattr(harness, "UNORDERED_LISTS", {})
+    _walk_in("reversed", monkeypatch)
+    actual = harness.run_case(contract_world, recording)
+    with pytest.raises(AssertionError, match=r"wiki_inventory_tool: result\.all_files\[0\]"):
+        harness.compare(recording["tool"], recording["result"], actual)
