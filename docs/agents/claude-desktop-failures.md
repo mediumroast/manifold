@@ -394,6 +394,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F26 — The `reviewer` sent one compound command with an inline `python3 -c` and `subprocess` in review revision 5; refused; disclosed (2026-11-15)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** To compare the old and new inventory recording item by item, the `reviewer` sent one compound `Bash` call: the five gate commands plus a `python3 -c` that ran `git show` through `subprocess`. The guard refused the whole command and nothing in it ran. The reviewer did not retry or work around it and did not ask for an exception: it reran the gates alone and used the weaker `git diff` line-count check instead, and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, line 13, 2026-11-15T20:34:44Z (rule `no-heredocs`, tool `Bash`, agent_type `reviewer`); the reviewer's report.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. Effect on the review: the item-by-item comparison was not made, so the evidence for the recording is weaker (the reviewer says so).
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None to the guard; it held. The same open question as F19 and F23: the reviewer has no read-only way to run a short snippet that compares two versions of a file. The owner decides whether to allow one.
+**Status:** open
+**Intent raised:** none yet
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |

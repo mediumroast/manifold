@@ -5,7 +5,7 @@
 **Commit reviewed:** `1bf3836550ffd37ea0bae9f4aff3e33898327361` on branch `claude/phase-4-cp1` (pull request 35; base `claude/phase-4-plan` at `c6b059e92a8a5e4b725ec5f651e233b60b93ee86`; full change `c6b059e..1bf3836`, 36 files; repairs since revision 1 `3724f88..1bf3836`, 11 commits, 24 files). The head came from `git rev-parse HEAD` after `git log -3`.
 **Plan version:** `PHASE_4_PLAN.md`; the plan is approved by Michael Hay on Nov 14, 2026, and the review amendment (round 1) is approved by him (`**Amendment approved by:** Michael Hay on Nov 14, 2026`, commit `da496ef`, the owner's edit). Task 55 is owner-gated (see F4) and was deliberately not run.
 **Policy used:** `REVIEW.md` (passes, Important and Nit meaning, nit cap of 5 per report). The `Review process` approval rule in `AGENTS.md` (solo repository, owner Michael Hay, no second approver) applies: no second person is required, and the owner's approval is his own. GitHub's own Approve review is a separate act and is not something this file can show.
-**Revision:** 4, 2026-11-15 14:55 (checkpoint 2 and its repair; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4 header)
+**Revision:** 5, 2026-11-15 20:40 (checkpoint 2, the CP9 repair; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4 header, then the revision 5 header)
 
 **Checkpoint 2 header (revision 3).**
 - **Phase:** `docs/plans/PHASE_4_PLAN.md`, checkpoint 2 only (Tasks 14 to 22, "Contract tests and hardening for the server"). Checkpoints 3 to 6 are not part of this change.
@@ -20,6 +20,12 @@
 - **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
 - **Intent:** INT-2 (S2 note) and INT-19 (note); INT-2 is `status: accepted`.
 
+**Revision 5 header.**
+- **Commit reviewed:** `559810201389a7eb763d592598932bde157c47c7` (`git rev-parse HEAD`, "Record F25..."), branch `claude/phase-4-cp2`. Since revision 4 (`9a28de7`, `git diff 9a28de7..HEAD --name-status`): `eec2f60` (the planner's fix of F18 and F19), `36063b4` (revision 4 of this file), `ee9f170` (failure entry F23), `f1084e1` (INT-2 release rule, owner's S2 decision), `789711c` (F24), `d0ac219` and `6b0c57f` (the round 3 amendment and the owner's signature), `f35fb11` (the CP9 repair, 3 files in `server/tests/contracts/` plus the plan), `5598102` (F25).
+- **Plan version:** `PHASE_4_PLAN.md`, "Review amendment (round 3, checkpoint 2: CI failure)", Tasks 63 to 65, `**Amendment approved by:** Michael Hay on Nov 15, 2026` (commit `6b0c57f`). Here the signature came before the repair (`6b0c57f` before `f35fb11`), as `REVIEW_CYCLE.md` asks. Task 22 stays `[~]`, by the owner's decision (INT-2 S2 release rule, Nov 15, 2026; `intent/INT-2-test-hardening-and-contracts.md`, "Release rule while open").
+- **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
+- **Not my work:** I wrote none of the code or plan text under review (the repair is the bug-coder's).
+
 ## Revision log
 
 | Revision | Timestamp | Commit reviewed | What this revision did |
@@ -28,17 +34,110 @@
 | 2 | 2026-11-14 12:12 | `1bf3836550ffd37ea0bae9f4aff3e33898327361` | Re-review of the repairs of the amendment (Tasks 41 to 56): State of F1 to F9 set from evidence; new findings F10 and F11 |
 | 3 | 2026-11-15 14:40 | `d3411a39c4def8d4fc660bc1788d9879600c9e32` | First review of checkpoint 2 (Tasks 14 to 22): new findings F12 to F17; the checkpoint 1 findings are not re-reviewed and keep their revision 2 State |
 | 4 | 2026-11-15 14:55 | `9a28de75eead69b45f4de34a49bced3f3b9883ea` | Re-review of checkpoint 2 and its repair (Tasks 57 to 62): F12 to F17 all repaired (evidence below); new findings F18 and F19 (nits, process record); the failure entries F21 and F22 checked against the guard log; CP1 findings F4, F9, F10, F11 not re-reviewed, state unchanged |
+| 5 | 2026-11-15 20:40 | `559810201389a7eb763d592598932bde157c47c7` | Review of the CP9 repair (Tasks 63 to 65, commit `f35fb11`, tests only): no Important finding; new nits F26 and F27; F18 and F19 re-checked and repaired; failure entries F22 to F25 checked against the guard log (13 lines); CP1 findings F4, F9, F10, F11 not re-reviewed, state unchanged |
 
 ## Counts by severity
 
 | Severity | Open | Repaired |
 |---|---|---|
 | Important | 1 (F4, owner-gated, checkpoint 1) | 4 (F1, F2, F3; F12 repaired in revision 4) |
-| Nit | 5 (F9, F10, F11 from checkpoint 1; F18, F19 new in revision 4) | 9 (F5, F6, F7, F8; F13 to F17 repaired in revision 4) |
+| Nit | 5 (F9, F10, F11 from checkpoint 1; F26, F27 new in revision 5) | 11 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5) |
 
-No finding is shown as deferred or rejected: that is a human's decision, recorded in the pull request, and none was recorded in anything I read. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 reports two new nits and left none out.
+No finding is shown as deferred or rejected: that is a human's decision, recorded in the pull request, and none was recorded in anything I read. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 two; revision 5 reports two new nits and left none out.
 
-The sections headed "CP2: ..." further down are the revision 3 text, kept; their State lines for F12 to F17 are updated in place with the revision 4 evidence. Revision 4's own sections come first, under "CP2 revision 4".
+The sections headed "CP2: ..." further down are the revision 3 text, kept; their State lines for F12 to F17 are updated in place with the revision 4 evidence. Revision 4's own sections come under "CP2 revision 4" (F18 and F19 keep their text there, with the State set in revision 5). Revision 5's own sections come first, under "CP2 revision 5".
+
+## CP2 revision 5: the CP9 repair (Tasks 63 to 65), F18 and F19, failure entries, gates
+
+### Verdict on the repair (no Important finding)
+
+All four checks asked for hold; evidence is mine, run on head `5598102` on 2026-11-15.
+
+- **Only tests changed, and only the three named files among the recordings.** `git diff 9a28de7..HEAD --name-status -- server` prints three lines: `M` `server/tests/contracts/harness.py`, `test_harness.py`, `wiki_inventory_tool.ok.json`. No file under `server/` outside `server/tests/`, nothing in `.github/` (the plan asked for none), no other recording. `wiki_freshness_tool.ok.json` is untouched, as the Task 64 note says (`fresh` was already in sorted order).
+- **Sort keys match the plan.** `harness.py` `UNORDERED_LISTS` (lines 74 to 84): `wiki_inventory_tool`: `all_files` by the string (key `None`), `components` and `handoffs` by `path`; `wiki_freshness_tool`: `fresh` by the string, `stale` and `unknown` by `component`. I checked the source of each: `inventory.py:38` (`rglob`, no sort anywhere; the three lists are appended in walk order), `freshness.py:36-38` (`glob`, slug order drives `fresh`, `stale`, `unknown`). Items carry `path` (components, handoffs) and `component` (stale; read from `wiki_freshness_tool.ok.json`), and the recorded `all_files` and `fresh` are strings. `handoff_list` (`handoff.py:674`) is deliberately not sorted, as in Task 63 (its own sort by priority and `updated` decides); I did not re-derive the claim that the three handoff dates differ, I only read the recording.
+- **The sort cannot hide a content difference.** The sort is applied to the actual result in `run_case` (the last step, after `normalise` and `mask_product_versions`), and the recording is stored sorted, so both sides are in the same order; `compare` is untouched and still compares both directions. Run by me inline (`python -c`, no file written): an extra item is reported (`wiki_inventory_tool: result.all_files: expected 2 items, got 1`), a changed field inside a sorted list is reported (`result.components[1].name: expected 'x', got 'z'`), and a list not in the table is left in the tool's order (`wiki_agent_catalog_tool` `['b','a']` stays). The sort keeps duplicates, so a repeated or missing entry still differs. I also checked the re-recording: the `git diff` of `wiki_inventory_tool.ok.json` has 21 removed and 21 added lines, and the only lines that differ in count are the first and last items of a list (trailing comma moved), so the file holds the same items in a new order, and nothing else in the recording changed; `tool_count` and the other fields are not in the diff. (A fuller item-by-item comparison of the old and new file was in a command the guard refused, see "Rule exceptions compared"; the evidence above is the `git diff` count and the passing contract run.)
+- **The regression test has teeth.** I ran it myself, inline, no file written: `python -c` importing `tests.contracts.harness`, setting `harness.UNORDERED_LISTS = {}` and calling `pytest.main(['tests/contracts','-q','-p','no:cacheprovider'])`: `5 failed, 44 passed`: the four walk tests (`reversed` and `shuffled`, each for `wiki_inventory_tool.ok` and `wiki_freshness_tool.ok`) and `test_the_tool_still_matches_its_recording[wiki_inventory_tool.ok]` (the walk's natural order on this machine already differs from the sorted recording, so the recording is no longer pinned to the macOS order). `test_the_directory_order_test_can_fail` passes in that run, as it should (it removes the sort itself and expects the named `all_files[0]` difference). This is exactly the coder's `5 failed, 44 passed`. With the sort in place: `pytest tests/contracts -q` from `server/` is `49 passed` (44 before plus the 5 new). The walk tests patch `Path.rglob` and `Path.glob` for the whole test, so they cover every tool in the run, but they run only the two recordings named in `WALKING_RECORDINGS`; a third tool that lists a directory walk would need an entry in both `UNORDERED_LISTS` and `WALKING_RECORDINGS` (see F27).
+- **The sort key does not cover a renamed field (F26).** See below.
+- **No existing test edited.** `git diff f35fb11~1 f35fb11 -- server/tests/contracts/test_harness.py` is additions only (44 lines appended). No existing assertion changed. No bug fix is in this change in the sense of server code; the failing test the repair answers is the CI failure of run 43727526573, and the new tests fail first without the sort (shown above).
+- **Plan claims against what I reproduced.** Task 65: `1128 passed, 5 xfailed` (mine: `1128 passed, 5 xfailed, 32 warnings`), `24 passed`, the vendored line, `2108 passed, 1 skipped`, `lint ok`: all reproduce. The coder's scratch-plugin runs (`49 passed` reversed and shuffled) I did not repeat (the plugin is in the scratchpad and unreadable to me); the in-repo walk tests cover the same patch (reversed and shuffled, seed `20261115`), and they pass. Task 63's acceptance (the order differing between two file orders for `wiki_inventory_tool.ok`) is shown by my own `UNORDERED_LISTS = {}` run above, since the shuffled and reversed walk tests fail without the sort.
+- **Real-use evidence.** The CI run for the head, which the task gave me as a fact read by the coordinator: `ci` 43731734105 and `server` 43731734111 for `5598102` are completed, success, all 7 checks. I did not read GitHub Actions myself; the second half of the amendment's Verification line (3.11 and 3.12 server jobs pass on Linux, the system that failed) rests on that reading, and the "no flaky tests" behavior across other file systems is shown by that single run plus the walk tests. Contract-workflow real use by a person (a field changed, only that tool fails): still **no evidence yet**.
+
+### F18 and F19: set from evidence
+
+| Finding | State | Evidence |
+|---|---|---|
+| F18 | repaired (rev 5) | `eec2f60` rewrote the "Count" and "Suggested change" of F22 in `docs/agents/claude-desktop-failures.md` (lines 348 to 360). The Count now says the coder also started the repair before the signature because the brief told it to, that `REVIEW_CYCLE.md` says the coder does not start a repair before approval, and that "the coder's own rule was also not met (it followed the brief and disclosed everything)". The Suggested change now says the rule already exists and that what is new is a hand-off check: the coordinator's brief must name the signed amendment, and the coder stops if the **Amendment approved by** line is blank or a slug, even when told to go ahead. That is what F18 asked for. The numeric "Count: 1" is still given for the coordinator only, and the entry's **Status** is still `open`; both are the owner's. |
+| F19 | repaired (rev 5) | `eec2f60` rewrote the sentence at `PHASE_4_PLAN.md` (the signed round 2 amendment): "The owner's chat instruction of 2026-11-15 (repair F12 and all five nits) started this repair; the owner signed the amendment on 2026-11-15 after the fact." `grep -n "authoriz\|left for the owner" docs/plans/PHASE_4_PLAN.md` finds no "authorizes this repair" and no "slug above is left" (the one `authoriz` hit, line 356, is the conformance note on auth, unrelated). "Before signing, the owner reads" is now "read", past tense. The section no longer contradicts its "After-the-fact review" paragraph. |
+
+### Failure entries F22 to F25 against `.manifold/guard-log.jsonl` (13 lines now; 12 when I started)
+
+| Entry | Claim | Guard log | Result |
+|---|---|---|---|
+| F22 (coordinator) | order breach, round 2 | not a guard event (the entry says so) | rechecked in revision 4; unchanged apart from the F18 fix; its Status is `open` (owner's) |
+| F23 (reviewer) | 2 refused `Write` of a scratch file, 2026-11-15T14:50:10Z and 14:50:12Z, `write-allowlist`, lines 9 and 10 | lines 9 and 10: same times, rule `write-allowlist`, tool `Write`, agent_type `reviewer` | matches; count (2 attempted, 2 refused, 0 through) matches; it states "third time in two runs", consistent with F19 of the failures file and F17 of 2026-11-12 (not re-read by me beyond the numbers) |
+| F24 (planner) | 1 refused `git apply --cached --recount` at 15:00:14Z, `no-heredocs` ("git apply changes files"), line 11 | line 11: 2026-11-15T15:00:14Z, rule `no-heredocs`, tool `Bash`, agent_type `planner`, command starts `git apply --cached --recount /private/tmp/...` | matches; the entry's "the coordinator committed the whole file" fits `f1084e1`, whose message says the MarkText re-spacing is included (the diff of `intent/INT-2...` shows the re-spaced item-3 text and one blank line besides the planner's one-line release rule) |
+| F25 (bug-coder) | 1 refused heredoc at 15:39:26Z, `no-heredocs`, line 12; `cp -R` into the scratchpad is not a rule question | line 12: 2026-11-15T15:39:26Z, rule `no-heredocs`, tool `Bash`, agent_type `bug-coder`, command starts `grep -n "^updated\|^priority" examples/acme/wiki/handoffs/*/*.md; python3 - <<'E` | matches in time, rule and agent; the command text is cut at 80 characters |
+
+Two details I could not match to the log alone: (a) the Task 65 note and F25 call the refused heredoc "a scan of the recordings for lists", while the first 80 characters of the logged command read the `updated` and `priority` lines of the handoff pages (that fits the Task 63 check of the handoff list order; not a contradiction, but the text is cut, so I only say what the log shows); (b) the entries and notes are the agents' own, and the log shows refusals only, so a `cp -R`, the `cmp` and the scratch plugin cannot be checked against it. The recording copied back with `Write`, not `cp`, is consistent with the commit (`git show --stat f35fb11`: three code files in `server/tests/contracts/` plus the plan).
+
+Line 13 of the log is mine (2026-11-15T20:34:44Z, rule `no-heredocs`, agent_type `reviewer`); see "Rule exceptions compared (revision 5)". The F25 entry says "line 12" and that line is the bug-coder's, which holds. `.manifold/guard-allow.json` was not read for this revision; revision 4 found it absent, and I saw no sign that an exception was used.
+
+### Rule exceptions compared (revision 5)
+
+- **Bug-coder, Tasks 63 and 64 notes:** carry no Rule exceptions line. The Task 65 note holds the CP9 line: one `Bash` heredoc refused (`no-heredocs`, not worked around, redone with a file written with `Write`); `cp -R` of `server`, `examples`, `bundles`, `assets` into the scratchpad for the recorder; nothing copied back with `cp`; "otherwise none". Compared with the guard log: one `bug-coder` line (line 12, 15:39:26Z, `no-heredocs`), no other bug-coder line, so the refusal count matches. `cp -R` and `cmp` are not logged (the guard logs refusals only); the commit holds the three files named above and the plan, so the repository side matches "nothing copied back". Commit `f35fb11`: explicit paths (4 files, the plan included), attribution line present, no `--no-verify` visible, no hook bypass. The commit message (CI run 43727526573) names the cause and says "Tests only; no server code changed", which the diff confirms. The rule-exceptions line sits on Task 65 only, which is what the plan's acceptance asks for; it covers all of CP9.
+- **Planner (F24) and coordinator (F25, F23 entries):** compared in the table above.
+- **Mine:** I wrote this file with `Write` and `Edit`. I ran read-only `git`, `grep`, `sed`, `cat`, `wc`, `ls`, `python3 -c` with small read-only snippets (no file written, nothing in `/tmp` by me), the project's gate commands, and inline `python -c` runs that import `tests.contracts.harness` and call `pytest.main` or the sort function. **One command of mine was refused by the guard**: 2026-11-15T20:34:44Z, rule `no-heredocs`, tool `Bash`, log line 13; it was one compound command that ran the five gates and also held a `python3 -c` that used `subprocess` to read an older version of the recording with `git show` (the guard's message: python code that "writes, copies, moves or deletes files, or runs a command"). Nothing in it ran. I did not rerun that python snippet or get its result another way: I ran the five gates alone (they were not what the guard refused), and for the recording I used the `git diff` line counts and the contract run instead, which is a different and weaker check than the one refused (it cannot show that every item is identical, only that the line counts and the contract pass agree). I did not ask for an exception because the weaker evidence is enough for this finding set. No other refusal. Where an earlier revision of mine hit `write-allowlist` (lines 9 and 10), I did not write a scratch file this time.
+
+### New findings in revision 5
+
+**F26 (Nit) — A tool that renames the field used as a sort key makes the contract test error with a bare `KeyError`, not a named difference**
+- **Pass:** Tests (strength of the contract; INT-2 S1: a changed field names the tool and the field; the harness's own first test promises it) and Bugs (error handling).
+- **Location:** `server/tests/contracts/harness.py:93` (`sorted(result[field], key=(lambda item: item[key]) if key else None)`) inside `order_unordered_lists`, called from `run_case`.
+- **Evidence:** run by me, inline (no file written): `order_unordered_lists('wiki_inventory_tool', {'components': [{'paths': 'b'}, {'paths': 'a'}], 'handoffs': [], 'all_files': []})` raises `KeyError: 'path'`. So if the tool renames or drops `path` in a component or handoff entry, or `component` in a `stale` or `unknown` entry, the contract test for that recording errors inside `run_case` before `compare` runs. The test still goes red (it is not hidden), but the message is `KeyError: 'path'` and a stack trace, not `wiki_inventory_tool: result.components[0].path: expected str, got missing`, which is the form the plan and the F13 self-test describe. The F13 self-test (`test_a_renamed_field_in_one_tool_leaves_the_other_recordings_alone`) renames the top key `components`, which the sort skips (`isinstance(result.get(field), list)`), so it does not meet this case. An item that is not a dict (a string in `components`) would raise `TypeError` the same way.
+- **Direction:** make the sort tolerate a missing key (a key function that returns a fixed value for an item without the field, for example by `get`), so `compare` reports the named difference, and add one case to the harness tests (a renamed `path` in `components` names the tool and `result.components[0].path`). The owner may leave it: the test fails loudly either way, and the cost is the readability of the failure.
+- **State:** open
+
+**F27 (Nit) — Two small accuracy points: the plan text says 35 recordings, and the walk tests cover only the two named recordings**
+- **Pass:** Compliance (accuracy of the plan text) and Tests.
+- **Location:** `PHASE_4_PLAN.md` Task 63 (Change text "which of the 35 recordings" and the note "a scan of all 35 for lists of 2 or more items"); `server/tests/contracts/test_harness.py:124` (`WALKING_RECORDINGS = ["wiki_inventory_tool.ok", "wiki_freshness_tool.ok"]`).
+- **Evidence:** `ls server/tests/contracts/*.json | wc -l` prints `34` (revision 4 also counted 34 recordings and 16 tools); the plan says 35 in two places, which would be the count before the F15 recording or a miscount, I cannot tell which. The walk tests run only the two named recordings, with `Path.rglob` and `Path.glob` patched for each; a new tool that lists a directory walk, or a new recording of an existing walk tool, is covered only if someone adds it to both `UNORDERED_LISTS` and `WALKING_RECORDINGS`. `test_every_registered_tool_has_a_contract` cannot catch that, and the Task 63 diagnosis is a one-time scan.
+- **Direction:** correct "35" to "34" (the owner or planner; the signed amendment is the owner's text, so the reviewer does not suggest editing it silently), and, if wanted, make `WALKING_RECORDINGS` every recording, so a walk-order change in any tool fails by itself rather than relying on the table (the full contract set is about 12 s, so running all 34 under reversed and shuffled walks is cheap). The owner may leave it.
+- **State:** open
+
+### Other checks (revision 5)
+
+- **Security.** `git diff 9a28de7..HEAD` read for credentials and personal data: none added; the recording holds fictional Acme paths only; the failure entries carry no secret.
+- **Context files.** `AGENTS.md`, `CLAUDE.md` and `REVIEW.md` are not made out of date by the repair. `docs/agents/claude-desktop-failures.md` (F22 to F25) and `intent/INT-2-test-hardening-and-contracts.md` (the release rule, "decided by Michael Hay on Nov 15, 2026, in chat", written by the planner in `f1084e1` with the owner's re-spacing) changed. I did not compare the wording of the release rule with the owner's chat words (not readable); it matches the plan's statement that Task 22 stays deferred, and it fills the placeholder that revision 4 noted (`INT-2:63`). The "Must never: Skip the conformance run for a release" line is read with the exception by the new text; that is the owner's decision as recorded.
+- **Process record, signature order.** The amendment was signed (`6b0c57f`) before the repair (`f35fb11`): `git log --oneline` shows `d0ac219`, `6b0c57f`, `f35fb11` in that order, and the bug-coder's note is dated the same day. The coordinator's hand-off check proposed in F22's new Suggested change was in effect here, as far as git shows (the coder started after the signature); whether the coordinator's brief named the signed amendment I cannot read.
+- **Test plan check.** No `PHASE_<N>_TEST_PLAN.md` in this change.
+- **Held-out scenarios.** I did not read any.
+
+### Gates run (revision 5, 2026-11-15, head `5598102`)
+
+| Command | Counts | Result |
+|---|---|---|
+| `cd server && ../.venv/bin/python -m pytest -q` | `1128 passed, 5 xfailed, 32 warnings in 129.32s`; Python 3.11 | pass (revision 4: `1123 passed, 5 xfailed`; the 5 added are the CP9 tests) |
+| `cd server && ../.venv/bin/python -m pytest tests/contracts -q` | `49 passed` (44 before plus 5) | pass |
+| the same with `harness.UNORDERED_LISTS = {}` (inline `python -c`, `pytest.main`, no file written) | `5 failed, 44 passed` | as expected: the four walk tests and `test_the_tool_still_matches_its_recording[wiki_inventory_tool.ok]` fail; the self-check test passes |
+| `.venv/bin/python -m pytest tests/live -q` | `24 passed in 0.05s` | pass |
+| `.venv/bin/python tools/vendor_web.py --check` | `vendored files match a fresh build` | pass |
+| `.venv/bin/python -m pytest bundles/base/tests -q` | `2108 passed, 1 skipped in 17.59s` | pass |
+| `python3 bundles/base/tools/build.py --check` | `lint ok` | pass |
+
+I did not run `phase_status.py 4` in this revision. Python 3.11 only on this machine; 3.12 and Linux are covered by the CI facts the coordinator gave me (`ci` 43731734105 and `server` 43731734111, completed, success, all 7 checks, for `5598102`); I did not read them myself, so they are cited as given.
+
+### Could not check (revision 5)
+
+- GitHub Actions itself (the two run ids are the coordinator's reading), Python 3.12 and Linux here.
+- The coder's scratch plugin runs (reversed `49 passed`, shuffled `49 passed`): the plugin is in the scratchpad; the in-repo walk tests cover the same patch and pass.
+- A full item-by-item comparison of the old and new `wiki_inventory_tool.ok.json` (the command was refused; see above).
+- Whether the diagnosis was shown to the owner before any change (Task 63's acceptance wording), which is a chat matter.
+- The coordinator's brief and transcripts, the content of the guard's `command` fields past 80 characters, and `.manifold/guard-allow.json` for this revision.
+- Task 22 is deferred by the owner's decision and is not reported as missing; its Completion checklist line ("No [~] blocked items outstanding") and Task 55 `[~]` stay the owner's.
+
+### A human decides (revision 5)
+
+This review does not approve or block the change. A human approves, informed by the findings. Counts after revision 5: Important 1 open (F4, owner-gated, checkpoint 1); Nit 5 open (F9, F10, F11 from checkpoint 1; F26, F27 new); repaired since revision 4: F18 and F19. The CP1 findings F4, F9, F10 and F11 were not re-reviewed and keep their revision 2 State. The CP9 repair itself has no Important finding.
 
 ## CP2 revision 4: repair, process record and gates
 
@@ -87,14 +186,14 @@ What I read in full: `harness.py`, the diff of `cases.py`, `record.py`, `test_ha
 - **Location:** `docs/agents/claude-desktop-failures.md:353` (F22, "Count": "The coder did not break a rule of its own: it was told to write the amendment.") and the entry's "Suggested change"; `docs/process/REVIEW_CYCLE.md:18` ("the `coder` does not start a repair checkpoint before a human has approved the amendment").
 - **Evidence:** `REVIEW_CYCLE.md:18` puts the duty on the coder as well as on the coordinator, and the entry's suggested change ("the coder starts only after **Amendment approved by** is written") restates a rule that is already written. The coder did start a repair checkpoint (Tasks 57 to 62 are in `7a6982e`) while the line was still a slug. The entry says the coder followed a brief; that explains why it happened, and the coder reported everything, but it does not change what the process text says. Under `BREACH_PROCEDURE.md` a breach is counted per agent and per rule, so the count may be 1 for the coordinator and 1 for the coder (disclosed).
 - **Direction:** append (do not rewrite) a line under F22 saying whether the owner counts a coder entry, and drop or reword the suggested change, since the rule exists and what is missing is a stop in the coder's own definition (a chat instruction does not replace the signature). I did not read the coder's definition for that stop; the owner or coordinator decides. The failures file is not edited by me.
-- **State:** open
+- **State:** repaired (rev 5): `eec2f60` rewrote the Count and the Suggested change of F22 as asked (see "CP2 revision 5").
 
 **F19 (Nit) — The signed amendment still says the slug is unsigned and that a chat instruction authorizes the repair**
 - **Pass:** Bugs (consistency of the plan text).
 - **Location:** `docs/plans/PHASE_4_PLAN.md:1019` ("The owner's chat instruction (2026-11-15: repair F12 and all five nits) authorizes this repair; the slug above is left for the owner's own name."); `:1021` ("Before signing, the owner reads: ..."); against `REVIEW_CYCLE.md:12-13` and `:18` (approval is the name and date on **Amendment approved by**, a human's, before the repair).
 - **Evidence:** the line is signed (`:1014`, `Michael Hay on Nov 15, 2026`), so "the slug above is left for the owner's own name" is no longer true, and "authorizes this repair" asserts that a chat message does what the process text gives to the signature. The same section's "After-the-fact review" paragraph says the opposite (the repair ran ahead of the signature and the owner accepted it), so the section contradicts itself. A coder or reviewer reading the plan later could take the first sentence as a precedent. (The `Instructions` line at `:1015` is left after signing, as in round 1 at `:769`; that is the template's habit and I do not raise it.)
 - **Direction:** the owner may reword the two sentences to say what happened (the owner instructed the repair in chat, the repair ran before the signature, the owner signed on Nov 15 after reading) and leave out "authorizes". It is the owner's text; the planner and the coder do not edit the signed line.
-- **State:** open
+- **State:** repaired (rev 5): `eec2f60` reworded the sentence to the past tense and removed "authorizes" and "the slug above is left" (see "CP2 revision 5").
 
 ### Tests, Security, Context files (revision 4)
 
