@@ -1,5 +1,6 @@
 # PHASE_<N>_TEST_PLAN.md
-**Approved by:**
+**Approved by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Instructions:** read the whole test plan, then replace the whole slug above, brackets included, with your name and the date. An agent leaves it as it is; the test-coder will not start while it holds a slug.
 <!--
   Template for the test-planner agent.
   Copy this file to docs/plans/PHASE_<N>_TEST_PLAN.md (same <N> as the phase
@@ -7,7 +8,7 @@
   test-coder. Every case cites a source: an intent line, a "Must never", a
   constraint, a plan acceptance line or "owner-confirmed". The plan judges the
   existing tests and adds only what is missing. Never invent acceptance criteria.
-  **Approved by** is written by a human, never by an agent. Leave it blank.
+  **Approved by** is written by a human, never by an agent. Leave the slug as it is.
 -->
 
 ## Purpose

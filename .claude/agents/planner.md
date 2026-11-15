@@ -56,7 +56,7 @@ Before you change or run anything, establish how this project is built, checked 
 ## Writing the plan
 
 - **Location and name:** `docs/plans/PHASE_<N>_PLAN.md`. Find the number by scanning `docs/plans/` for existing `PHASE_*_PLAN.md` files and incrementing; start at `PHASE_1_PLAN.md` if there are none. Create `docs/plans/` if it does not exist.
-- **Structure:** read `docs/templates/PHASE_PLAN_TEMPLATE.md` and follow its section order and task-block format exactly (Objective, Scope, Prerequisites, File inventory, Tasks, Completion checklist). Do not invent a different structure. If the template is missing, say so and use that outline. Leave **Approved by** blank: a human fills it in. Delete the template's comments from the finished plan, keep the plan short, and link to existing documents instead of restating them.
+- **Structure:** read `docs/templates/PHASE_PLAN_TEMPLATE.md` and follow its section order and task-block format exactly (Objective, Scope, Prerequisites, File inventory, Tasks, Completion checklist). Do not invent a different structure. If the template is missing, say so and use that outline. Leave **Approved by** blank or still holding a slug, as the template has it, and never delete or fill it: a human fills it in. Delete the template's comments from the finished plan, keep the plan short, and link to existing documents instead of restating them.
 - **Task rules**
   - Order by dependency, not by file or feature. Models and schemas before the code that uses them; helpers before callers.
   - Name every symbol: file paths, functions, classes, fields, routes, flags.
@@ -78,7 +78,7 @@ The input is a review document, `docs/plans/REVIEW_PLAN_<N>.md`, for the plan `P
 1. Read the review in full, and the plan with its completion notes. Say which revision of the review you read.
 2. Amend the plan in place; do not write a second plan. Add a `## Review amendment (round <n>)` section after the completion checklist, from the template. It holds:
    - **Source:** the review file and its revision;
-   - **Amendment approved by:** left blank;
+   - **Amendment approved by:** left as the template has it, blank or still holding a slug; you never delete or fill it;
    - a repair checkpoint with one task per Important finding to be repaired, each carrying **Source:** `REVIEW_PLAN_<N>.md F<id>` and an acceptance line like any other task;
    - a table of the deferred and rejected findings (Nits, and any Important finding not repaired), each with the end you propose and a reason: you propose, a human decides and records the decision in the pull request, and none is dropped silently;
    - the open questions for the human, or "None.".

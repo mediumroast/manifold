@@ -296,6 +296,42 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F18 — The `coder` sent two commands with heredocs in Phase 4 checkpoint 1; both refused; the "Rule exceptions" line said none (2026-11-14)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`): no heredocs.
+**What happened:** In Tasks 1 to 6 the `coder` sent a `python3 - <<` snippet after a `grep`, and a `git add` command that contained a heredoc. The live guard refused both before they ran, so nothing was written. The second refusal made the first commit (`dc9490b`) hold only part of what its message says. The coder's report also mentions a `cp` of the pull request template that the client's permission layer denied; it is not in the guard log, and what it copied is not known here.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-14T19:05:43Z and 19:06:27Z (rule `no-heredocs`, agent_type `coder`); the coder's report; review finding F3 and F9 in `docs/plans/REVIEW_PLAN_4.md`. The `cp` was not compared: not in the guard log.
+**Count:** 2 attempted, 2 refused, 0 breaches that went through (this run). Running total for this agent and rule not computed here (earlier entries were not summed).
+**Agent:** coder
+**Disclosed by the agent:** Yes, in the prose of the report; its "Rule exceptions" line said "none by outcome", which does not match the guard log, so the line itself did not list them.
+**Suggested change:** None to the guard; it held. The "Rule exceptions" line should list every refused command, even harmless ones (the coder's instruction for the later checkpoint already says so).
+**Status:** closed
+**Intent raised:** none
+
+## F19 — The `reviewer` sent three commands that the guard refused during review round 1 of Phase 4 checkpoint 1; disclosed (2026-11-14)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`) and the reviewer's write allowlist (guard rule `write-allowlist`).
+**What happened:** While checking installed files against the manifest and running the phase-status script, the `reviewer` sent two commands the guard refused under `no-heredocs` and tried to Write a scratch file, which `write-allowlist` refused. Nothing took effect, and the reviewer did not work around the refusals.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-14T19:29:07Z (`no-heredocs`), 19:29:10Z (`write-allowlist`, tool `Write`) and 19:30:20Z (`no-heredocs`), agent_type `reviewer`; the reviewer's report ("Rule exceptions": three of its own commands refused).
+**Count:** 3 attempted, 3 refused, 0 breaches that went through; disclosed. Same families as F16 and F17 of 2026-11-12.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** The same open point as F17: a reviewer needs a read-only way to run a short snippet, or its allowlist should say so. For the owner to decide.
+**Status:** open
+**Intent raised:** none yet
+
+## F20 — The `coder` sent one heredoc command in Phase 4 checkpoint 7; refused; disclosed (2026-11-14)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While checking the Task 48 test, the `coder` sent a `python` command with a heredoc by mistake. The guard refused it, nothing was written, and the coder did not retry it. The coder also reports a recursive delete of two scratchpad folders (`dist` and `x`) it did not create in that run; that is not a guard rule breach on this evidence (scratchpad, not the repository), and the folders' origin is not known here.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-14T20:05:49Z (rule `no-heredocs`, agent_type `coder`); the coder's report and the plan's Rule exceptions line for Tasks 41 to 56.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report and in the plan).
+**Suggested change:** None to the guard; it held.
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |

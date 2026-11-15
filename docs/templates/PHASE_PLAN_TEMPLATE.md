@@ -7,7 +7,8 @@
   these.
 -->
 
-**Approved by:** <!-- name and YYYY-MM-DD; left blank until a human approves. The coder will not start without it. -->
+**Approved by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Instructions:** read the whole plan, then replace the whole slug above, brackets included, with your name and the date. An agent leaves it as it is; the coder will not start while it holds a slug.
 **Source intent:** <!-- INT-<n> and its path, or "none" -->
 
 ## Objective
@@ -126,7 +127,8 @@
 
 ## Review amendment (round <n>)
 **Source:** <!-- `docs/plans/REVIEW_PLAN_<N>.md`, revision <r> -->
-**Amendment approved by:** <!-- name and YYYY-MM-DD; blank until a human fills it in. The planner never fills in this line. The coder will not run the repair checkpoint without it. -->
+**Amendment approved by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027> <!-- human only: the planner never fills in this line -->
+**Instructions:** read this amendment, then replace the whole slug above, brackets included, with your name and the date. The planner and every other agent leave it as it is; the coder will not run the repair checkpoint while it holds a slug.
 
 ### CP<n> — Repairs from review round <n>
 
