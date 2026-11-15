@@ -370,6 +370,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** open
 **Intent raised:** none yet
 
+## F24 — The `planner` tried `git apply --cached` with a patch file while recording the owner's S2 release rule; refused; disclosed (2026-11-15)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`, whose message here reads "git apply changes files").
+**What happened:** The intent file already held two MarkText re-spacing edits by the owner. To commit only its own one-line change, the `planner` wrote a patch file in the scratchpad and ran `git apply --cached --recount` on it. The guard refused the command. The planner did not retry or work around it, left everything unstaged, and reported it, asking whether to commit the whole file or to wait for a human exception. The coordinator committed the whole file, with a message that says the re-spacing is included.
+**Evidence:** `.manifold/guard-log.jsonl`, line 11, 2026-11-15T15:00:14Z (rule `no-heredocs`, tool `Bash`, agent_type `planner`); the planner's report.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. The patch file in the scratchpad was written with a tool call the guard did not refuse (inference: the scratchpad is allowed to the planner).
+**Agent:** planner
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None to the guard; it held. For the owner: a file edited in MarkText gets re-spaced, so a later agent edit to the same file meets uncommitted changes. Committing the owner's re-spacing with the agent's edit, with the commit message saying so, is the simple way out.
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
