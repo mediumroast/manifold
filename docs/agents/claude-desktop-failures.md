@@ -358,6 +358,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** open
 **Intent raised:** none
 
+## F23 — The `reviewer` tried twice to write a scratch file in review round 3 of Phase 4 checkpoint 2; both refused; disclosed (2026-11-15)
+
+**Rule:** The reviewer's write allowlist (guard rule `write-allowlist`): the `reviewer` writes only `docs/plans/REVIEW_PLAN_<N>.md`.
+**What happened:** To re-run the F12 check with the date freeze switched off, the `reviewer` tried twice to write a scratch plugin file into the session scratchpad with `Write`. The guard refused both. It did not retry another way: it ran three inline `python -c` checks that wrote no file. It said so in its report and in the review file.
+**Evidence:** `.manifold/guard-log.jsonl`, lines 9 and 10, 2026-11-15T14:50:10Z and 14:50:12Z (rule `write-allowlist`, tool `Write`, agent_type `reviewer`); the reviewer's report and its Rule exceptions line in revision 4 of `REVIEW_PLAN_4.md`.
+**Count:** 2 attempted, 2 refused, 0 breaches that went through; disclosed.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** The same open point as F19 (and F17 of 2026-11-12): the reviewer's allowlist (only its review file) conflicts with the environment's advice to keep scratch files in the session scratchpad. The owner decides whether the allowlist should permit the scratchpad, or whether the reviewer needs a read-only way to run a short snippet. This is the third time in two runs.
+**Status:** open
+**Intent raised:** none yet
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
