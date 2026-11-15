@@ -1015,16 +1015,32 @@ Rule exceptions (Tasks 41 to 54 and 56; Task 55 not run): one command refused by
 
 Provenance: Tasks 57 to 62 were drafted by the coder at the coordinator's request, not by the planner; the planner reviewed them on 2026-11-15 against `REVIEW_PLAN_4.md` revision 3.
 
-The owner's chat instruction (2026-11-15: repair F12 and all five nits) authorizes this repair; the slug above is left for the owner's own name. Task 22 stays deferred and `[~]`, and `.github/workflows/server.yml` is not touched. No server code changes. Tests are changed only where a finding is about that test (F13, F16); no other existing test is edited, skipped or weakened.
+The owner's chat instruction (2026-11-15: repair F12 and all five nits) authorizes this repair; the slug above is left for the owner's own name. Task 22 stays deferred and `[~]`, and `.github/workflows/server.yml` is not touched. No server code changes. What changed: tests only for F13 and F16 (each finding is about that test; no other existing test is edited, skipped or weakened); contract harness and recorder code for F12, F14 and F15 (`server/tests/contracts/harness.py`, `record.py`, `cases.py`); two recordings re-recorded for F14; one new case with its recording for F15.
+
+**After-the-fact review.** The repair ran ahead of the owner's signature: the coordinator had the coder draft and run this section before the planner and before the **Amendment approved by** line was signed. The owner chose to accept it after the fact (2026-11-15); the coordinator's breach is recorded as F22 in `docs/agents/claude-desktop-failures.md`. Before signing, the owner reads: Tasks 57 to 62 below and their notes; and the files of commit `7a6982e`: `server/tests/contracts/harness.py`, `cases.py`, `record.py`, `test_harness.py`, `server/tests/test_write_failures.py`, and the three recordings (in `server/tests/contracts/`) (`wiki_export_helper_tool.ok.json`, `wiki_export_component_helpers_tool.ok.json`, `wiki_agent_catalog_tool.with_agents.json`). This paragraph approves nothing.
 
 ### CP8 — Repairs from review round 2 (checkpoint 2)
 
 - [x] **Task 57 — F12:** make `wiki_register_component_tool.ok` independent of the date (freeze the date the tool sees, in the contract harness only); confirm the cause first.
+  - **Source:** `docs/plans/REVIEW_PLAN_4.md F12`
+  - **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/contracts -q` passes on the real clock, and the new test `test_the_register_recording_does_not_depend_on_the_day` passes with the day moved.
 - [x] **Task 58 — F13:** make `test_a_renamed_field_in_one_tool_leaves_the_other_recordings_alone` compare a broken variant against the other recordings and use `broken`.
+  - **Source:** `docs/plans/REVIEW_PLAN_4.md F13`
+  - **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/contracts/test_harness.py -q` passes, and the test asserts that only the renamed tool's recordings differ.
 - [x] **Task 59 — F14:** narrow the `<version>` normalisation to the product version fields.
+  - **Source:** `docs/plans/REVIEW_PLAN_4.md F14`
+  - **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/contracts -q` passes with `test_only_the_product_version_fields_are_masked`; `git show --stat 7a6982e` lists exactly two changed existing recordings (`wiki_export_helper_tool.ok.json`, `wiki_export_component_helpers_tool.ok.json`), each with the `127.0.0.1` line restored.
 - [x] **Task 60 — F15:** add a contract for the `wiki_agent_catalog_tool` listing shape using fictional agent files in a test-only setup (or mark `[~]` with the reason).
+  - **Source:** `docs/plans/REVIEW_PLAN_4.md F15`
+  - **Acceptance:** `cd server && ../.venv/bin/python -m pytest "tests/contracts/test_tool_contracts.py" -q -k wiki_agent_catalog_tool` passes for both the existing `ok` recording and the new `with_agents` recording; `server/tests/contracts/wiki_agent_catalog_tool.with_agents.json` exists and the Acme example is unchanged.
 - [x] **Task 61 — F16:** make the fifth xfail assert the specific missing report, keeping `strict=True` and its reason.
+  - **Source:** `docs/plans/REVIEW_PLAN_4.md F16`
+  - **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_write_failures.py -q` reports `6 passed, 5 xfailed`; with `--runxfail` the test still fails for the stated reason.
 - [x] **Task 62 — F17:** record the CP2 Rule exceptions line in the plan note.
+  - **Source:** `docs/plans/REVIEW_PLAN_4.md F17`
+  - **Acceptance:** the Task 62 note below holds a Rule exceptions line for CP2 (Tasks 14 to 22) that names the guard-log comparison.
+
+**Verification:** `cd server && ../.venv/bin/python -m pytest -q` ends `1123 passed, 5 xfailed` (observed by the coder, see the gates note below); `.venv/bin/python bundles/base/scripts/phase_status.py 4` shows no open task in CP8.
 
 Notes (2026-11-15, coder; no server code, no `server.yml`, Task 22 untouched):
 
@@ -1043,3 +1059,11 @@ Notes (2026-11-15, coder; no server code, no `server.yml`, Task 22 untouched):
 > **Gates after Tasks 57 to 61** (`/Users/mihay42/dev/manifold/.claude/worktrees/branch-version-check-7b10f3`): `cd server && ../.venv/bin/python -m pytest -q` -> `1123 passed, 5 xfailed, 14 warnings` (was `1 failed, 1119 passed, 5 xfailed`); `.venv/bin/python -m pytest tests/live -q` -> `24 passed`; `.venv/bin/python tools/vendor_web.py --check` -> `vendored files match a fresh build`; `.venv/bin/python -m pytest bundles/base/tests -q` -> `2108 passed, 1 skipped`; `python3 bundles/base/tools/build.py --check` -> `lint ok`.
 >
 > Rule exceptions (this repair, CP8): two commands refused by the guard and not worked around: (1) rule `no-heredocs`, a `Bash` call with an empty heredoc (`<<'EOF'`) that I sent by mistake while reading the F14 recording (it had no purpose and wrote nothing); (2) rule `protected-file`, a `Bash` read (`cut`) of `.manifold/guard-log.jsonl` when I wanted to check the CP2 line for F17; I did not read it by another tool. I also copied the repository folders `server`, `examples`, `bundles`, `assets` into the session scratchpad with `cp -R` and removed nothing outside it; I copied three recordings back into the repository with `cp` (the ones listed under Tasks 59 and 60), and restored two wrong ones from `git checkout` before the corrected copy. Otherwise none. Not matched against the guard log by me beyond the first lines I read at the start (last line 2026-11-14 20:05:49Z); the coordinator compares the two refusals above with the log.
+
+**Findings not repaired:**
+
+| Finding | End | Reason |
+|---|---|---|
+| none | | All six findings (F12 to F17) are repaired by Tasks 57 to 62. |
+
+**Open questions:** None. (Recorded for the owner: the repair ran ahead of the **Amendment approved by** signature; the owner chose to accept it after the fact on 2026-11-15; the coordinator's breach is F22 in `docs/agents/claude-desktop-failures.md`.)
