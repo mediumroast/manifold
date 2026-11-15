@@ -1068,3 +1068,46 @@ Notes (2026-11-15, coder; no server code, no `server.yml`, Task 22 untouched):
 | none    |     | All six findings (F12 to F17) are repaired by Tasks 57 to 62. |
 
 **Open questions:** None. (Recorded for the owner: the repair ran ahead of the **Amendment approved by** signature; the owner chose to accept it after the fact on 2026-11-15; the coordinator's breach is F22 in `docs/agents/claude-desktop-failures.md`.)
+
+---
+
+## Review amendment (round 3, checkpoint 2: CI failure)
+
+**Source:** GitHub Actions `server` run 43727526573 on commit `789711c` (jobs `server tests (3.11)` and `server tests (3.12)` failed; `ci`, macOS and image passed); not a review finding. The rule it breaks is the INT-2 constraint "no flaky tests; tests run on the Python versions the server supports".
+**Amendment approved by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Instructions:** read this amendment, then replace the whole slug above, brackets included, with your name and the date. The planner and every other agent leave it as it is. The `coder` and `bug-coder` do not start CP9 before you have signed it.
+
+Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wiki_inventory_tool.ok]` failed on both versions. On 3.11, `result.all_files[2]` was `wiki/CLAUDE.md` where the recording has `wiki/_sidebar.md`; on 3.12, `result.all_files[0]` was `wiki/_sidebar.md` where the recording has `wiki/log.md`. Cause: `server/wiki_backend/inventory.py` lines 38 to 40 build `all_files` in `Path.rglob("*.md")` order, which follows the file system, and the recording pins one order. The coder and reviewer ran only on macOS with Python 3.11.3, so it was not seen earlier. `components` and `handoffs` in the same tool come from the same walk, and the first mismatch hides the rest. Other tools may also return lists in directory order. No server code changes: the tests are changed, not the tool.
+
+### CP9 — Repair the directory-order recordings (checkpoint 2)
+
+- [ ] **Task 63 — Diagnose which recordings pin an unordered list.** Read `server/wiki_backend/` and `server/server.py`; list every recorded tool result whose list order comes from a directory walk or another unordered source, citing file and line. Starting points (unsorted at the time of writing): `inventory.py:38` (`rglob`), `handoff.py:674` (`rglob`, the handoff list), `freshness.py:36` and `freshness.py:102` (`glob`). Sorted, to confirm and not assume: `handoff.py:80`, `onboarding.py:52` and `:72`, `agent_guide.py:118`, `bundles.py:45`, `assets.py:82`. For each, say which of the 35 recordings in `server/tests/contracts/` hold that list and whether they can fail on another file order. Show the diagnosis to the owner before any change.
+  - **Source:** GitHub Actions `server` run 43727526573; INT-2 constraint "no flaky tests".
+  - **Files:** none changed.
+  - **Change:** none; report only.
+  - **Acceptance:** the diagnosis names each list with file and line and each affected recording, and for `wiki_inventory_tool.ok` shows the order differing between two runs or two file orders (the command used is written down).
+  - **Todo:** [ ] diagnosis shown, recordings named.
+- [ ] **Task 64 — Compare the unordered lists in a fixed order, in the tests only, and add a regression test.** In `server/tests/contracts/harness.py`, sort each list found in Task 63 (by a stated key: the path for `all_files`, the slug or path for the others) before it is compared and recorded, in the same place that `normalise` and `mask_product_versions` are applied; change `record.py` or `cases.py` only if the diagnosis needs it. Add a test that fails if a recording pins directory order: run the inventory case with the file creation order reversed and again shuffled with a fixed seed (the seed and the file count written next to the result), and expect the same result as the recording. Re-record with `record.py --write` only for a recording that changes, on a copy of the repository as for F14. Edit no server file, `.github/workflows/server.yml` or existing test assertion beyond the comparison.
+  - **Source:** GitHub Actions `server` run 43727526573; INT-2 constraint "no flaky tests; tests run on the Python versions the server supports".
+  - **Files:** `server/tests/contracts/harness.py` (and, only if needed, `record.py`, `cases.py`, `test_harness.py`, and the recordings Task 63 names).
+  - **Change:** sort the listed lists order-independently; add the order-reversed and fixed-seed-shuffled regression test.
+  - **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/contracts -q` passes; the new test fails when the sort is taken out (shown once, then restored) and passes with it.
+  - **Todo:** [ ] sort added, [ ] regression test added and shown failing without the sort, [ ] recordings re-recorded only where they changed.
+- [ ] **Task 65 — Replay the gates and prove it on another file order.** Run `cd server && ../.venv/bin/python -m pytest -q`, `.venv/bin/python -m pytest tests/live -q`, `.venv/bin/python tools/vendor_web.py --check`, `.venv/bin/python -m pytest bundles/base/tests -q` and `python3 bundles/base/tools/build.py --check`, with real counts. Prove the fix on another file order by running the contract tests with `Path.rglob` and `Path.glob` patched in a scratch plugin (in the scratchpad, never `/tmp`) to return reversed results, once reversed and once shuffled with a fixed seed. Record the commands, counts and seed in the note, then stop; the coordinator pushes and reads CI again.
+  - **Source:** GitHub Actions `server` run 43727526573; INT-2 constraint "no flaky tests; tests run on the Python versions the server supports".
+  - **Files:** none changed besides the plan note.
+  - **Change:** none to code.
+  - **Acceptance:** all five gates pass with counts written in the note (the server count was `1123 passed, 5 xfailed` before this repair, plus the new tests); the contract tests pass with reversed and shuffled walks; the note carries a Rule exceptions line.
+  - **Todo:** [ ] five gates run, [ ] reversed and shuffled runs pass, [ ] note and Rule exceptions line written.
+
+**Verification:** `cd server && ../.venv/bin/python -m pytest -q` passes with the new test counted, the reversed and shuffled runs of Task 65 pass, and after the coordinator pushes, the `server tests (3.11)` and `server tests (3.12)` jobs of the next `server` run pass (read from GitHub Actions, not from files). Linux, the system that failed, is checked by CI only.
+
+**Findings not repaired:**
+
+| Finding | End | Reason |
+| ------- | --- | ------ |
+| none    |     | This amendment answers a CI failure, not a review finding; the one failing test is repaired by Tasks 63 to 65. |
+
+**Open questions:**
+
+1. Should a Linux job also be run locally in Docker before pushing? What: whether the repair adds a local Linux run. Why: the failure only showed on Linux, and the coder ran only on macOS. Consequence: yes costs a Docker build and slows the repair; no leaves CI as the only Linux check, and a second red run costs one push. Recommendation: no, CI is the check, and the reversed and shuffled runs of Task 65 cover the file-order cause. Default: no local Linux job.
