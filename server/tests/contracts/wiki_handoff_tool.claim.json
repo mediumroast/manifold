@@ -1,0 +1,20 @@
+{
+  "arguments": {
+    "action": "claim",
+    "path": "wiki/handoffs/acme-web-to-acme-api/feature-order-history-endpoint.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "path": "wiki/handoffs/acme-web-to-acme-api/feature-order-history-endpoint.md",
+    "status": "claimed",
+    "summary": "Acme Web needs a customer's past orders to show an order history page.",
+    "what_needs_to_happen": "1. Add GET /v1/customers/{id}/orders returning the customer's orders, newest first.\n2. Support limit and cursor parameters.\n3. Update the API contract document."
+  },
+  "tool": "wiki_handoff_tool"
+}

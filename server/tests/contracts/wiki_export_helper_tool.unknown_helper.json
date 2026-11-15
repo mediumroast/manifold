@@ -1,0 +1,16 @@
+{
+  "arguments": {
+    "name": "no_such_helper"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "error": "Unknown helper 'no_such_helper'. Known helpers: ['handoff-close-command', 'handoff-close-prompt', 'handoff-confirm-command', 'handoff-confirm-prompt', 'handoff-create-command', 'handoff-create-prompt', 'handoff-pickup-command', 'handoff-pickup-prompt', 'handoff-reject-command', 'handoff-reject-prompt', 'handoff-update-command', 'handoff-update-prompt', 'ingest_doc', 'manifold-update-command', 'manifold-update-prompt']"
+  },
+  "tool": "wiki_export_helper_tool"
+}

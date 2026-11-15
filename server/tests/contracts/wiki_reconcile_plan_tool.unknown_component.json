@@ -1,0 +1,61 @@
+{
+  "arguments": {
+    "component": "no-such-component"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "component": "no-such-component",
+    "message": "'no-such-component' is not yet registered in the wiki. Run wiki_onboarding_tool(component='no-such-component') to start first-time registration.",
+    "preflight": {
+      "already_registered": false,
+      "component": "no-such-component",
+      "docs_found": [],
+      "missing_recommended": [
+        "architecture",
+        "api"
+      ],
+      "missing_required": [
+        "readme"
+      ],
+      "next_step": "No raw docs found for 'no-such-component'. If the component repo has a README.md or similar, use Option A: read it with your file tool and pass via inline_docs. Otherwise use Option C to register with stubs now.",
+      "options": [
+        {
+          "action": "Read README.md (or any available doc) from the workspace, then call: wiki_register_component_tool(name='no-such-component', ..., inline_docs={'readme': '<content of README.md>', 'architecture': '<content if available>'})",
+          "description": "If the component repo has a README.md or other docs, read them using your file-reading tool and pass the content directly via inline_docs. No need to copy files anywhere. Architecture and API sections will be stubs if not provided \u2014 that is fine, they can be filled in later.",
+          "label": "Use docs from the current workspace",
+          "option": "A",
+          "recommended": true
+        },
+        {
+          "action": "wiki_register_component_tool(..., source_docs=['raw/no-such-component/YYYY-MM-DD-no-such-component-readme.md'])",
+          "description": "Write dated markdown files to raw/no-such-component/ in the manifold repo, then call wiki_register_component_tool with source_docs=[...]. Only needed if you want the raw docs permanently stored in manifold.",
+          "label": "Write raw docs to the manifold repo first",
+          "option": "B",
+          "suggested_filenames": [
+            "{YYYY-MM-DD}-no-such-component-readme.md",
+            "{YYYY-MM-DD}-no-such-component-architecture.md (optional)",
+            "{YYYY-MM-DD}-no-such-component-api.md (optional)"
+          ]
+        },
+        {
+          "action": "wiki_register_component_tool(..., skip_source_docs=True)",
+          "description": "Register immediately with placeholder sections. All sections will say 'to be completed'. Use wiki_freshness_tool later to detect when docs are added and the page needs updating.",
+          "label": "Register with stubs now",
+          "option": "C"
+        }
+      ],
+      "raw_dir": "raw/no-such-component/",
+      "raw_dir_exists": false,
+      "ready_to_register": true,
+      "status": "not_registered"
+    },
+    "status": "not_registered"
+  },
+  "tool": "wiki_reconcile_plan_tool"
+}

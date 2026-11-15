@@ -1,0 +1,20 @@
+{
+  "arguments": {
+    "action": "request-review",
+    "notes": "Fixed and tested.",
+    "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "next": "Notify acme-cli that this handoff is awaiting their review. They should run /handoff-confirm or wiki_handoff_tool(action='confirm', path='wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md') to approve, or action='reject' to send it back with feedback.",
+    "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md",
+    "status": "needs-review"
+  },
+  "tool": "wiki_handoff_tool"
+}

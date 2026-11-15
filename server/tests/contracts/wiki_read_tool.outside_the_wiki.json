@@ -1,0 +1,16 @@
+{
+  "arguments": {
+    "path": "../../etc/passwd"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "error": "The path may not contain '..': ../../etc/passwd"
+  },
+  "tool": "wiki_read_tool"
+}

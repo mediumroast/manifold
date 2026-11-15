@@ -1,0 +1,26 @@
+{
+  "arguments": {
+    "action": "create",
+    "priority": "low",
+    "source": "acme-api",
+    "summary": "A summary.",
+    "target": "acme-web",
+    "title": "Contract case handoff",
+    "type": "feature",
+    "what_needs_to_happen": "Do the thing."
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "id": "contract-case-handoff",
+    "next": "Target component can now call wiki_handoff_tool(action='claim', path='wiki/handoffs/acme-api-to-acme-web/feature-contract-case-handoff.md') to pick this up.",
+    "path": "wiki/handoffs/acme-api-to-acme-web/feature-contract-case-handoff.md",
+    "status": "created"
+  },
+  "tool": "wiki_handoff_tool"
+}

@@ -1,0 +1,25 @@
+{
+  "arguments": {
+    "description": "A new component for a contract case.",
+    "name": "contract-new",
+    "owner": "Contract team",
+    "repo": "https://example.test/contract-new",
+    "skip_source_docs": true
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "etag": "5998b7eeef5314745d93d704a967adf93b67f90e374d7d3e463a299a6bc0e350",
+    "message": "Component registered successfully: contract-new",
+    "name": "contract-new",
+    "path": "wiki/components/contract-new.md",
+    "self_granted": false,
+    "status": "created"
+  },
+  "tool": "wiki_register_component_tool"
+}

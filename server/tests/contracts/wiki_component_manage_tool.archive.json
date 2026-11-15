@@ -1,0 +1,32 @@
+{
+  "arguments": {
+    "action": "archive",
+    "name": "contract-new",
+    "reason": "retired"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "name": "contract-new",
+    "purge_after": "<timestamp>",
+    "status": "archived"
+  },
+  "setup": [
+    {
+      "arguments": {
+        "description": "A new component for a contract case.",
+        "name": "contract-new",
+        "owner": "Contract team",
+        "repo": "https://example.test/contract-new",
+        "skip_source_docs": true
+      },
+      "tool": "wiki_register_component_tool"
+    }
+  ],
+  "tool": "wiki_component_manage_tool"
+}

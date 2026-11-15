@@ -1,0 +1,28 @@
+{
+  "arguments": {},
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "fresh": [
+      "acme-api",
+      "acme-web"
+    ],
+    "stale": [
+      {
+        "component": "acme-cli",
+        "last_wiki_update": "<date>",
+        "newer_raw_docs": [
+          "raw/shared/<date>-order-status-contract.md"
+        ],
+        "wiki_page": "wiki/components/acme-cli.md"
+      }
+    ],
+    "unknown": []
+  },
+  "tool": "wiki_freshness_tool"
+}

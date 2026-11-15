@@ -1,0 +1,17 @@
+{
+  "arguments": {
+    "component": "acme-api"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "message": "No agent files found in raw/acme-api/agents/. Install the agent bundle in the component repository (wiki_bundle_info_tool), copy its agent files into that folder, then call this tool again.",
+    "status": "no_agents"
+  },
+  "tool": "wiki_agent_catalog_tool"
+}

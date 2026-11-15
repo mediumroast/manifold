@@ -1,0 +1,22 @@
+{
+  "arguments": {
+    "action": "update",
+    "description": "A changed description.",
+    "name": "acme-api"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "changed": [
+      "description"
+    ],
+    "name": "acme-api",
+    "status": "updated"
+  },
+  "tool": "wiki_component_manage_tool"
+}

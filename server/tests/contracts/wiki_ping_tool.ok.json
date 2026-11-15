@@ -1,0 +1,44 @@
+{
+  "arguments": {},
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "next_step": "Native MCP connection confirmed. Call wiki_onboarding_tool() for the full protocol, or wiki_inventory_tool() to see components and open handoffs.",
+    "principal": {
+      "id": "<principal-id>",
+      "kind": "human",
+      "name": "contract",
+      "roles": [
+        "contributor",
+        "registrar"
+      ]
+    },
+    "server": "manifold",
+    "status": "connected",
+    "tool_count": 16,
+    "tools": [
+      "wiki_ping_tool",
+      "wiki_handoff_tool",
+      "wiki_read_tool",
+      "wiki_write_page_tool",
+      "wiki_log_append_tool",
+      "wiki_inventory_tool",
+      "wiki_register_component_tool",
+      "wiki_component_manage_tool",
+      "wiki_freshness_tool",
+      "wiki_onboarding_tool",
+      "wiki_reconcile_plan_tool",
+      "wiki_agent_catalog_tool",
+      "wiki_bundle_info_tool",
+      "wiki_list_helpers_tool",
+      "wiki_export_helper_tool",
+      "wiki_export_component_helpers_tool"
+    ]
+  },
+  "tool": "wiki_ping_tool"
+}

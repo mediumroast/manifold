@@ -1,0 +1,21 @@
+{
+  "arguments": {
+    "content": "# Contract case\n\nBody.\n",
+    "message": "contract create",
+    "path": "wiki/decisions/contract-case.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "error": null,
+    "etag": "a1327de99a288bebd007096dbf4b18e95586e739793d996d6d953c2c7b9323bb",
+    "path": "wiki/decisions/contract-case.md",
+    "status": "created"
+  },
+  "tool": "wiki_write_page_tool"
+}

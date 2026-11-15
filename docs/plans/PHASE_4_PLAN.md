@@ -347,7 +347,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** none (read)
 **Change:** Read the MCP project's documentation for its official conformance checks: the command, the runtime it needs, whether it runs against a locally started HTTP server without internet access, and how it passes a bearer token (the server refuses unauthenticated requests, `/mcp` returns 401). Record each fact with its source, or "unverified: confirm with <source>". Settle with the owner whether Task 22 is possible.
 **Acceptance:** the note lists command, runtime, offline behavior, auth handling, each with source or "unverified".
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: read `https://github.com/modelcontextprotocol/conformance` (the repository page; the fetch tool summarises, so the wording is the tool's reading of the page, not a verbatim quote). Facts: **command** `npx @modelcontextprotocol/conformance server --url http://localhost:3000/mcp`, with options `--scenario <name>`, `--suite <suite>`, `--requirements <revision>`, `--expected-failures <path>`, `--verbose` (source: that README). **Runtime**: the README gives no Node version for the CLI; only its GitHub Action defaults to `node-version: 20` (source: that README; CLI requirement otherwise unverified: confirm with the package's `package.json` `engines` field). **Offline**: the examples target a local server and the tool runs as a client against the URL, but the README does not say whether it needs internet, and `npx` must download the package first, so a CI job needs network for the install (unverified: confirm by running it once). **Auth**: the README documents no way to pass a bearer token or other credentials to the server under test (unverified: confirm with the package's `--help` output or source); this server answers 401 to every unauthenticated `/mcp` request, so as documented the suite cannot get past the first request. Conclusion: Task 22 is not possible as written today; it needs the owner's decision (see Task 22 note).
 
 ---
 
@@ -358,7 +360,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** CREATE
 **Change:** Follow `server/tests/test_offline_clean.py` (`imported_names` over `ast`). Scan `server.py`, `wiki_backend/`, `manifold_security/` and `manifold_cli/`. Define `FRAMEWORK = {"fastmcp", "starlette", "uvicorn", "mcp"}` and `ENTRY_MODULES = {"server.py"}`. `test_only_the_entry_module_imports_the_framework` fails for any other module whose top-level import name is in `FRAMEWORK`; `test_the_entry_module_list_has_one_member` asserts `len(ENTRY_MODULES) == 1` so the exception list cannot grow unnoticed. Failing first: a test copy of a module with `import starlette` is flagged by the scan function.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_import_rule.py -q` passes (counts reported); today's code passes (grep found `server.py` only).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: created `server/tests/test_import_rule.py` (4 tests; followed `test_offline_clean.py`'s `ast` scan, also scanning `manifold_cli/`). `cd server && ../.venv/bin/python -m pytest tests/test_import_rule.py -q` gave `4 passed`. The "failing first" check is `test_the_scan_flags_a_module_that_imports_the_framework`: a temporary module with `import starlette.routing` and `from fastmcp import FastMCP` is flagged by `framework_imports`.
 
 ---
 
@@ -369,7 +373,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** CREATE
 **Change:** Format (Open question 7 default): one JSON file per tool and case, `server/tests/contracts/<tool>.<case>.json`, holding `{"tool", "arguments", "caller": {"kind", "roles"}, "result"}`. `harness.py`: `normalise(value)` replaces volatile values (commit hashes, timestamps, generated ids) by fixed tokens; `compare(tool, recorded, actual)` walks both and raises an `AssertionError` that names the tool and the dotted field path (`wiki_read_tool: result.etag: expected str, got missing`); `run_case(tool_world, case)` calls the tool with `ToolWorld.call` from `server/tests/conftest.py` against a private copy of `examples/acme` (the `acme` fixture of `test_example_acme.py` is the pattern). `record.py` writes recordings only when run by hand as `python server/tests/contracts/record.py --write`, and exits with code 2 when the environment variable `CI` or `PYTEST_CURRENT_TEST` is set; no test module imports it.
 **Acceptance:** `python3 server/tests/contracts/record.py` without `--write` prints usage and writes nothing; `CI=1 python3 server/tests/contracts/record.py --write` exits 2 (run in a scratch copy, not the repository).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: created `server/tests/contracts/{__init__,harness,record,conftest}.py`; `cases.py` (the case list the recorder runs) and `conftest.py` (the `contract_world` fixture) are additions beyond the Files line. Format as in Open question 7, plus an optional `"setup"` list (calls run first by the same caller) and an `@etag:<path>` argument value that the harness resolves to the page's current etag. `normalise` replaces commit hashes, timestamps, dates, generated principal ids, semantic versions and the product's own releases URL by tokens, and the temporary folder by `<root>`. Acceptance, run on a copy of `record.py` in the scratchpad: `python3 <copy>/record.py` printed the usage and wrote nothing; `CI=1 python3 <copy>/record.py --write` printed the refusal and `echo $?` gave `2`.
 
 ---
 
@@ -380,7 +386,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** CREATE
 **Change:** One success case per read tool and one error case where the tool has one (`wiki_read_tool` on a missing path and on a path outside the wiki). `test_tool_contracts.py` parametrises over the recording files and calls `harness.compare`. Record with the explicit command of Task 16 and commit the files as a reviewed diff; the coder reads each file for real data before staging (the fictional instance only).
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/contracts -q` passes (counts reported); `grep -rIl "mediumroast" server/tests/contracts` prints nothing.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: recorded with `env -u CI -u PYTEST_CURRENT_TEST .venv/bin/python server/tests/contracts/record.py --write`; 15 recordings for the ten read tools (read: ok, missing path, `..` path; freshness: all and one component; reconcile plan: ok and unknown component; export helper: ok and unknown helper; one each for the rest). Added `test_tool_contracts.py` (one test per recording file) and `conftest.py`. I read every result for real data: all text comes from the fictional `examples/acme` or the product's own output. The bundle-info result held the product's releases URL (a `mediumroast` GitHub path), which would have failed the grep, so `normalise` tokenises any `github.com/<owner>/<repo>/releases` URL as `<releases-url>`; versions became `<version>` for the same reason (they change at every release). Deviation: the "path outside the wiki" error case uses `../../etc/passwd` and gets the `..` refusal. Result: `cd server && ../.venv/bin/python -m pytest tests/contracts -q` gave `34 passed` (33 recordings plus the count test) before Task 18's files were added to the same folder; `grep -rIl mediumroast server/tests/contracts` printed nothing.
 
 ---
 
@@ -391,7 +399,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** CREATE
 **Change:** One recording per case, same format and recorder. Each case lists the principal and roles it ran as (the policy lists of `server/tests/test_tool_policy.py` give valid arguments).
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/contracts -q` passes (counts reported).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: 18 recordings, recorded in the same run as Task 17: `wiki_write_page_tool` create, update, stale_etag, protected_field_change, invalid_frontmatter; `wiki_log_append_tool` ok; `wiki_agent_catalog_tool` ok (the Acme example has no agent files, so this records the `no_agents` shape, not a catalog listing); `wiki_handoff_tool` create, claim, request_review, confirm, reject, close, list (confirm and reject use a `setup` step of request-review); `wiki_register_component_tool` ok; `wiki_component_manage_tool` update, archive, restore (archive and restore use `setup` steps). Every case runs as a human with roles `contributor` and `registrar` (the `caller` field), holding grants on the three Acme components and `_shared`. Result: `cd server && ../.venv/bin/python -m pytest tests/contracts -q` gave `41 passed` after Task 19's file was added (33 recording tests, 1 count test, 7 harness tests).
 
 ---
 
@@ -402,7 +412,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** CREATE
 **Change:** `test_a_renamed_field_names_the_tool_and_the_field` (rename one field of an in-memory copy of one recording; `compare` fails with a message containing the tool name and the field path; no other tool's test is involved); `test_every_registered_tool_has_a_contract` (set of tools in `server.app.list_tools()` equals the set that has at least one recording, as `test_tool_policy.py` does for the policy); `test_nothing_regenerates_a_recording_during_a_test_run` (no test module imports `record`, and `record.py` refuses under `PYTEST_CURRENT_TEST`).
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/contracts -q` passes (counts reported); failing first: delete one recording locally and see `test_every_registered_tool_has_a_contract` fail, then restore it.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: created `server/tests/contracts/test_harness.py` (7 tests). Failing first: moved `wiki_ping_tool.ok.json` out of the folder, ran `cd server && ../.venv/bin/python -m pytest tests/contracts -q`: `1 failed, 39 passed`, the failure was `test_every_registered_tool_has_a_contract`; moved the file back: `41 passed`. The rename test changes `etag` to `entity_tag` in a copy of the `wiki_read_tool.ok` result and asserts the message holds `wiki_read_tool`, `result.etag` and `missing`.
 
 ---
 
@@ -413,7 +425,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** CREATE
 **Change:** Read `write_page_of_kinds` and `handoff_create` first to name each failure point. The refusals of a stale etag and bad frontmatter are already tested (`test_pickup_stale_etag_rejected`, `test_write_validation.py`); do not repeat them, only add the unchanged-tree assertion for them. Using `ToolWorld` and monkeypatch, inject: a stale etag; invalid frontmatter; a write refused (`OSError` with `errno.ENOSPC` from `Path.write_text`); git refusing the commit (`git_commit` returning `committed=False`); a failure part-way through `handoff_create`. For the git refusal, assert the documented behavior and not an unchanged tree: the file stays on disk, the call reports that the commit did not happen, and nothing else changed (no stray folder, sidebar entry or log line beyond what the code documents). For every other case, assert that the tree (relative paths, empty folders and sha256 of every file outside `.git`), `wiki/_sidebar.md` and `wiki/log.md` equal their snapshot from before the call, and that `wiki_health` reports healthy. Where the existing code fails an assertion because of a stray folder, partial file, sidebar entry or log line, mark the case `pytest.mark.xfail(strict=True, reason="defect: <one line>")` (the owner's answer to Open question 10: these are defects for `bug-coder` after this phase), so the suite stays green and the defect is listed; do not edit the code and do not stop to ask.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_write_failures.py -q` passes (counts reported, including the number of xfail cases, each named in the note).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: created `server/tests/test_write_failures.py` over a private copy of `examples/acme` (via the contract harness). `cd server && ../.venv/bin/python -m pytest tests/test_write_failures.py -q` gave `6 passed, 5 xfailed`. I confirmed each xfail fails for its stated reason with `--runxfail`. Passing: stale etag; invalid frontmatter in an existing folder; refused page write (`OSError` ENOSPC from `Path.write_text`); refused handoff write; git refusing the commit of a page write (file stays, nothing else changes); git refusing the commits of a handoff create (page, sidebar entry and log line written, nothing else, no commit). Strict xfails (defects for `bug-coder`, code not touched): (1) `test_invalid_frontmatter_in_a_new_folder_leaves_the_tree_unchanged`: the empty folder `wiki/newarea` is left behind (`write_page_of_kinds` runs `mkdir` before it validates); (2) `test_a_refused_page_write_into_a_new_folder_leaves_the_tree_unchanged`: same stray folder; (3) `test_a_failing_sidebar_update_part_way_through_handoff_create_leaves_the_tree_unchanged`: the handoff page stays (written and committed first) with no sidebar entry; (4) `test_a_failing_log_append_part_way_through_handoff_create_leaves_the_tree_unchanged`: the page and sidebar entry stay with no log line; (5) `test_git_refusing_the_commit_is_reported_to_the_caller`: the plan's expectation that "the call reports that the commit did not happen" does not hold, because `wiki_write_page` discards the `git_commit` result and the tool returns a plain `created`. Item 5 is outside the stray-folder/partial-file/sidebar/log list of the Change text; I treated it as the same kind of defect and marked it the same way, flagged for the owner.
 
 ---
 
@@ -424,7 +438,9 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** CREATE
 **Change:** Use `TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")` as `test_request_guard.py` does. Do not repeat the host, origin, 401, 403 and 421 cases that `test_request_guard.py`, `test_auth.py` and `test_docs_route_policy.py` already cover. Cases, each with an authenticated principal from `auth_world`: `/mcp` with a malformed JSON body; an unknown tool name; a missing required argument; a wrong argument type; `GET /mcp`; an oversized body. For each assert the status and that the body holds no stack trace, file path or secret.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/test_http_errors.py -q` passes (counts reported); no network (existing `test_offline_clean.py` still passes).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: created `server/tests/test_http_errors.py` (9 tests; `TestClient(server.asgi_app, base_url="http://127.0.0.1:8686")`, bearer token from `auth_world`). Cases and the statuses found: malformed JSON 400 (JSON-RPC parse error -32700); unknown tool, missing required argument and wrong argument type each 200 with `isError: true` and a message naming the tool or the argument (MCP reports tool errors in the result, not the status); `GET /mcp` without `text/event-stream` in Accept 406, without a session 400, with an unknown session 404 (a `GET` with a valid session opens a stream that never ends under `TestClient`, so it is not tested); oversized `/mcp` body (6 MiB) 413; oversized `/ingest` body 413 and nothing written. Each body is checked for a stack trace, a Python file name, the temporary paths and both tokens. My first check for `.py` matched `pydantic.dev` in a documentation link; I changed it to a word-bounded `\.py\b`. `cd server && ../.venv/bin/python -m pytest tests/test_http_errors.py tests/test_offline_clean.py -q` gave `50 passed`.
 
 ---
 
@@ -435,11 +451,15 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Action:** MODIFY
 **Change:** Only after Task 14 and the owner's go-ahead: add a job `conformance` that starts the server as the `image` job does or in-process, runs the command recorded in Task 14, and is not added to the ruleset's required checks (that is a ruleset change, the owner's act). Pin action versions by commit as the file does. If the owner says no or Task 14 finds it cannot run offline, mark this task `[~]` with the reason and add the owner's answer.
 **Acceptance:** the job passes on the pull request; `git diff --stat` shows only `server.yml`; the required checks in `docs/process/BRANCH_RULES.md` are unchanged.
-**Todo:** [ ]
+**Todo:** [~]
+
+> Note: blocked, `.github/workflows/server.yml` not changed. Reason: Task 14 found no documented way to give the conformance suite a bearer token, and this server answers 401 to every unauthenticated `/mcp` request, so the suite as documented would fail at the first request; the offline behavior and the Node version are also unverified. This also needs the owner's go-ahead, which has not been given. Question for the owner: do you want Task 22 dropped, or do you want me to first check the package's `--help` and source for a header or auth option (needs network access to download it)? Default: drop it and record it as a follow-up.
 
 ---
 
 **Verification:** `cd server && ../.venv/bin/python -m pytest -q` passes (counts reported, with the number of xfail cases named); `.venv/bin/python -m pytest tests/live -q` and `.venv/bin/python tools/vendor_web.py --check` unchanged; the owner changes one field name in one tool locally and sees exactly that tool's test fail naming the field (not committed).
+
+> CP2 gates (coder, branch `claude/phase-4-cp2`): `cd server && ../.venv/bin/python -m pytest -q` gave `1120 passed, 5 xfailed, 8 warnings in 154.04s` (the five xfails are the ones named in the Task 20 note); `.venv/bin/python -m pytest tests/live -q` gave `24 passed`; `.venv/bin/python tools/vendor_web.py --check` printed `vendored files match a fresh build`; `.venv/bin/python -m pytest bundles/base/tests -q` gave `2108 passed, 1 skipped`; `python3 bundles/base/tools/build.py --check` printed `lint ok`. Not done: the owner's by-hand field-rename check, and Task 22 (blocked, see its note).
 
 ### CP3 — Curated test data sets (INT-3)
 

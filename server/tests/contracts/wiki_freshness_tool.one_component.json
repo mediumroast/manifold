@@ -1,0 +1,20 @@
+{
+  "arguments": {
+    "component": "acme-api"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "fresh": [
+      "acme-api"
+    ],
+    "stale": [],
+    "unknown": []
+  },
+  "tool": "wiki_freshness_tool"
+}

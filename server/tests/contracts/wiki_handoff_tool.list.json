@@ -1,0 +1,44 @@
+{
+  "arguments": {
+    "action": "list"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "handoffs": [
+      {
+        "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md",
+        "priority": "high",
+        "source_component": "acme-cli",
+        "status": "in-progress",
+        "target_component": "acme-api",
+        "title": "Cancel returns 500 for an order that already shipped",
+        "updated": "<date>"
+      },
+      {
+        "path": "wiki/handoffs/acme-api-to-acme-web/breaking-change-order-status-values-renamed.md",
+        "priority": "high",
+        "source_component": "acme-api",
+        "status": "completed",
+        "target_component": "acme-web",
+        "title": "Order status values renamed",
+        "updated": "<date>"
+      },
+      {
+        "path": "wiki/handoffs/acme-web-to-acme-api/feature-order-history-endpoint.md",
+        "priority": "medium",
+        "source_component": "acme-web",
+        "status": "open",
+        "target_component": "acme-api",
+        "title": "Order history endpoint",
+        "updated": "<date>"
+      }
+    ]
+  },
+  "tool": "wiki_handoff_tool"
+}

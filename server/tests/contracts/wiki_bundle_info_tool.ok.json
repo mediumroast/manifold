@@ -1,0 +1,27 @@
+{
+  "arguments": {},
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "bundles": [
+      {
+        "name": "base",
+        "version": "<version>"
+      }
+    ],
+    "install_steps": [
+      "Get the bundle ZIP (the server's own copy if 'archive' is listed, else from the release page) and check its SHA-256 against the value shown here or in the release's SHA256SUMS.",
+      "Unzip it, then from inside the unzipped folder run: ./install.sh --target <component repo>   (this prints a plan and writes nothing).",
+      "Read the plan, then add --apply. Use --profile build (default), quality or single, and --format claude, copilot or skills.",
+      "Review and commit the result in the component repository. Later updates are the same command; files you changed are kept unless you pass --force."
+    ],
+    "next": "Install the handoff helpers too with wiki_export_component_helpers_tool(); after agents are in the component repository, publish them to this wiki with wiki_agent_catalog_tool(component).",
+    "releases": "<releases-url>"
+  },
+  "tool": "wiki_bundle_info_tool"
+}

@@ -1,0 +1,20 @@
+{
+  "arguments": {
+    "action": "close",
+    "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md",
+    "resolution": "Done."
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "next": "Update the acme-api component page (wiki/components/acme-api.md) to reflect this change in ## Changelog.",
+    "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md",
+    "status": "completed"
+  },
+  "tool": "wiki_handoff_tool"
+}

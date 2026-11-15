@@ -1,0 +1,31 @@
+{
+  "arguments": {
+    "path": "wiki/components/acme-api.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "body": "# Acme Api\n\n## Overview\n\n_Sourced from `raw/acme-api/<date>-acme-api-readme.md`. Synthesise and rewrite this section as needed._\n\n# Acme API\n\nAcme API is the order service behind the Acme storefront. It owns customers, products and\norders, and exposes them as a JSON REST API.\n\n- Language: Python 3.12 with FastAPI\n- Storage: PostgreSQL\n- Runs as one container behind a load balancer\n\nStart it locally with `make run`; the interactive API documentation is served at `/docs`.\n\n\n**Repository:** https://example.test/acme/acme-api\n\n## Architecture\n\n_Sourced from `raw/acme-api/<date>-acme-api-architecture.md`. Synthesise and rewrite this section as needed._\n\n# Acme API architecture\n\nThe service has three layers.\n\n1. **Routers** validate requests and shape responses. One router per resource.\n2. **Services** hold the business rules: pricing, stock checks, order state changes.\n3. **Repositories** are the only code that talks to PostgreSQL.\n\nOrder state changes go through a single function so every change is checked against the\nallowed transitions and written to an audit table.\n\nBackground work (confirmation emails, stock reconciliation) runs in a separate worker process\nthat reads a Postgres-backed job queue.\n\n\n## API contract\n\n_Sourced from `raw/acme-api/<date>-acme-api-api.md`. Synthesise and rewrite this section as needed._\n\n# Acme API contract\n\nBase path `/v1`. All bodies are JSON. Errors use `{\"error\": {\"code\": \"...\", \"message\": \"...\"}}`.\n\n| Method | Path | Purpose |\n|---|---|---|\n| GET | /v1/products | List products |\n| GET | /v1/products/{id} | One product |\n| POST | /v1/orders | Create an order |\n| GET | /v1/orders/{id} | One order |\n| POST | /v1/orders/{id}/cancel | Cancel an order that has not shipped |\n\nAn order has `id`, `customer_id`, `lines`, `total_cents`, `currency` and `status`.\nStatus values are listed in the shared order-status contract.\n\n\n## Integration points\n\n_To be completed. Describe how this component communicates with other components. Link each component name to its wiki page once known._\n\n## Implementation status\n\n| Area | Status | Notes |\n|---|---|---|\n| Initial registration | \u2705 Done | <date> |\n| Raw source docs | \u2705 Embedded | See Sources section |\n| Architecture documented | \u2b1c Review embedded content | |\n| API contract documented | \u2b1c Review embedded content | |\n\n## Changelog\n\n- **<date>** - Order status values renamed to `placed` and `confirmed` (see the completed handoff).\n- **<date>** \u2014 Component registered.\n\n## Known issues\n\n_None recorded at registration._\n\n## Deployment\n\n_To be completed. Document how the component runs, required environment\nvariables, dependencies, and health checks._\n\n## Sources\n\n- [`raw/acme-api/<date>-acme-api-readme.md`](../../raw/acme-api/<date>-acme-api-readme.md) \u2014 readme document\n- [`raw/acme-api/<date>-acme-api-architecture.md`](../../raw/acme-api/<date>-acme-api-architecture.md) \u2014 architecture document\n- [`raw/acme-api/<date>-acme-api-api.md`](../../raw/acme-api/<date>-acme-api-api.md) \u2014 api document",
+    "etag": "1bc2cc160ff9c8cf330c30b1030513b42e191a4938df041a1d88b789febea24f",
+    "frontmatter": {
+      "component": "acme-api",
+      "last_updated": "<date>",
+      "owner": "Platform team",
+      "status": "active",
+      "summary": "REST order service: customers, products and orders for the Acme storefront.",
+      "title": "Acme Api"
+    },
+    "links": [
+      "../../raw/acme-api/<date>-acme-api-readme.md",
+      "../../raw/acme-api/<date>-acme-api-architecture.md",
+      "../../raw/acme-api/<date>-acme-api-api.md"
+    ],
+    "path": "wiki/components/acme-api.md"
+  },
+  "tool": "wiki_read_tool"
+}
