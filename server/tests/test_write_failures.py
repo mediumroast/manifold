@@ -14,6 +14,7 @@ starts to pass and strict mode fails the run, which tells the fixer to remove th
 
 import errno
 import hashlib
+import re
 import subprocess
 from pathlib import Path
 
@@ -208,4 +209,10 @@ def test_git_refusing_the_commits_of_a_handoff_create_changes_only_what_the_code
 def test_git_refusing_the_commit_is_reported_to_the_caller(world, monkeypatch):
     refuse_every_commit(monkeypatch)
     result = call(world, "wiki_write_page_tool", **NEW_PAGE)
-    assert "commit" in str(result).lower(), result
+    # The report must be specific: a `committed` flag that is false, or an error or warning text that
+    # says the change was not committed.  A field or message that merely contains the word "commit"
+    # does not count, and neither does the plain success shape.
+    says_not_committed = re.compile(r"not (been )?committed|commit (failed|was refused|did not|was not)|uncommitted",
+                                    re.IGNORECASE)
+    texts = [str(result.get(key) or "") for key in ("error", "warning", "message")]
+    assert result.get("committed") is False or any(says_not_committed.search(t) for t in texts), result

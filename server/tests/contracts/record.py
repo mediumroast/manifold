@@ -38,6 +38,8 @@ def main(argv):
             finally:
                 world.conn.close()
         recording = {"tool": tool, "arguments": case["arguments"], "caller": case["caller"]}
+        if case.get("files"):
+            recording["files"] = case["files"]
         if case.get("setup"):
             recording["setup"] = case["setup"]
         recording["result"] = result

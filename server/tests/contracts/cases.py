@@ -19,11 +19,23 @@ _REVIEW = {"tool": "wiki_handoff_tool",
            "arguments": {"action": "request-review", "path": ACTIVE_HANDOFF, "notes": "Fixed and tested."}}
 
 
-def case(tool, name, arguments, caller=HUMAN, setup=None):
+def case(tool, name, arguments, caller=HUMAN, setup=None, files=None):
     entry = {"arguments": arguments, "caller": caller}
     if setup:
         entry["setup"] = setup
+    if files:
+        entry["files"] = files  # {relative path: text} written into the private copy before the case
     return (tool, name, entry)
+
+
+# Fictional agent files for the agent-catalog listing case; the Acme example has none of its own.
+AGENT_FILES = {
+    "raw/acme-api/agents/acme-planner.agent.md":
+        "---\nname: acme-planner\ndescription: Plans work for the fictional Acme API.\n---\n\n# Acme planner\n\nPlans.\n",
+    "raw/acme-api/agents/acme-coder.agent.md":
+        "---\nname: acme-coder\ndescription: Builds the fictional Acme API.\n---\n\n# Acme coder\n\n"
+        "## Stack facts\n\n- Python 3\n\nTo verify, run `make check`. Run `make test` in full.\n",
+}
 
 
 CASES = [
@@ -62,6 +74,7 @@ CASES = [
     case("wiki_log_append_tool", "ok",
          {"action": "lint", "message": "Contract case entry.", "component": "acme-api"}),
     case("wiki_agent_catalog_tool", "ok", {"component": "acme-api"}),
+    case("wiki_agent_catalog_tool", "with_agents", {"component": "acme-api"}, files=AGENT_FILES),
     case("wiki_handoff_tool", "create",
          {"action": "create", "source": "acme-api", "target": "acme-web", "type": "feature", "priority": "low",
           "title": "Contract case handoff", "summary": "A summary.", "what_needs_to_happen": "Do the thing."}),

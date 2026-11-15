@@ -4,6 +4,7 @@
 A recording is one JSON file per tool and case, `<tool>.<case>.json`::
 
     {"tool": ..., "arguments": {...}, "caller": {"kind": ..., "roles": [...]},
+     "files": {"relative/path": "text", ...},                # optional: fictional files placed (and committed) first
      "setup": [{"tool": ..., "arguments": {...}}, ...],     # optional: calls run first, same caller
      "result": {...}}                                        # the normalised tool result
 
@@ -15,12 +16,14 @@ only by kind and roles.
 Recordings are written only by `record.py`, run by hand.  Tests only compare.
 """
 
+import datetime
 import json
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from unittest import mock
 
 SERVER_DIR = Path(__file__).resolve().parents[2]
 EXAMPLE = SERVER_DIR.parent / "examples" / "acme"
@@ -35,7 +38,6 @@ _VOLATILE = (
     (re.compile(r"\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?"), "<timestamp>"),
     (re.compile(r"\b\d{4}-\d{2}-\d{2}\b"), "<date>"),
     (re.compile(r"\bp_[0-9a-f]{12}\b"), "<principal-id>"),  # generated when the principal is created
-    (re.compile(r"\b\d+\.\d+\.\d+\b"), "<version>"),  # a bundle version changes at every release
     (re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/releases"), "<releases-url>"),  # the product's own release page
 )
 
@@ -53,6 +55,20 @@ def normalise(value, root=None):
             value = pattern.sub(token, value)
         return value
     return value
+
+
+def mask_product_versions(result):
+    """The result with the product version fields replaced by `<version>` (they change at every release).
+
+    Only `bundles[].version` is masked (the result of `wiki_bundle_info_tool`).  A version-looking
+    number anywhere else in a result, such as one in a message, is still compared.
+    """
+    if isinstance(result, dict) and isinstance(result.get("bundles"), list):
+        result = dict(result)
+        result["bundles"] = [
+            {**b, "version": "<version>"} if isinstance(b, dict) and "version" in b else b for b in result["bundles"]
+        ]
+    return result
 
 
 def _kind(value):
@@ -139,11 +155,39 @@ def _resolve(world, arguments):
     return resolved
 
 
+def _place_files(root, files):
+    """Write the fictional files of a case (`files`: {relative path: text}) into the private copy and commit them."""
+    if not files:
+        return
+    for rel, text in files.items():
+        target = Path(root) / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    for args in (["add", "-A"], ["commit", "-q", "-m", "contract case files"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+
+FROZEN_DAY =datetime.date(2026, 11, 14)  # the day the recordings were made
+
+
+class _FrozenDate(datetime.date):
+    @classmethod
+    def today(cls):
+        return FROZEN_DAY
+
+
 def run_case(world, case):
-    """Run a case (setup calls, then the call itself) and return the normalised result."""
+    """Run a case (setup calls, then the call itself) and return the normalised result.
+
+    The date the registrar writes into a new component page is fixed, so the page, and therefore its
+    etag (a hash of the page), do not change from day to day.  Only the harness does this; the server
+    code is untouched.
+    """
     caller = case["caller"]
     world.who("contract", caller["kind"], roles=caller["roles"], grants=GRANTS)
-    for step in case.get("setup", []):
-        world.call("contract", step["tool"], **_resolve(world, step["arguments"]))
-    result = world.call("contract", case["tool"], **_resolve(world, case["arguments"]))
-    return normalise(result, world.root)
+    _place_files(world.root, case.get("files", {}))
+    with mock.patch("wiki_backend.register.date", _FrozenDate):
+        for step in case.get("setup", []):
+            world.call("contract", step["tool"], **_resolve(world, step["arguments"]))
+        result = world.call("contract", case["tool"], **_resolve(world, case["arguments"]))
+    return mask_product_versions(normalise(result, world.root))

@@ -1,0 +1,26 @@
+{
+  "arguments": {
+    "component": "acme-api"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "files": {
+    "raw/acme-api/agents/acme-coder.agent.md": "---\nname: acme-coder\ndescription: Builds the fictional Acme API.\n---\n\n# Acme coder\n\n## Stack facts\n\n- Python 3\n\nTo verify, run `make check`. Run `make test` in full.\n",
+    "raw/acme-api/agents/acme-planner.agent.md": "---\nname: acme-planner\ndescription: Plans work for the fictional Acme API.\n---\n\n# Acme planner\n\nPlans.\n"
+  },
+  "result": {
+    "agents_found": [
+      "acme-planner",
+      "acme-coder"
+    ],
+    "path": "wiki/guides/agents/acme-api.md",
+    "sidebar_updated": false,
+    "status": "created"
+  },
+  "tool": "wiki_agent_catalog_tool"
+}
