@@ -382,6 +382,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F25 — The `bug-coder` sent one heredoc command in the Phase 4 checkpoint 9 repair; refused; disclosed (2026-11-15)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While scanning the recordings for lists that come from a directory walk, the `bug-coder` sent a `Bash` call with a heredoc. The guard refused it, nothing was written, and the bug-coder did not retry or work around it: it redid the scan with a scratch file written with `Write` in the scratchpad, and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, line 12, 2026-11-15T15:39:26Z (rule `no-heredocs`, tool `Bash`, agent_type `bug-coder`); the bug-coder's report. Its other disclosure (`cp -R` of `server`, `examples`, `bundles` and `assets` into the scratchpad for the recorder, nothing copied back with `cp`; the changed recording was brought in with `Write` and checked with `cmp`) is not a rule question.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** bug-coder
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None to the guard; it held.
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
