@@ -52,6 +52,17 @@ The tools' behavior is written down as tests that outlive the code: for every to
 **We will know when:** The official conformance suite runs in CI against a started server and passes, and a failure blocks the merge.
 **Must never:** Skip the conformance run for a release.
 
+**Status of S2 (Nov 15, 2026, drafted for the owner's review):** Not met yet. Phase 4 did not add the conformance run to CI (Phase 4 plan, Task 22, kept as `[~]`).
+- **Why:** The official conformance command (`@modelcontextprotocol/conformance`, version 0.1.16) has no option to send a header or token, and this server answers 401 to every unauthenticated `/mcp` request. Its README names no way to give a server under test a credential. The package was run only for `--help`, never against a server.
+- **Unverified:** Whether the suite runs fully offline, and whether it has sign-in scenarios for a server under test.
+- **Options for a later plan:**
+  1. a newer release of the suite with an auth option for servers;
+  2. a test-only proxy, run beside the server in CI, that adds the bearer header (it would hide the 401 behavior from the suite, so the contract tests must keep covering that);
+  3. waiting for INT-19, if the suite can then pass its sign-in flow.
+  Whichever is chosen needs the owner's go-ahead to edit `.github/workflows/server.yml`, and "a failure blocks the merge" also needs the server jobs added to the required checks, a ruleset change that is the owner's act (Phase 4 plan, Concern 6 and Open question 19).
+- **Release rule while open:** <Insert the owner's decision: whether a release may go out with this gap open, or S2's wording changes>
+- **See also:** INT-19 (MCP authorization server), which may change what the suite must pass.
+
 ### S3 — A failed write leaves the instance clean
 
 **Who:** An agent whose write fails halfway (disk full, git refuses, stale etag).

@@ -459,7 +459,7 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Acceptance:** the job passes on the pull request; `git diff --stat` shows only `server.yml`; the required checks in `docs/process/BRANCH_RULES.md` are unchanged.
 **Todo:** [~]
 
-> Note: blocked, `.github/workflows/server.yml` not changed. Reason: Task 14 found no documented way to give the conformance suite a bearer token, and this server answers 401 to every unauthenticated `/mcp` request, so the suite as documented would fail at the first request; the offline behavior and the Node version are also unverified. This also needs the owner's go-ahead, which has not been given. Owner's decision (chat, relayed by the coordinator): check the package, and do this task only if the suite can send a bearer token, otherwise stop. Result: it cannot (Task 14 note: no auth option in `server --help`, none in the package source or README), so `server.yml` is left unchanged and this task stays `[~]`. INT-2 S2 (conformance run) stays an open gap; the owner can decide later whether to wrap the server with a test-only header proxy or accept the gap.
+> Note: blocked, `.github/workflows/server.yml` not changed. Reason: Task 14 found no documented way to give the conformance suite a bearer token, and this server answers 401 to every unauthenticated `/mcp` request, so the suite as documented would fail at the first request; the offline behavior and the Node version are also unverified. This also needs the owner's go-ahead, which has not been given. Owner's decision (chat, relayed by the coordinator): check the package, and do this task only if the suite can send a bearer token, otherwise stop. Result: it cannot (Task 14 note: no auth option in `server --help`, none in the package source or README), so `server.yml` is left unchanged and this task stays `[~]`. INT-2 S2 (conformance run) stays an open gap; the owner can decide later whether to wrap the server with a test-only header proxy or accept the gap. Recorded in INT-2 S2 ("Status of S2") and INT-19 Open questions on 2026-11-15; the owner decides the release rule there.
 
 ---
 
@@ -1012,6 +1012,8 @@ Rule exceptions (Tasks 41 to 54 and 56; Task 55 not run): one command refused by
 **Source:** `docs/plans/REVIEW_PLAN_4.md`, revision 3 (reviewed commit `d3411a3`, CP2 only; findings F12 to F17: one Important, five Nit)
 **Amendment approved by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
 **Instructions:** read this amendment, then replace the whole slug above, brackets included, with your name and the date. The planner and every other agent leave it as it is.
+
+Provenance: Tasks 57 to 62 were drafted by the coder at the coordinator's request, not by the planner; the planner reviewed them on 2026-11-15 against `REVIEW_PLAN_4.md` revision 3.
 
 The owner's chat instruction (2026-11-15: repair F12 and all five nits) authorizes this repair; the slug above is left for the owner's own name. Task 22 stays deferred and `[~]`, and `.github/workflows/server.yml` is not touched. No server code changes. Tests are changed only where a finding is about that test (F13, F16); no other existing test is edited, skipped or weakened.
 
