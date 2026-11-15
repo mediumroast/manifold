@@ -332,6 +332,19 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F21 — The `coder` sent one empty heredoc and one read of the guard log in the Phase 4 checkpoint 2 repair; both refused; disclosed (2026-11-15)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`); protected files (guard rule `protected-file`, here the guard log).
+**What happened:** During the CP2 review repair (F12 to F17), the `coder` sent a `Bash` call with an empty `<<'EOF'` heredoc by mistake while reading the F14 recording, and later tried to read `.manifold/guard-log.jsonl` with `cut` to check the F17 line. The guard refused both. Nothing was written, and the coder did not retry either. It said so in its report and in the plan's repair note.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-15T14:24:44Z (`no-heredocs`) and 14:27:19Z (`protected-file`), agent_type `coder` (the log was 6 lines before the repair and 8 after); the coder's report and the plan's Rule exceptions line for the repair (CP8).
+**Count:** 2 attempted, 2 refused, 0 breaches that went through; disclosed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report and in the plan).
+**Open question for the owner (not a finding of breach):** the coder also reports copying a scratch copy of `server`, `examples`, `bundles` and `assets` with `cp -R` into the scratchpad, copying three re-recorded files back into the repository with `cp`, and restoring two wrong recordings with `git checkout`. The guard did not refuse or log these, and the commit holds only the intended recordings (two changed by one line each). Whether copying a file into the repository with `cp` counts as a "shell write to a file" under the rule is not settled by the rule text; the owner decides, and the recorder's own use of `record.py --write` is by design.
+**Suggested change:** None to the guard; it held. The `cp` question may want one line in the rule text.
+**Status:** open (the `cp` question)
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
