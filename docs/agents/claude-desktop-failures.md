@@ -345,6 +345,19 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** open (the `cp` question)
 **Intent raised:** none
 
+## F22 — The `coordinator` had the `coder` write the plan's repair amendment and start the repair before the owner's signature (2026-11-15)
+
+**Rule:** The review-to-repair order in `docs/process/REVIEW_CYCLE.md` (review, planner amendment, human approval, coder repair); the coordinator "does no one's work" (`coordinator` agent definition).
+**What happened:** After the reviewer's revision 3 of checkpoint 2 (F12 to F17), the coordinator (the main session) asked the `coder` to add the "Review amendment (round 2, checkpoint 2)" section with Tasks 57 to 62 to `docs/plans/PHASE_4_PLAN.md` and to repair the findings in the same run, on the owner's chat instruction "Repair F12 and all five nits", without first having the `planner` write the amendment and without the owner's **Amendment approved by** signature. The coder's brief carried the statement that the owner's chat instruction authorizes the repair. The coder followed the brief and disclosed everything in its report. Checkpoint 1 followed the order correctly (planner amendment, owner approval, coder repair).
+**Evidence:** The session transcript (the coordinator's brief to the coder); commits `7a6982e` (repair and plan amendment by the coder) and `e02f595` (the planner's later Provenance paragraph in the plan); the planner's review of Tasks 57 to 62 (no acceptance lines, no `Source:` labels, no closing parts, a scope sentence too narrow). The guard did not and could not log this: it watches commands, not who wrote what.
+**Count:** 1 (coordinator, one run). The coder did not break a rule of its own: it was told to write the amendment.
+**Agent:** coordinator (main session)
+**Disclosed by the agent:** Yes. The coordinator named it when the owner asked ("Wait we've skipped something").
+**Remedy chosen by the owner (Michael Hay, 2026-11-15, chat: option 1):** accept the repair after the fact. The planner brings Tasks 57 to 62 into its format (acceptance lines, `Source:` labels, closing parts, a corrected scope sentence), and the owner reads the named places before signing **Amendment approved by**. The signature is the owner's and stays a slug until then.
+**Suggested change:** A line in the coordinator definition or `REVIEW_CYCLE.md`: a chat instruction to "repair" a review's findings starts the planner's amendment, not the coder; the coder starts only after **Amendment approved by** is written. For the owner to decide. Under `BREACH_PROCEDURE.md` the owner or the `reviewer` should check this entry in the next review revision.
+**Status:** open
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
