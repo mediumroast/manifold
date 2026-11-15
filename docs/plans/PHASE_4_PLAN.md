@@ -1074,7 +1074,7 @@ Notes (2026-11-15, coder; no server code, no `server.yml`, Task 22 untouched):
 ## Review amendment (round 3, checkpoint 2: CI failure)
 
 **Source:** GitHub Actions `server` run 43727526573 on commit `789711c` (jobs `server tests (3.11)` and `server tests (3.12)` failed; `ci`, macOS and image passed); not a review finding. The rule it breaks is the INT-2 constraint "no flaky tests; tests run on the Python versions the server supports".
-**Amendment approved by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Amendment approved by:** Michael Hay on Nov 15, 2026
 **Instructions:** read this amendment, then replace the whole slug above, brackets included, with your name and the date. The planner and every other agent leave it as it is. The `coder` and `bug-coder` do not start CP9 before you have signed it.
 
 Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wiki_inventory_tool.ok]` failed on both versions. On 3.11, `result.all_files[2]` was `wiki/CLAUDE.md` where the recording has `wiki/_sidebar.md`; on 3.12, `result.all_files[0]` was `wiki/_sidebar.md` where the recording has `wiki/log.md`. Cause: `server/wiki_backend/inventory.py` lines 38 to 40 build `all_files` in `Path.rglob("*.md")` order, which follows the file system, and the recording pins one order. The coder and reviewer ran only on macOS with Python 3.11.3, so it was not seen earlier. `components` and `handoffs` in the same tool come from the same walk, and the first mismatch hides the rest. Other tools may also return lists in directory order. No server code changes: the tests are changed, not the tool.
@@ -1104,8 +1104,8 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
 
 **Findings not repaired:**
 
-| Finding | End | Reason |
-| ------- | --- | ------ |
+| Finding | End | Reason                                                                                                         |
+| ------- | --- | -------------------------------------------------------------------------------------------------------------- |
 | none    |     | This amendment answers a CI failure, not a review finding; the one failing test is repaired by Tasks 63 to 65. |
 
 **Open questions:**
