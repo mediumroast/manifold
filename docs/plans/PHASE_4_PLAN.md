@@ -350,12 +350,13 @@ INT-7 (applies to the thin slice): least privilege, each permission listed with 
 **Todo:** [x]
 
 > Note: first read `https://github.com/modelcontextprotocol/conformance` (the fetch tool summarises; its list of options included `--requirements`, which the real `--help` below does not have, so treat that summary as superseded). Then, with the owner's go-ahead, I checked the package itself (network download of this one package approved), in a fresh empty scratchpad folder, nothing run from the downloaded folder. Commands and findings:
+>
 > - `node --version` gave `v22.11.0`; `npx --yes @modelcontextprotocol/conformance --version` gave `0.1.16`.
 > - **Command:** `npx @modelcontextprotocol/conformance server --url <url>`. `... server --help` lists only `--url`, `--scenario`, `--suite` (`active` default, `all`, `pending`), `--expected-failures <path>`, `-o/--output-dir`, `--spec-version`, `--verbose`. Source: the command's own `--help` output.
 > - **Auth: not supported.** No header, token or auth option in `--help`. I ran `npm pack @modelcontextprotocol/conformance` in a separate folder, extracted the tarball, and searched `dist/index.js` and `README.md` for `bearer`, `authorization` and `process.env`: `Authorization` appears only in OAuth scenario names and spec links of the client tests; `process.env` is read only for `GITHUB_TOKEN` (the `tier-check` command). The README names no way to give a server under test a credential. This server answers 401 to every unauthenticated `/mcp` request.
 > - **Runtime:** `package.json` has no `engines` field; the README's GitHub Action defaults to `node-version: 20`; the check ran on Node 22.11.0 and npm 11.10.0.
 > - **Offline:** `npx` downloads the package from the npm registry, so a CI job needs network for the install. After install the `server` command is a client of the given `--url`; I did not run it against a server, so running with no network at all is unverified (confirm by running it once).
-> Conclusion: Task 22 is not possible with this package (see the Task 22 note).
+>   Conclusion: Task 22 is not possible with this package (see the Task 22 note).
 
 ---
 
@@ -1010,7 +1011,7 @@ Rule exceptions (Tasks 41 to 54 and 56; Task 55 not run): one command refused by
 ## Review amendment (round 2, checkpoint 2)
 
 **Source:** `docs/plans/REVIEW_PLAN_4.md`, revision 3 (reviewed commit `d3411a3`, CP2 only; findings F12 to F17: one Important, five Nit)
-**Amendment approved by:** <Insert Name of approver on Date of approval, ex. M. Kusanagi on Jan-01-2027>
+**Amendment approved by:** Michael Hay on Nov 15, 2026
 **Instructions:** read this amendment, then replace the whole slug above, brackets included, with your name and the date. The planner and every other agent leave it as it is.
 
 Provenance: Tasks 57 to 62 were drafted by the coder at the coordinator's request, not by the planner; the planner reviewed them on 2026-11-15 against `REVIEW_PLAN_4.md` revision 3.
@@ -1062,8 +1063,8 @@ Notes (2026-11-15, coder; no server code, no `server.yml`, Task 22 untouched):
 
 **Findings not repaired:**
 
-| Finding | End | Reason |
-|---|---|---|
-| none | | All six findings (F12 to F17) are repaired by Tasks 57 to 62. |
+| Finding | End | Reason                                                        |
+| ------- | --- | ------------------------------------------------------------- |
+| none    |     | All six findings (F12 to F17) are repaired by Tasks 57 to 62. |
 
 **Open questions:** None. (Recorded for the owner: the repair ran ahead of the **Amendment approved by** signature; the owner chose to accept it after the fact on 2026-11-15; the coordinator's breach is F22 in `docs/agents/claude-desktop-failures.md`.)
