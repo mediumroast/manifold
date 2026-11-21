@@ -1,0 +1,22 @@
+{
+  "arguments": {
+    "content": "# Overview\n\nNew.\n",
+    "etag": "0000000000000000",
+    "message": "contract stale",
+    "path": "wiki/architecture/overview.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "error": "Etag mismatch. Current: 7f78e4ce235ec49083bc1bbfe5efca81b7e3c14ab618be2d750059027eba470f, Provided: 0000000000000000",
+    "etag": null,
+    "path": "wiki/architecture/overview.md",
+    "status": "conflict"
+  },
+  "tool": "wiki_write_page_tool"
+}

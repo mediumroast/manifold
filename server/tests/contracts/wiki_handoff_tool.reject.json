@@ -1,0 +1,30 @@
+{
+  "arguments": {
+    "action": "reject",
+    "notes": "Needs a test.",
+    "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "next": "Feedback added to ## Blockers. Handoff is back in-progress. Notify acme-api to review the feedback and re-implement. They can re-submit with action='request-review' when ready.",
+    "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md",
+    "status": "rejected"
+  },
+  "setup": [
+    {
+      "arguments": {
+        "action": "request-review",
+        "notes": "Fixed and tested.",
+        "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md"
+      },
+      "tool": "wiki_handoff_tool"
+    }
+  ],
+  "tool": "wiki_handoff_tool"
+}

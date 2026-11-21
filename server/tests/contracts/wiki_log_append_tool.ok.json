@@ -1,0 +1,24 @@
+{
+  "arguments": {
+    "action": "lint",
+    "component": "acme-api",
+    "message": "Contract case entry."
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "action": "lint",
+    "component": "acme-api",
+    "log_path": "<root>/wiki/log.md",
+    "message": "Contract case entry.",
+    "status": "appended",
+    "timestamp": "<timestamp>",
+    "today": "<date>"
+  },
+  "tool": "wiki_log_append_tool"
+}

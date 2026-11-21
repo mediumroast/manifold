@@ -1,0 +1,77 @@
+{
+  "arguments": {
+    "component": "acme-api"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "action_plan": [
+      {
+        "action": "reconcile_wiki_page",
+        "ready": false,
+        "step": 1,
+        "tool_call": "wiki_register_component_tool(\n  name='acme-api',\n  description='REST order service: customers, products and orders for the Acme storefront.',\n  repo='<repo>',\n  owner='Platform team',\n  reconcile=True,\n  source_docs=['raw/acme-api/<date>-acme-api-api.md', 'raw/acme-api/<date>-acme-api-architecture.md', 'raw/acme-api/<date>-acme-api-readme.md']\n)"
+      },
+      {
+        "action": "freshness_check",
+        "ready": true,
+        "step": 2,
+        "tool_call": "wiki_freshness_tool(component='acme-api')"
+      },
+      {
+        "action": "install_agent_bundle",
+        "note": "No agents are published for this component. The response lists the bundle and the install steps; run the installer in the component repository.",
+        "ready": true,
+        "step": 3,
+        "tool_call": "wiki_bundle_info_tool()",
+        "type": "mcp_tool"
+      },
+      {
+        "action": "install_handoff_helpers",
+        "note": "Returns a 'files' list; write each file's content to its output_path in the component repository.",
+        "ready": true,
+        "step": 4,
+        "tool_call": "wiki_export_component_helpers_tool()",
+        "type": "mcp_tool"
+      },
+      {
+        "action": "publish_agent_catalog",
+        "depends_on_step": 3,
+        "note": "After the bundle is installed, copy the agent files into raw/acme-api/agents/ and run this to create the agent guide page and its sidebar entry.",
+        "ready": true,
+        "step": 5,
+        "tool_call": "wiki_agent_catalog_tool(component='acme-api')",
+        "type": "mcp_tool"
+      }
+    ],
+    "component": "acme-api",
+    "discovered": {
+      "description": "REST order service: customers, products and orders for the Acme storefront.",
+      "owner": "Platform team"
+    },
+    "execution_note": "Execute every step in order. A step with a tool_call calls that tool; a step that returns files means write those files into the component repository.",
+    "message": "1 input(s) still needed to complete the plan. Re-call wiki_reconcile_plan_tool with the values listed in required_inputs and the plan will be fully ready to execute.",
+    "required_inputs": [
+      {
+        "description": "Repository URL, e.g. 'https://github.com/acme/acme-api'",
+        "name": "repo"
+      }
+    ],
+    "status": "inputs_required",
+    "status_audit": {
+      "agents_published": [],
+      "raw_docs": [
+        "raw/acme-api/<date>-acme-api-api.md",
+        "raw/acme-api/<date>-acme-api-architecture.md",
+        "raw/acme-api/<date>-acme-api-readme.md"
+      ],
+      "wiki_page": "present"
+    }
+  },
+  "tool": "wiki_reconcile_plan_tool"
+}

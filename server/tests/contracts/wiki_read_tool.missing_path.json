@@ -1,0 +1,16 @@
+{
+  "arguments": {
+    "path": "wiki/components/no-such-page.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "error": "Page not found: wiki/components/no-such-page.md"
+  },
+  "tool": "wiki_read_tool"
+}

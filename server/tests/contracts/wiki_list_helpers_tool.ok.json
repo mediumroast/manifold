@@ -1,0 +1,105 @@
+{
+  "arguments": {},
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "helpers": [
+      {
+        "description": "Push local doc files into the manifold wiki via POST /ingest. Install this in a component repo so doc updates can be run without referencing the manifold repo path.",
+        "name": "ingest_doc",
+        "output_path": "tools/ingest_doc.py",
+        "usage": "python3 tools/ingest_doc.py <component> <file_path> [doc_type]"
+      },
+      {
+        "description": "Copilot slash command: /handoff-create \u2014 post a new handoff",
+        "name": "handoff-create-prompt",
+        "output_path": ".github/prompts/handoff-create.prompt.md",
+        "usage": "Install in component repo. Use as /handoff-create in Copilot Chat."
+      },
+      {
+        "description": "Copilot slash command: /handoff-pickup \u2014 find and claim open handoffs",
+        "name": "handoff-pickup-prompt",
+        "output_path": ".github/prompts/handoff-pickup.prompt.md",
+        "usage": "Install in component repo. Use as /handoff-pickup in Copilot Chat."
+      },
+      {
+        "description": "Copilot slash command: /handoff-close \u2014 close a handoff this component raised (source only)",
+        "name": "handoff-close-prompt",
+        "output_path": ".github/prompts/handoff-close.prompt.md",
+        "usage": "Install in component repo. Use as /handoff-close in Copilot Chat."
+      },
+      {
+        "description": "Claude Code slash command: /handoff-create \u2014 post a new handoff",
+        "name": "handoff-create-command",
+        "output_path": ".claude/commands/handoff-create.md",
+        "usage": "Install in component repo. Use as /handoff-create in Claude Code."
+      },
+      {
+        "description": "Claude Code slash command: /handoff-pickup \u2014 find and claim open handoffs",
+        "name": "handoff-pickup-command",
+        "output_path": ".claude/commands/handoff-pickup.md",
+        "usage": "Install in component repo. Use as /handoff-pickup in Claude Code."
+      },
+      {
+        "description": "Claude Code slash command: /handoff-close \u2014 close a handoff this component raised (source only)",
+        "name": "handoff-close-command",
+        "output_path": ".claude/commands/handoff-close.md",
+        "usage": "Install in component repo. Use as /handoff-close in Claude Code."
+      },
+      {
+        "description": "Copilot slash command: /manifold-update \u2014 check and install manifold helper updates",
+        "name": "manifold-update-prompt",
+        "output_path": ".github/prompts/manifold-update.prompt.md",
+        "usage": "Install in component repo. Use as /manifold-update in Copilot Chat."
+      },
+      {
+        "description": "Claude Code slash command: /manifold-update \u2014 check and install manifold helper updates",
+        "name": "manifold-update-command",
+        "output_path": ".claude/commands/manifold-update.md",
+        "usage": "Install in component repo. Use as /manifold-update in Claude Code."
+      },
+      {
+        "description": "Copilot slash command: /handoff-update \u2014 submit implementation for source review",
+        "name": "handoff-update-prompt",
+        "output_path": ".github/prompts/handoff-update.prompt.md",
+        "usage": "Install in component repo. Use as /handoff-update in Copilot Chat."
+      },
+      {
+        "description": "Copilot slash command: /handoff-confirm \u2014 confirm target's implementation",
+        "name": "handoff-confirm-prompt",
+        "output_path": ".github/prompts/handoff-confirm.prompt.md",
+        "usage": "Install in component repo. Use as /handoff-confirm in Copilot Chat."
+      },
+      {
+        "description": "Copilot slash command: /handoff-reject \u2014 reject implementation and request rework",
+        "name": "handoff-reject-prompt",
+        "output_path": ".github/prompts/handoff-reject.prompt.md",
+        "usage": "Install in component repo. Use as /handoff-reject in Copilot Chat."
+      },
+      {
+        "description": "Claude Code slash command: /handoff-update \u2014 submit implementation for source review",
+        "name": "handoff-update-command",
+        "output_path": ".claude/commands/handoff-update.md",
+        "usage": "Install in component repo. Use as /handoff-update in Claude Code."
+      },
+      {
+        "description": "Claude Code slash command: /handoff-confirm \u2014 confirm target's implementation",
+        "name": "handoff-confirm-command",
+        "output_path": ".claude/commands/handoff-confirm.md",
+        "usage": "Install in component repo. Use as /handoff-confirm in Claude Code."
+      },
+      {
+        "description": "Claude Code slash command: /handoff-reject \u2014 reject implementation and request rework",
+        "name": "handoff-reject-command",
+        "output_path": ".claude/commands/handoff-reject.md",
+        "usage": "Install in component repo. Use as /handoff-reject in Claude Code."
+      }
+    ]
+  },
+  "tool": "wiki_list_helpers_tool"
+}

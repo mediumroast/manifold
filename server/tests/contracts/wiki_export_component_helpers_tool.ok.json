@@ -1,0 +1,123 @@
+{
+  "arguments": {},
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "count": 15,
+    "errors": [],
+    "files": [
+      {
+        "content": "#!/usr/bin/env python3\n# SPDX-License-Identifier: Apache-2.0\n\"\"\"\nPush a local document into the manifold wiki via the MCP server's /ingest endpoint.\n\nUsage:\n    python3 tools/ingest_doc.py <component> <file_path> [doc_type]\n\nArguments:\n    component   Component slug, e.g. \"acme-api\"\n    file_path   Absolute or relative path to the document file\n    doc_type    Optional: readme | architecture | api | other\n                Auto-detected from filename if omitted.\n\nExamples:\n    python3 tools/ingest_doc.py acme-api README.md\n    python3 tools/ingest_doc.py acme-api /home/me/dev/acme-api/ARCHITECTURE.md architecture\n    python3 tools/ingest_doc.py acme-api docs/API.md api\n\nOutput on success:\n    \u2705  Ingested \u2192 raw/acme-api/<date>-acme-api-architecture.md  (4821 bytes)\n\nThe MCP server must be running at the URL configured below (default: http://127.0.0.1:8686).\nThe server always requires a credential of your own (issued to you by whoever runs the server). Put it in\nthe MANIFOLD_TOKEN environment variable (that is only the name of the variable; the value is YOUR\ncredential, not a shared token). You also need a write grant on the component.\n\"\"\"\n\nimport argparse\nimport json\nimport os\nimport sys\nimport urllib.request\nimport urllib.error\nfrom pathlib import Path\n\n\nDEFAULT_SERVER_URL = \"http://127.0.0.1:8686\"\n\n\ndef main() -> None:\n    parser = argparse.ArgumentParser(\n        description=\"Push a local doc file into the manifold wiki raw/ directory.\",\n    )\n    parser.add_argument(\"component\", help=\"Component slug, e.g. acme-api\")\n    parser.add_argument(\"file_path\", help=\"Path to the document file\")\n    parser.add_argument(\n        \"doc_type\",\n        nargs=\"?\",\n        default=\"\",\n        help=\"Doc type: readme | architecture | api | other (auto-detected if omitted)\",\n    )\n    parser.add_argument(\n        \"--server\",\n        default=DEFAULT_SERVER_URL,\n        help=f\"MCP server URL (default: {DEFAULT_SERVER_URL})\",\n    )\n    args = parser.parse_args()\n\n    path = Path(args.file_path)\n    if not path.exists():\n        print(f\"\u274c  File not found: {path}\", file=sys.stderr)\n        sys.exit(1)\n    if not path.is_file():\n        print(f\"\u274c  Not a file: {path}\", file=sys.stderr)\n        sys.exit(1)\n\n    content = path.read_text(encoding=\"utf-8\")\n\n    payload = json.dumps({\n        \"component\": args.component,\n        \"doc_type\":  args.doc_type,\n        \"content\":   content,\n        \"filename\":  path.name,   # used by server to derive a unique dated slug\n    }).encode(\"utf-8\")\n\n    url = args.server.rstrip(\"/\") + \"/ingest\"\n\n    headers = {\"Content-Type\": \"application/json\"}\n    token = os.environ.get(\"MANIFOLD_TOKEN\", \"\").strip()  # the name of the variable that holds YOUR credential\n    if token:\n        headers[\"Authorization\"] = \"Bearer \" + token\n\n    req = urllib.request.Request(url, data=payload, headers=headers, method=\"POST\")\n\n    try:\n        with urllib.request.urlopen(req, timeout=30) as resp:\n            body = json.loads(resp.read().decode(\"utf-8\"))\n    except urllib.error.HTTPError as e:\n        raw = e.read().decode(\"utf-8\", errors=\"replace\")\n        try:\n            msg = json.loads(raw).get(\"message\", raw)\n        except Exception:\n            msg = raw\n        print(f\"\u274c  Server error {e.code}: {msg}\", file=sys.stderr)\n        if e.code == 401:\n            print(\"    The server needs your credential: set MANIFOLD_TOKEN to it in your environment \"\n                  \"(it may also have been revoked or expired: ask whoever runs the server).\", file=sys.stderr)\n        elif e.code == 403:\n            print(\"    Your credential is not allowed to add documents for this component (a write grant is needed).\",\n                  file=sys.stderr)\n        sys.exit(1)\n    except urllib.error.URLError as e:\n        print(f\"\u274c  Could not reach MCP server at {url}: {e.reason}\", file=sys.stderr)\n        print(\n            \"    Is the server running? From the manifold repo: ./svc_ctl.sh dev start\",\n            file=sys.stderr,\n        )\n        sys.exit(1)\n\n    if body.get(\"status\") == \"ok\":\n        out_path = body.get(\"path\", \"?\")\n        byte_count = body.get(\"bytes\", len(content))\n        print(f\"\u2705  Ingested \u2192 {out_path}  ({byte_count} bytes)\")\n    else:\n        msg = body.get(\"message\", json.dumps(body))\n        print(f\"\u274c  Ingest failed: {msg}\", file=sys.stderr)\n        sys.exit(1)\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "description": "Push local doc files into the manifold wiki via POST /ingest. Install this in a component repo so doc updates can be run without referencing the manifold repo path.",
+        "name": "ingest_doc",
+        "origin": "core",
+        "output_path": "tools/ingest_doc.py"
+      },
+      {
+        "content": "---\nmode: agent\ndescription: Post a cross-component handoff to the manifold wiki\ntools: ['manifold/*']\n---\n\nPost a new handoff to the manifold wiki using wiki_handoff_tool.\n\nCall wiki_handoff_tool with:\n  action: \"create\"\n  source: \"<source component slug>\"\n  target: \"<target component slug>\"\n  type: \"<feature | bug | breaking-change | integration-spec>\"\n  priority: \"<critical | high | medium | low>\"\n  title: \"<one-line description of the work>\"\n  summary: \"<one paragraph: what needs to happen and why>\"\n  what_needs_to_happen: \"<bulleted list of specific tasks for the target>\"\n  technical_details: \"<API changes, schemas, data contracts, edge cases>\"\n\nIf you are not sure of a value, ask before calling the tool.\nAfter the tool returns, confirm the path and tell the user the handoff is live.\n",
+        "description": "Copilot slash command: /handoff-create \u2014 post a new handoff",
+        "name": "handoff-create-prompt",
+        "origin": "core",
+        "output_path": ".github/prompts/handoff-create.prompt.md"
+      },
+      {
+        "content": "---\nmode: agent\ndescription: Discover and claim open handoffs for this component\ntools: ['manifold/*']\n---\n\nFind and claim a handoff for this component from the manifold wiki.\n\nStep 1: Call wiki_handoff_tool(action=\"list\", target=\"<this-component>\", status_filter=\"open\")\nStep 2: Show the user the list of open handoffs with title, source, and priority.\nStep 3: Ask which one to claim (if more than one).\nStep 4: Call wiki_handoff_tool(action=\"claim\", path=\"<selected path>\")\nStep 5: Show the summary and what_needs_to_happen from the response.\n        This is the work brief \u2014 start implementation from here.\n",
+        "description": "Copilot slash command: /handoff-pickup \u2014 find and claim open handoffs",
+        "name": "handoff-pickup-prompt",
+        "origin": "core",
+        "output_path": ".github/prompts/handoff-pickup.prompt.md"
+      },
+      {
+        "content": "---\nmode: agent\ndescription: Close a handoff this component raised (source only) and record the resolution\ntools: ['manifold/*']\n---\n\nClose a handoff that this component raised, in the manifold wiki.\n\nOnly the source of a handoff closes it. If this component is the target (it is doing the work),\ndo not close: request review with /handoff-update, and the source confirms or closes it.\n\nStep 1: Call wiki_handoff_tool(action=\"list\", status_filter=\"needs-review\") (and \"in-progress\")\n        and keep the handoffs whose source_component is this component, or use the path if already known.\nStep 2: Ask the user to describe what was checked and accepted (what the target delivered, how it was verified).\nStep 3: Call wiki_handoff_tool(action=\"close\", path=\"<path>\", resolution=\"<description>\")\n        If the server answers that this component is not the source, stop and tell the user.\nStep 4: Read wiki/components/<this-component>.md and add a ## Changelog entry\n        describing the result. Update last_updated to today.\nStep 5: Confirm completion to the user.\n",
+        "description": "Copilot slash command: /handoff-close \u2014 close a handoff this component raised (source only)",
+        "name": "handoff-close-prompt",
+        "origin": "core",
+        "output_path": ".github/prompts/handoff-close.prompt.md"
+      },
+      {
+        "content": "Post a new handoff to the manifold wiki.\n\nCall wiki_handoff_tool with action=\"create\". Required fields: source, target,\ntype, priority, title, summary, what_needs_to_happen. Ask the user for any\nvalues not already provided. After creating, confirm the path.\n",
+        "description": "Claude Code slash command: /handoff-create \u2014 post a new handoff",
+        "name": "handoff-create-command",
+        "origin": "core",
+        "output_path": ".claude/commands/handoff-create.md"
+      },
+      {
+        "content": "Find and claim an open handoff for this component.\n\nCall wiki_handoff_tool(action=\"list\", target=\"$COMPONENT\", status_filter=\"open\")\nthen claim the selected one with wiki_handoff_tool(action=\"claim\", path=\"...\").\nShow the work brief from the response.\n",
+        "description": "Claude Code slash command: /handoff-pickup \u2014 find and claim open handoffs",
+        "name": "handoff-pickup-command",
+        "origin": "core",
+        "output_path": ".claude/commands/handoff-pickup.md"
+      },
+      {
+        "content": "Close a handoff that THIS component raised (this component is its source), and record the resolution.\n\nOnly the source of a handoff closes it. If this component is the target (it is doing the work),\ndo not close: use /handoff-update to request review, and the source confirms or closes it.\n\nCall wiki_handoff_tool(action=\"list\", status_filter=\"needs-review\") (and \"in-progress\") and keep the\nhandoffs whose source_component is \"$COMPONENT\". Show the title and implementation notes for each.\nAsk the user for the resolution description (what was checked and accepted), then call\nwiki_handoff_tool(action=\"close\", path=\"...\", resolution=\"...\").\nIf the server answers that this component is not the source, stop and tell the user.\nThen update wiki/components/$COMPONENT.md Changelog.\n",
+        "description": "Claude Code slash command: /handoff-close \u2014 close a handoff this component raised (source only)",
+        "name": "handoff-close-command",
+        "origin": "core",
+        "output_path": ".claude/commands/handoff-close.md"
+      },
+      {
+        "content": "---\nmode: agent\ndescription: Install the latest manifold helper files into this component repo\ntools: ['manifold/*']\n---\n\nInstall the latest manifold helper files into this component repo.\n\nStep 1: Call wiki_export_component_helpers_tool(). It returns a \"files\" list.\n        Each entry has: name, output_path, content.\n\nStep 2: Write EVERY file to its output_path. Do not skip any file for any\n        reason. If a file already exists, overwrite it with the new content.\n        If it does not exist, create it.\n\nStep 3: After writing, note which files were newly created vs overwritten vs\n        already identical (for the report). This is for reporting only \u2014 it\n        does not affect which files get written.\n\nStep 4: Stage ONLY the files you just wrote (their exact output_paths).\n        Do not stage any other files in the repo.\n        Commit: \"chore: update manifold helpers\"\n\nStep 5: Report: how many files were written, how many were already current.\n        List any files that are new (did not previously exist).\n",
+        "description": "Copilot slash command: /manifold-update \u2014 check and install manifold helper updates",
+        "name": "manifold-update-prompt",
+        "origin": "core",
+        "output_path": ".github/prompts/manifold-update.prompt.md"
+      },
+      {
+        "content": "Install the latest manifold helper files into this component repo.\n\nStep 1: Call wiki_export_component_helpers_tool(). It returns a \"files\" list.\nEach entry has: name, output_path, content.\n\nStep 2: Write EVERY file to its output_path. Do not skip any file for any\nreason. Overwrite existing files. Create missing files.\n\nStep 3: Stage ONLY the files you just wrote (their exact output_paths).\nDo not stage any other files. Commit: \"chore: update manifold helpers\"\n\nStep 4: Report how many files were written and list any that are new.\n",
+        "description": "Claude Code slash command: /manifold-update \u2014 check and install manifold helper updates",
+        "name": "manifold-update-command",
+        "origin": "core",
+        "output_path": ".claude/commands/manifold-update.md"
+      },
+      {
+        "content": "---\nmode: agent\ndescription: Submit your implementation for source review\ntools: ['manifold/*']\n---\n\nSubmit a completed handoff implementation for source review.\n\nStep 1: Call wiki_handoff_tool(action=\"list\", target=\"<this-component>\", status_filter=\"in-progress\")\n        to find the active handoff, or use the path if already known.\nStep 2: Ask the user to describe what was implemented \u2014 what changed, which files,\n        how it addresses the handoff requirements.\nStep 3: Call wiki_handoff_tool(action=\"request-review\", path=\"<path>\", notes=\"<description>\")\nStep 4: Confirm to the user: the handoff is now awaiting source review (status: needs-review).\n        Tell them the source component should run /handoff-confirm or /handoff-reject.\n",
+        "description": "Copilot slash command: /handoff-update \u2014 submit implementation for source review",
+        "name": "handoff-update-prompt",
+        "origin": "core",
+        "output_path": ".github/prompts/handoff-update.prompt.md"
+      },
+      {
+        "content": "---\nmode: agent\ndescription: Confirm the target component's implementation satisfies this handoff\ntools: ['manifold/*']\n---\n\nReview and confirm a handoff implementation from the source component's perspective.\n\nStep 1: Call wiki_handoff_tool(action=\"list\", source=\"<this-component>\", status_filter=\"needs-review\")\n        to find handoffs awaiting your review. Show each one's title and implementation notes.\nStep 2: Ask the user: is the implementation satisfactory?\nStep 3a: If yes \u2014 call wiki_handoff_tool(action=\"confirm\", path=\"<path>\", notes=\"<optional note>\")\n         Then prompt the user to close any related handoffs in the opposite direction\n         with /handoff-close.\nStep 3b: If no \u2014 use /handoff-reject to send it back with feedback.\n",
+        "description": "Copilot slash command: /handoff-confirm \u2014 confirm target's implementation",
+        "name": "handoff-confirm-prompt",
+        "origin": "core",
+        "output_path": ".github/prompts/handoff-confirm.prompt.md"
+      },
+      {
+        "content": "---\nmode: agent\ndescription: Reject a handoff implementation and request rework\ntools: ['manifold/*']\n---\n\nReject a handoff implementation from the source component's perspective.\n\nStep 1: Call wiki_handoff_tool(action=\"list\", source=\"<this-component>\", status_filter=\"needs-review\")\n        to find the handoff. Show the current implementation notes.\nStep 2: Ask the user to describe specifically what is wrong or insufficient.\nStep 3: Call wiki_handoff_tool(action=\"reject\", path=\"<path>\", notes=\"<feedback>\")\nStep 4: Confirm to the user: the handoff is back in-progress with your feedback\n        in ## Blockers. The target should run /handoff-update again when ready.\n",
+        "description": "Copilot slash command: /handoff-reject \u2014 reject implementation and request rework",
+        "name": "handoff-reject-prompt",
+        "origin": "core",
+        "output_path": ".github/prompts/handoff-reject.prompt.md"
+      },
+      {
+        "content": "Submit your implementation for source review.\n\nCall wiki_handoff_tool(action=\"list\", target=\"$COMPONENT\", status_filter=\"in-progress\")\nto find the active handoff. Ask the user to describe what was implemented \u2014 what\nchanged, which files, how it addresses the handoff requirements. Then call\nwiki_handoff_tool(action=\"request-review\", path=\"...\", notes=\"<description>\").\nConfirm to the user that the handoff is now awaiting source review (status: needs-review)\nand that the source component should run /handoff-confirm or /handoff-reject.\n",
+        "description": "Claude Code slash command: /handoff-update \u2014 submit implementation for source review",
+        "name": "handoff-update-command",
+        "origin": "core",
+        "output_path": ".claude/commands/handoff-update.md"
+      },
+      {
+        "content": "Confirm that the target component's implementation satisfies this handoff.\n\nCall wiki_handoff_tool(action=\"list\", source=\"$COMPONENT\", status_filter=\"needs-review\")\nto find handoffs awaiting your review. Show the title and implementation notes for each.\nAsk the user: is the implementation satisfactory?\nIf yes: call wiki_handoff_tool(action=\"confirm\", path=\"...\", notes=\"<optional note>\").\n  Then prompt the user to close any related handoffs in the opposite direction with /handoff-close.\nIf no: use /handoff-reject instead to send it back with feedback.\n",
+        "description": "Claude Code slash command: /handoff-confirm \u2014 confirm target's implementation",
+        "name": "handoff-confirm-command",
+        "origin": "core",
+        "output_path": ".claude/commands/handoff-confirm.md"
+      },
+      {
+        "content": "Reject a handoff implementation and send it back for rework.\n\nCall wiki_handoff_tool(action=\"list\", source=\"$COMPONENT\", status_filter=\"needs-review\")\nto find the handoff. Show the current implementation notes. Ask the user to describe\nspecifically what is wrong or insufficient. Then call\nwiki_handoff_tool(action=\"reject\", path=\"...\", notes=\"<feedback>\").\nConfirm to the user: the handoff is back in-progress with feedback in ## Blockers.\nThe target should run /handoff-update again when ready.\n",
+        "description": "Claude Code slash command: /handoff-reject \u2014 reject implementation and request rework",
+        "name": "handoff-reject-command",
+        "origin": "core",
+        "output_path": ".claude/commands/handoff-reject.md"
+      }
+    ],
+    "next": "Write each file's content to its output_path in the component repo, then commit. These files become slash commands in Copilot Chat and Claude Code."
+  },
+  "tool": "wiki_export_component_helpers_tool"
+}

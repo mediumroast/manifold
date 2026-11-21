@@ -1,0 +1,21 @@
+{
+  "arguments": {
+    "content": "---\ncomponent: \"acme-api\"\nowner: \"Somebody else\"\n---\n\n# Acme Api\n",
+    "etag": "0000000000000000",
+    "message": "contract protected",
+    "path": "wiki/components/acme-api.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "error": "Refused: the owner of a component page changes only through wiki_component_manage_tool (a human registrar).",
+    "path": "wiki/components/acme-api.md",
+    "status": "error"
+  },
+  "tool": "wiki_write_page_tool"
+}

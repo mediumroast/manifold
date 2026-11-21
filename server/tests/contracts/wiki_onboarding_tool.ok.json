@@ -1,0 +1,35 @@
+{
+  "arguments": {},
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "hint": "Call wiki_onboarding_tool(component='your-slug') first to see what already exists.",
+    "register_args": {
+      "optional": {
+        "skip_source_docs": "True = register with stubs now, add docs later",
+        "source_docs": "List of raw doc paths to embed (e.g. ['raw/acme-api/<date>-acme-api-readme.md'])"
+      },
+      "required": [
+        "name",
+        "description",
+        "repo",
+        "owner"
+      ]
+    },
+    "steps": [
+      "1. Call wiki_onboarding_tool(component='your-slug') to check existing state",
+      "2. Review preflight.options and ask the human which option they prefer",
+      "3. Call wiki_register_component_tool(name, description, repo, owner, [source_docs or skip_source_docs])",
+      "4. Call wiki_freshness_tool(component='your-slug')",
+      "5. Call wiki_inventory_tool() to confirm registration",
+      "6. Call wiki_bundle_info_tool() and install the agent bundle in the component repository",
+      "7. Call wiki_export_component_helpers_tool() and write the helper files into the component repository"
+    ]
+  },
+  "tool": "wiki_onboarding_tool"
+}

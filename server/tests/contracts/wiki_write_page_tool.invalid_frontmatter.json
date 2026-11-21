@@ -1,0 +1,21 @@
+{
+  "arguments": {
+    "content": "---\ntitle: [unclosed\n  : bad\n---\n\n# Bad\n",
+    "message": "contract invalid",
+    "path": "wiki/decisions/contract-bad.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "error": "Frontmatter YAML is malformed: while parsing a flow sequence\n  in \"<unicode string>\", line 2, column 8:\n    title: [unclosed\n           ^\nexpected ',' or ']', but got ':'\n  in \"<unicode string>\", line 3, column 3:\n      : bad\n      ^. Write rejected \u2014 fix the frontmatter and retry.",
+    "etag": null,
+    "path": "wiki/decisions/contract-bad.md",
+    "status": "error"
+  },
+  "tool": "wiki_write_page_tool"
+}

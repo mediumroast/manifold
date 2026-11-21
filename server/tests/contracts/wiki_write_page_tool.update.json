@@ -1,0 +1,22 @@
+{
+  "arguments": {
+    "content": "# Overview\n\nChanged.\n",
+    "etag": "@etag:wiki/architecture/overview.md",
+    "message": "contract update",
+    "path": "wiki/architecture/overview.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "error": null,
+    "etag": "bc49927380c8a8fc4a14a033ecdb4571a15a010b065793e5b22bffb0859c9621",
+    "path": "wiki/architecture/overview.md",
+    "status": "updated"
+  },
+  "tool": "wiki_write_page_tool"
+}

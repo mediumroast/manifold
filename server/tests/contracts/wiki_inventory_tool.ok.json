@@ -1,0 +1,73 @@
+{
+  "arguments": {},
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "all_files": [
+      "wiki/CLAUDE.md",
+      "wiki/_sidebar.md",
+      "wiki/architecture/overview.md",
+      "wiki/components/acme-api.md",
+      "wiki/components/acme-cli.md",
+      "wiki/components/acme-web.md",
+      "wiki/decisions/<date>-use-rest-for-orders.md",
+      "wiki/handoffs/acme-api-to-acme-web/breaking-change-order-status-values-renamed.md",
+      "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md",
+      "wiki/handoffs/acme-web-to-acme-api/feature-order-history-endpoint.md",
+      "wiki/index.md",
+      "wiki/log.md"
+    ],
+    "components": [
+      {
+        "description": "REST order service: customers, products and orders for the Acme storefront.",
+        "name": "acme-api",
+        "owner": "Platform team",
+        "path": "wiki/components/acme-api.md",
+        "repo": null,
+        "status": "active"
+      },
+      {
+        "description": "Command-line client for support staff.",
+        "name": "acme-cli",
+        "owner": "Support tools",
+        "path": "wiki/components/acme-cli.md",
+        "repo": null,
+        "status": "active"
+      },
+      {
+        "description": "Customer-facing storefront: browse, check out and follow an order.",
+        "name": "acme-web",
+        "owner": "Web team",
+        "path": "wiki/components/acme-web.md",
+        "repo": null,
+        "status": "active"
+      }
+    ],
+    "handoffs": [
+      {
+        "from_component": "acme-api",
+        "path": "wiki/handoffs/acme-api-to-acme-web/breaking-change-order-status-values-renamed.md",
+        "status": "completed",
+        "to_component": "acme-web"
+      },
+      {
+        "from_component": "acme-cli",
+        "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md",
+        "status": "in-progress",
+        "to_component": "acme-api"
+      },
+      {
+        "from_component": "acme-web",
+        "path": "wiki/handoffs/acme-web-to-acme-api/feature-order-history-endpoint.md",
+        "status": "open",
+        "to_component": "acme-api"
+      }
+    ]
+  },
+  "tool": "wiki_inventory_tool"
+}

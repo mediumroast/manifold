@@ -1,0 +1,30 @@
+{
+  "arguments": {
+    "action": "confirm",
+    "notes": "Looks right.",
+    "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md"
+  },
+  "caller": {
+    "kind": "human",
+    "roles": [
+      "contributor",
+      "registrar"
+    ]
+  },
+  "result": {
+    "next": "Handoff confirmed and marked completed. Update wiki/components/acme-api.md ## Changelog to reflect this. Then close any related handoffs in the opposite direction with /handoff-close.",
+    "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md",
+    "status": "confirmed"
+  },
+  "setup": [
+    {
+      "arguments": {
+        "action": "request-review",
+        "notes": "Fixed and tested.",
+        "path": "wiki/handoffs/acme-cli-to-acme-api/bug-cancel-returns-500-for-an-order-that-alr.md"
+      },
+      "tool": "wiki_handoff_tool"
+    }
+  ],
+  "tool": "wiki_handoff_tool"
+}

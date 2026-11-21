@@ -332,6 +332,80 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F21 — The `coder` sent one empty heredoc and one read of the guard log in the Phase 4 checkpoint 2 repair; both refused; disclosed (2026-11-15)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`); protected files (guard rule `protected-file`, here the guard log).
+**What happened:** During the CP2 review repair (F12 to F17), the `coder` sent a `Bash` call with an empty `<<'EOF'` heredoc by mistake while reading the F14 recording, and later tried to read `.manifold/guard-log.jsonl` with `cut` to check the F17 line. The guard refused both. Nothing was written, and the coder did not retry either. It said so in its report and in the plan's repair note.
+**Evidence:** `.manifold/guard-log.jsonl`, 2026-11-15T14:24:44Z (`no-heredocs`) and 14:27:19Z (`protected-file`), agent_type `coder` (the log was 6 lines before the repair and 8 after); the coder's report and the plan's Rule exceptions line for the repair (CP8).
+**Count:** 2 attempted, 2 refused, 0 breaches that went through; disclosed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report and in the plan).
+**Open question for the owner (not a finding of breach):** the coder also reports copying a scratch copy of `server`, `examples`, `bundles` and `assets` with `cp -R` into the scratchpad, copying three re-recorded files back into the repository with `cp`, and restoring two wrong recordings with `git checkout`. The guard did not refuse or log these, and the commit holds only the intended recordings (two changed by one line each). Whether copying a file into the repository with `cp` counts as a "shell write to a file" under the rule is not settled by the rule text; the owner decides, and the recorder's own use of `record.py --write` is by design.
+**Suggested change:** None to the guard; it held. The `cp` question may want one line in the rule text.
+**Status:** open (the `cp` question)
+**Intent raised:** none
+
+## F22 — The `coordinator` had the `coder` write the plan's repair amendment and start the repair before the owner's signature (2026-11-15)
+
+**Rule:** The review-to-repair order in `docs/process/REVIEW_CYCLE.md` (review, planner amendment, human approval, coder repair); the coordinator "does no one's work" (`coordinator` agent definition).
+**What happened:** After the reviewer's revision 3 of checkpoint 2 (F12 to F17), the coordinator (the main session) asked the `coder` to add the "Review amendment (round 2, checkpoint 2)" section with Tasks 57 to 62 to `docs/plans/PHASE_4_PLAN.md` and to repair the findings in the same run, on the owner's chat instruction "Repair F12 and all five nits", without first having the `planner` write the amendment and without the owner's **Amendment approved by** signature. The coder's brief carried the statement that the owner's chat instruction authorizes the repair. The coder followed the brief and disclosed everything in its report. Checkpoint 1 followed the order correctly (planner amendment, owner approval, coder repair).
+**Evidence:** The session transcript (the coordinator's brief to the coder); commits `7a6982e` (repair and plan amendment by the coder) and `e02f595` (the planner's later Provenance paragraph in the plan); the planner's review of Tasks 57 to 62 (no acceptance lines, no `Source:` labels, no closing parts, a scope sentence too narrow). The guard did not and could not log this: it watches commands, not who wrote what.
+**Count:** 1 (coordinator, one run). The coder also started the repair before the signature, because the coordinator's brief told it to; `docs/process/REVIEW_CYCLE.md` says the coder does not start a repair before approval, so the coder's own rule was also not met (it followed the brief and disclosed everything).
+**Agent:** coordinator (main session)
+**Disclosed by the agent:** Yes. The coordinator named it when the owner asked ("Wait we've skipped something").
+**Remedy chosen by the owner (Michael Hay, 2026-11-15, chat: option 1):** accept the repair after the fact. The planner brings Tasks 57 to 62 into its format (acceptance lines, `Source:` labels, closing parts, a corrected scope sentence), and the owner reads the named places before signing **Amendment approved by**. The signature is the owner's and stays a slug until then.
+**Suggested change:** The rule already exists in `REVIEW_CYCLE.md`; what is new is a check at the hand-off. The coordinator's brief to the coder must name the signed amendment it relies on (the plan section and its **Amendment approved by** line), and the coder stops if that line is blank or still a slug, even when the brief or a chat instruction says to go ahead. For the owner to decide. Under `BREACH_PROCEDURE.md` the owner or the `reviewer` should check this entry in the next review revision.
+**Status:** open
+**Intent raised:** none
+
+## F23 — The `reviewer` tried twice to write a scratch file in review round 3 of Phase 4 checkpoint 2; both refused; disclosed (2026-11-15)
+
+**Rule:** The reviewer's write allowlist (guard rule `write-allowlist`): the `reviewer` writes only `docs/plans/REVIEW_PLAN_<N>.md`.
+**What happened:** To re-run the F12 check with the date freeze switched off, the `reviewer` tried twice to write a scratch plugin file into the session scratchpad with `Write`. The guard refused both. It did not retry another way: it ran three inline `python -c` checks that wrote no file. It said so in its report and in the review file.
+**Evidence:** `.manifold/guard-log.jsonl`, lines 9 and 10, 2026-11-15T14:50:10Z and 14:50:12Z (rule `write-allowlist`, tool `Write`, agent_type `reviewer`); the reviewer's report and its Rule exceptions line in revision 4 of `REVIEW_PLAN_4.md`.
+**Count:** 2 attempted, 2 refused, 0 breaches that went through; disclosed.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** The same open point as F19 (and F17 of 2026-11-12): the reviewer's allowlist (only its review file) conflicts with the environment's advice to keep scratch files in the session scratchpad. The owner decides whether the allowlist should permit the scratchpad, or whether the reviewer needs a read-only way to run a short snippet. This is the third time in two runs.
+**Status:** open
+**Intent raised:** none yet
+
+## F24 — The `planner` tried `git apply --cached` with a patch file while recording the owner's S2 release rule; refused; disclosed (2026-11-15)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`, whose message here reads "git apply changes files").
+**What happened:** The intent file already held two MarkText re-spacing edits by the owner. To commit only its own one-line change, the `planner` wrote a patch file in the scratchpad and ran `git apply --cached --recount` on it. The guard refused the command. The planner did not retry or work around it, left everything unstaged, and reported it, asking whether to commit the whole file or to wait for a human exception. The coordinator committed the whole file, with a message that says the re-spacing is included.
+**Evidence:** `.manifold/guard-log.jsonl`, line 11, 2026-11-15T15:00:14Z (rule `no-heredocs`, tool `Bash`, agent_type `planner`); the planner's report.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. The patch file in the scratchpad was written with a tool call the guard did not refuse (inference: the scratchpad is allowed to the planner).
+**Agent:** planner
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None to the guard; it held. For the owner: a file edited in MarkText gets re-spaced, so a later agent edit to the same file meets uncommitted changes. Committing the owner's re-spacing with the agent's edit, with the commit message saying so, is the simple way out.
+**Status:** closed
+**Intent raised:** none
+
+## F25 — The `bug-coder` sent one heredoc command in the Phase 4 checkpoint 9 repair; refused; disclosed (2026-11-15)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While scanning the recordings for lists that come from a directory walk, the `bug-coder` sent a `Bash` call with a heredoc. The guard refused it, nothing was written, and the bug-coder did not retry or work around it: it redid the scan with a scratch file written with `Write` in the scratchpad, and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, line 12, 2026-11-15T15:39:26Z (rule `no-heredocs`, tool `Bash`, agent_type `bug-coder`); the bug-coder's report. Its other disclosure (`cp -R` of `server`, `examples`, `bundles` and `assets` into the scratchpad for the recorder, nothing copied back with `cp`; the changed recording was brought in with `Write` and checked with `cmp`) is not a rule question.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed.
+**Agent:** bug-coder
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None to the guard; it held.
+**Status:** closed
+**Intent raised:** none
+
+## F26 — The `reviewer` sent one compound command with an inline `python3 -c` and `subprocess` in review revision 5; refused; disclosed (2026-11-15)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** To compare the old and new inventory recording item by item, the `reviewer` sent one compound `Bash` call: the five gate commands plus a `python3 -c` that ran `git show` through `subprocess`. The guard refused the whole command and nothing in it ran. The reviewer did not retry or work around it and did not ask for an exception: it reran the gates alone and used the weaker `git diff` line-count check instead, and said so in its report.
+**Evidence:** `.manifold/guard-log.jsonl`, line 13, 2026-11-15T20:34:44Z (rule `no-heredocs`, tool `Bash`, agent_type `reviewer`); the reviewer's report.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. Effect on the review: the item-by-item comparison was not made, so the evidence for the recording is weaker (the reviewer says so).
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (in the report).
+**Suggested change:** None to the guard; it held. The same open question as F19 and F23: the reviewer has no read-only way to run a short snippet that compares two versions of a file. The owner decides whether to allow one.
+**Status:** open
+**Intent raised:** none yet
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
