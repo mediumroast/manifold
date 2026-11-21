@@ -406,6 +406,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** open
 **Intent raised:** none yet
 
+## F27 — The `coder` sent one no-op heredoc in Phase 4 checkpoint 3, then reported "Rule exceptions: none"; refused; disclosed in the body of the report (2026-11-21)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`); Rule exceptions (every report lists each exception).
+**What happened:** During the checkpoint 3 build the `coder` sent a `Bash` call holding a heredoc (`cat >> /dev/null <<'EOF'`) that had no purpose. The guard refused it and nothing was written. The coder used `Edit` for every file change afterwards and described the refusal in its report, but its closing line said "Rule exceptions: none", which contradicts that.
+**Evidence:** `.manifold/guard-log.jsonl`, line 14, 2026-11-21T14:32:36Z (rule `no-heredocs`, tool `Bash`, agent_type `coder`); the coder's report. The log had 13 lines before and has 14 now.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. The "none" line was wrong: a refused command is to be listed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the body of the report; the Rule exceptions line itself said `none`).
+**Suggested change:** None to the guard; it held. The reviewer should compare the Rule exceptions line with the log, as it did before.
+**Status:** closed
+**Intent raised:** none
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
