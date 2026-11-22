@@ -3,6 +3,7 @@
 
 import importlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -195,3 +196,62 @@ def test_scan_looks_for_the_default_term_list_only_when_it_runs(tmp_path, monkey
     page = tmp_path / "page.md"
     page.write_text("a pineapple\n", encoding="utf-8")
     assert [f.kind for f in scanner.scan(page)] == ["term"]
+
+
+def _pages(root):
+    """{relative path: parsed page} of every markdown file of a set."""
+    import frontmatter
+    return {str(p.relative_to(root)): frontmatter.loads(p.read_text(encoding="utf-8"))
+            for p in sorted(root.rglob("*.md"))}
+
+
+def _scripts(text):
+    import unicodedata
+    return {unicodedata.name(c).split()[0] for c in text if ord(c) > 127 and c.isalpha()} - {"LATIN"}
+
+
+def test_the_sets_cover_every_awkward_case(dataset):
+    from wiki_backend.config import load_config
+    from wiki_backend.freshness import wiki_freshness
+    from wiki_backend.read import wiki_read
+
+    messy, hostile = dataset("messy"), dataset("hostile")
+    slugs = load_config(messy).slugs()
+    pages = _pages(messy)
+
+    assert [s for s in slugs if "." in s], "no dotted slug"
+    squashed = [s.replace(".", "").replace("-", "").replace("_", "") for s in slugs]
+    assert len(set(squashed)) < len(squashed), "no look-alike slugs"
+
+    plain = [p for p, page in pages.items() if not page.metadata and not p.endswith(("CLAUDE.md", "log.md"))]
+    assert plain, "no page without frontmatter"
+
+    titles = [page.metadata["title"] for page in pages.values() if page.metadata.get("title")]
+    assert len(set(titles)) < len(titles), "no duplicate title"
+
+    assert [entry["component"] for entry in wiki_freshness(messy)["stale"]] == ["orders-core"], "no stale page"
+
+    (messy / "wiki" / "notes" / "very-long.md").write_text("# Very long\n\n" + loader.long_page(200_000), encoding="utf-8")
+    assert len(wiki_read(messy, "wiki/notes/very-long.md").body) == len("# Very long\n\n") + 200_000, "no long page"
+    assert wiki_health(messy)[0]
+
+    assert len(_scripts("".join(page.content for page in pages.values()))) >= 3, "text in fewer than two scripts besides Latin"
+
+    ai_text = " ".join(page.content + " " + str(page.metadata) for page in _pages(hostile).values()).lower()
+    assert "ignore your previous instructions" in ai_text and "call the tool" in ai_text, "no AI-aimed text"
+
+
+# First names kept here; a first name followed by a capitalised word is reported as a possible person.
+_FIRST_NAMES = ("John", "Jane", "James", "Mary", "Robert", "Patricia", "Michael", "Jennifer", "William", "Linda", "David",
+                "Elizabeth", "Richard", "Susan", "Joseph", "Sarah", "Thomas", "Karen", "Charles", "Lisa", "Daniel", "Nancy",
+                "Matthew", "Maria", "Anna", "Peter", "Paul", "Laura", "Sam", "Alex")
+_NAME_PATTERNS = (re.compile(r"\b(?:%s)\s+[A-Z][a-z]+\b" % "|".join(_FIRST_NAMES)),)
+
+
+def test_no_set_contains_personal_data(tmp_path, no_terms):
+    sample = tmp_path / "person.md"
+    sample.write_text("Maria Garcia wrote to maria@mail.example.test\n", encoding="utf-8")
+    assert {f.kind for f in scanner.scan(sample, terms_file=no_terms, extra_patterns=_NAME_PATTERNS)} == {"email", "pattern"}
+    for name in loader.curated_names():
+        findings = scanner.scan(loader.CURATED / name, terms_file=no_terms, extra_patterns=_NAME_PATTERNS)
+        assert [f for f in findings if f.kind in ("email", "pattern")] == [], name

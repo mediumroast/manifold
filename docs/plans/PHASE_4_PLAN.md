@@ -531,11 +531,15 @@ INT-3 scenario seeds: S1 (instance by size) is deferred (owner confirmed, Open q
 **Action:** MODIFY
 **Change:** `test_the_sets_cover_every_awkward_case` asserts each of dotted slug, look-alike slug, no frontmatter, duplicate title, stale page (through `wiki_freshness`), long page (via `long_page`), non-English text and AI-aimed text is present in `messy` or `hostile`; `test_no_set_contains_personal_data` runs `scan` for email addresses and for a first-name-plus-surname pattern list kept in the test, over every committed set.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q` passes (counts reported).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: added `test_the_sets_cover_every_awkward_case` and `test_no_set_contains_personal_data` to `test_datasets.py`. The first checks, on copies of the sets: a dotted slug and a look-alike pair (equal once `.`, `-` and `_` are removed) in the registry of `messy`; a page with no frontmatter (not `CLAUDE.md` or `log.md`, which have none by design); two pages with one title; the stale page through `wiki_freshness` (`orders-core` only); a long page (`long_page(200000)` written into the copy and read back whole with `wiki_read`, health still ok); text in at least three non-Latin scripts; and AI-aimed text in `hostile` ("ignore your previous instructions", "call the tool"). The second runs `scan` over each committed set for email addresses and for first-name-plus-surname patterns, using a list of thirty first names kept in the test and passed through `scan`'s `extra_patterns` (see the Task 26 note, item 4), and first proves the patterns and the email check fire on a made-up sample. It uses an empty fixture term list, never the owner's file. Command: `cd server && ../.venv/bin/python -m pytest tests/datasets -q` gave `15 passed, 1 warning` (the warning is the pydantic deprecation in `server.py`).
 
 ---
 
 **Verification:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q` passes (counts reported); `cd server && ../.venv/bin/python -m pytest -q` passes; `git diff --stat` for the checkpoint lists only `server/tests/datasets/`.
+
+> CP3 gates (coder, branch `claude/phase-4-cp3`, Python 3.11 on macOS only): `cd server && ../.venv/bin/python -m pytest -q` gave `1143 passed, 5 xfailed, 33 warnings in 124.12s` (the 5 xfailed are the CP2 ones named in the Task 20 note); `cd server && ../.venv/bin/python -m pytest tests/datasets -q` gave `15 passed, 1 warning`; `.venv/bin/python -m pytest tests/live -q` gave `24 passed`; `.venv/bin/python tools/vendor_web.py --check` printed `vendored files match a fresh build`; `.venv/bin/python -m pytest bundles/base/tests -q` gave `2108 passed, 1 skipped`; `python3 bundles/base/tools/build.py --check` printed `lint ok`. Not run: Linux, Python 3.12 and Python 3.10 (CI runs those). The passed count is 23 above CP2's 1120 while `tests/datasets` adds 15; the other 8 were not traced (`git diff --stat` shows this checkpoint changed only `server/tests/datasets/` and this plan). The owner's real term list was never read by any run here; the owner should run `scan.py` over `curated/` once with it.
 
 ### CP4 — The Megaroast testbed (INT-3)
 
