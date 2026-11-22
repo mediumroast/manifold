@@ -430,6 +430,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none yet
 
+## F29 — The `reviewer` had two commands refused in Phase 4 checkpoint 3 review revision 6 (a scratchpad write and an inline mutation script); disclosed (2026-11-22)
+
+**Rule:** Write allowlist (guard rule `write-allowlist`) and shell writes to files (guard rule `no-heredocs`).
+**What happened:** To run the scan with an explicit empty terms list, the `reviewer` used `Write` to create an empty file in the session scratchpad; the guard refused it. Later it ran an inline `python -c` mutation that wrapped `wiki_read` and created a file; the guard refused that too. It did not retry or work around either. Effect on the review: the explicit `--terms-file` scan over `curated/` and over `server/tests/datasets/` and the second mutation (a tool that writes a file) were not run; the reviewer argued them by reading and says so.
+**Evidence:** `.manifold/guard-log.jsonl`, line 16 (2026-11-22T00:50:34Z, rule `write-allowlist`, tool `Write`, agent_type `reviewer`) and line 17 (2026-11-22T00:51:51Z, rule `no-heredocs`, tool `Bash`, agent_type `reviewer`); the reviewer's report.
+**Count:** 2 attempted, 2 refused, 0 breaches that went through; disclosed.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (on its Rule exceptions line).
+**Suggested change:** The same open question as F19, F23 and F26: the reviewer's allowlist (only its review file) blocks the scratchpad and any snippet that writes a file. Fifth time in three runs. The owner decides whether the allowlist should permit the scratchpad, or whether the scan should be run by the coordinator instead.
+**Status:** open
+**Intent raised:** none yet
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |

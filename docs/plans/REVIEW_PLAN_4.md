@@ -5,7 +5,7 @@
 **Commit reviewed:** `1bf3836550ffd37ea0bae9f4aff3e33898327361` on branch `claude/phase-4-cp1` (pull request 35; base `claude/phase-4-plan` at `c6b059e92a8a5e4b725ec5f651e233b60b93ee86`; full change `c6b059e..1bf3836`, 36 files; repairs since revision 1 `3724f88..1bf3836`, 11 commits, 24 files). The head came from `git rev-parse HEAD` after `git log -3`.
 **Plan version:** `PHASE_4_PLAN.md`; the plan is approved by Michael Hay on Nov 14, 2026, and the review amendment (round 1) is approved by him (`**Amendment approved by:** Michael Hay on Nov 14, 2026`, commit `da496ef`, the owner's edit). Task 55 is owner-gated (see F4) and was deliberately not run.
 **Policy used:** `REVIEW.md` (passes, Important and Nit meaning, nit cap of 5 per report). The `Review process` approval rule in `AGENTS.md` (solo repository, owner Michael Hay, no second approver) applies: no second person is required, and the owner's approval is his own. GitHub's own Approve review is a separate act and is not something this file can show.
-**Revision:** 5, 2026-11-15 20:40 (checkpoint 2, the CP9 repair; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4 header, then the revision 5 header)
+**Revision:** 6, 2026-11-21 (checkpoint 3, curated test data sets, Tasks 23 to 27; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4 header, the revision 5 header and the revision 6 header)
 
 **Checkpoint 2 header (revision 3).**
 - **Phase:** `docs/plans/PHASE_4_PLAN.md`, checkpoint 2 only (Tasks 14 to 22, "Contract tests and hardening for the server"). Checkpoints 3 to 6 are not part of this change.
@@ -26,6 +26,15 @@
 - **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
 - **Not my work:** I wrote none of the code or plan text under review (the repair is the bug-coder's).
 
+**Revision 6 header (checkpoint 3).**
+- **Phase:** `docs/plans/PHASE_4_PLAN.md`, "CP3 — Curated test data sets (INT-3)", Tasks 23 to 27. Checkpoints 4 to 6 are not part of this change and are not reported as missing.
+- **Intent:** INT-3, `intent/INT-3-test-data-sets.md` (`accepted_by: Michael Hay on Nov 14, 2026`). S2 (hostile text) is Tasks 23, 24, 25 and 27; S3 (a real source is scrubbed) is Task 26 (Tasks 28 and 31 are CP4); S1 is deferred by the owner (Open question 17) and is not reported as missing.
+- **Commit reviewed:** `85b52a2de1499db4e4003556d59093a975fdda46` ("Record F28 ...", `git rev-parse HEAD`), branch `claude/phase-4-cp3`; diff `origin/main..HEAD` is 6 commits plus the F27 commit (`1325306` failure F27, `1e4255c` Task 23, `1a9b168` Task 24, `aa31901` Task 25, `3e1e898` Task 26, `ff45935` Task 27, `85b52a2` failure F28), 26 files, 755 insertions, 5 deletions; 24 files are created (all under `server/tests/datasets/`) and 2 are modified (`docs/plans/PHASE_4_PLAN.md`, `docs/agents/claude-desktop-failures.md`). The branch is not pushed, so CI has not run.
+- **Run reviewed:** this is the coder's second CP3 run. The first run is set aside on `claude/phase-4-cp3-run1`; I did not read it and it is not under review.
+- **Plan version:** `**Approved by:** Michael Hay on Nov 14, 2026` (`PHASE_4_PLAN.md:3`); amendments signed.
+- **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
+- **Not my work:** I wrote none of the code, data or plan text under review.
+
 ## Revision log
 
 | Revision | Timestamp | Commit reviewed | What this revision did |
@@ -35,17 +44,141 @@
 | 3 | 2026-11-15 14:40 | `d3411a39c4def8d4fc660bc1788d9879600c9e32` | First review of checkpoint 2 (Tasks 14 to 22): new findings F12 to F17; the checkpoint 1 findings are not re-reviewed and keep their revision 2 State |
 | 4 | 2026-11-15 14:55 | `9a28de75eead69b45f4de34a49bced3f3b9883ea` | Re-review of checkpoint 2 and its repair (Tasks 57 to 62): F12 to F17 all repaired (evidence below); new findings F18 and F19 (nits, process record); the failure entries F21 and F22 checked against the guard log; CP1 findings F4, F9, F10, F11 not re-reviewed, state unchanged |
 | 5 | 2026-11-15 20:40 | `559810201389a7eb763d592598932bde157c47c7` | Review of the CP9 repair (Tasks 63 to 65, commit `f35fb11`, tests only): no Important finding; new nits F26 and F27; F18 and F19 re-checked and repaired; failure entries F22 to F25 checked against the guard log (13 lines); CP1 findings F4, F9, F10, F11 not re-reviewed, state unchanged |
+| 6 | 2026-11-21 | `85b52a2de1499db4e4003556d59093a975fdda46` | First review of checkpoint 3 (Tasks 23 to 27, the coder's second run): one Important (F28) and four nits (F29 to F32); failure entries F27 and F28 checked against the guard log (15 lines when I started); the seven recorded deviations judged; the checkpoint 1 and 2 findings (F4, F9, F10, F11, F26, F27) not re-reviewed and keep their State. Review finding numbers F28 and later are review findings; they are not the failure entries F26 to F28 of `claude-desktop-failures.md` |
 
 ## Counts by severity
 
 | Severity | Open | Repaired |
 |---|---|---|
-| Important | 1 (F4, owner-gated, checkpoint 1) | 4 (F1, F2, F3; F12 repaired in revision 4) |
-| Nit | 5 (F9, F10, F11 from checkpoint 1; F26, F27 new in revision 5) | 11 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5) |
+| Important | 2 (F4, owner-gated, checkpoint 1; F28 new in revision 6) | 4 (F1, F2, F3; F12 repaired in revision 4) |
+| Nit | 9 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F29 to F32 new in revision 6) | 11 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5) |
 
-No finding is shown as deferred or rejected: that is a human's decision, recorded in the pull request, and none was recorded in anything I read. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 two; revision 5 reports two new nits and left none out.
+No finding is shown as deferred or rejected: that is a human's decision, recorded in the pull request, and none was recorded in anything I read. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 two; revision 5 two; revision 6 reports four new nits and left none out.
+
+Revision 6's own sections come first, under "CP3 revision 6". The sections for revisions 3 to 5 follow, unchanged.
 
 The sections headed "CP2: ..." further down are the revision 3 text, kept; their State lines for F12 to F17 are updated in place with the revision 4 evidence. Revision 4's own sections come under "CP2 revision 4" (F18 and F19 keep their text there, with the State set in revision 5). Revision 5's own sections come first, under "CP2 revision 5".
+
+## CP3 revision 6: curated test data sets (Tasks 23 to 27)
+
+### Verdict
+
+One Important finding (F28, the scan prints matched emails and hosts, which can carry a private term) and four nits (F29 to F32). Everything else asked for holds. Evidence is mine, run on head `85b52a2` on Python 3.11.3. Only test files, test data, a README, a sign-off table and plan and failure notes changed: `git diff --name-status origin/main..HEAD` shows 24 `A` and 2 `M` (the plan and the failures file), so no server code and no existing test was changed.
+
+### What was checked and holds
+
+- **Files, scope and size (Task 23, plan "Files").** All 24 created files are under `server/tests/datasets/`; the plan names `curated/messy/`, `curated/hostile/`, `loader.py`, `README.md`, `SIGNOFFS.md`, `scan.py` and `test_datasets.py`, and the Task 24 Change text names the `dataset` fixture in the datasets test module, so `test_datasets.py` appearing in Task 24 is in the plan. `du -sk server/tests/datasets/curated` prints `76` (under 200). `load_config` loads both sets: `test_the_sets_cover_every_awkward_case` calls `load_config(messy).slugs()`, `tool_world` calls `load_config(root).slugs()` for the hostile set, and both pass. `git status --short` is empty.
+- **The curated data is wholly fictional (Task 23, INT-3 "No personal data").** I read all 19 files under `curated/` (messy 12, hostile 7, each including its `manifold.yaml`). Hosts are `example.test` and `hostile.example.test` only (`grep -rnoE "https?://..."` lists five URLs, all `.test`). `grep -rniE "megaroast|mediumroast|mihay|michael|sk-|ghp_|BEGIN .*PRIVATE"` over `curated/` printed nothing. Teams are "Team Dot", "Team Dash", "Team Orders", "Team Harbor"; no person is named, no email address, no key.
+- **Awkward cases present (Task 23 Change).** Dotted slug `acme.io` and look-alike `acme-io`; `no-frontmatter.md`; two pages titled "Retry policy"; `orders-core` page dated 2026-01-10 against the raw note of 2026-02-20; a page in seven scripts (Latin, Cyrillic, Greek, Japanese, Arabic, Devanagari and accents). The long page is generated by `loader.long_page`, not committed (`curated/` holds none). Hostile pages: "ignore your previous instructions", "call the tool wiki_write_page_tool", a fake `SYSTEM:` message, a hidden HTML comment and a hostile frontmatter summary. The three tool names the bait uses (`wiki_write_page_tool`, `wiki_handoff_tool`, `wiki_log_append_tool`) exist (`server/server.py:168`, `:280`, `:334`), so the bait is real, not invented. Every hostile line says it is a test string and does nothing, so INT-3 S2 "Must never: harmful beyond a test string" holds.
+- **README and SIGNOFFS (Task 26).** `README.md` holds the awkward cases, the real-data rule in five steps (permission in writing, scrub, check, record, original never committed), and a "Megaroast testbed" section with the organization name and four roles only (fork, standalone GUI, holdout QA repository, example instance). No repository name appears. The holdout QA repository is a role only, with "no builder agent reads the holdout QA repository", as the plan's default says. `SIGNOFFS.md` has the five columns (source, owner, permission date, scrub checked by, scan result), no row, and says no real data is committed. The owner's open question (may the holdout QA repository be named) is correctly left open with its default.
+- **The owner's private terms file is never opened by a test (Task 26 (3)).** Read, not run: `scan.py:93-97` reads the default only inside `scan()` when `terms_file is None`; `default_terms_file()` is a function (`:53-55`), so nothing is looked up at import. Every `scan(` and `main(` call in `test_datasets.py` (lines 153, 157, 158, 160, 169, 178, 183, 185, 254, 256) passes a fixture file, except line 198, which first replaces `Path.home` with a function that raises (line 189-191) and then replaces `scanner.default_terms_file` with a stand-in inside `tmp_path` (line 195). So no test path reaches `~/.manifold/excluded_terms.json`. I did not open that file, and I ran nothing that reads it (the one command-line run I made was `scan.py --help`).
+- **A private term is never shown by `term` findings or a bad list (Task 26 (2)).** `Finding(..., "term")` has an empty `detail` (`scan.py:116`); `load_terms` raises without quoting the content (`:60-66`); `test_scan_finds_private_terms_without_ever_showing_them` and `test_scan_refuses_a_bad_term_list_without_quoting_it` assert it. See F28 for the corner where an email or host finding can still carry one.
+- **The hostile test has teeth (Task 25).** The test (`test_datasets.py:116-140`) compares `body` with the page parsed from disk and finds the bait sentence in `body` or `frontmatter`, runs `wiki_inventory_tool` and `wiki_freshness_tool`, and then compares every file of the copy byte for byte (`log.md`, handoffs and pages included), checks the page the bait asks for does not exist, and checks one commit and a clean `git status`. I ran a mutation inline (`python -c`, `pytest.main`, a plugin that wraps `server.wiki_read` so the text comes back altered: `PINEAPPLE` to `PEAR`, `SYSTEM:` to `S:`; no file written): `1 failed`, the assertion on the page body with `the word PINEAPPLE.` against `the word PEAR.` So an altered text fails. I tried a second mutation (a wrapper that creates `wiki/notes/should-never-exist.md` when the bait page is read) and the guard refused the snippet (see "Rule exceptions compared"); I did not retry. By reading, a created or changed file anywhere in the copy fails `_snapshot(root) == before` (it covers every file except `.git`), a file at the bait path fails the `exists()` check, and a new commit fails the count; a call to `wiki_log_append` writes `log.md`, which is in the snapshot. Limits: the test runs three tools (read, inventory, freshness), so it proves those three do not act on the text, not that every tool is safe; an action with no effect on disk (a network call) would not fail it.
+- **Task 27 coverage and personal-data tests have teeth.** `test_the_sets_cover_every_awkward_case` has one assertion with a message for each case: a dotted slug (`"." in s`), look-alike slugs (equal once `.`, `-`, `_` are removed), a page with no frontmatter (not `CLAUDE.md` or `log.md`), a duplicate title, the stale page through `wiki_freshness` (exactly `["orders-core"]`), a long page (200 000 characters written into the copy and read back whole through `wiki_read`, health still ok), at least three non-Latin scripts, and AI-aimed text in `hostile`. Removing the case from the data makes the matching assertion fail; I did not edit the data to prove it (I may not), I read each assertion against the data. `test_no_set_contains_personal_data` first shows that the email check and the name patterns fire on a made-up sample (`{"email", "pattern"}`), then scans each committed set. A first name followed by a capitalised word in any page fails it. Limits are in F32.
+- **No string-joining to dodge the scanner (item f).** The token, hash and email samples in `test_datasets.py:145-151` and `:253` are plain literals, written as the scanner should catch them. The only join is `"|".join(_FIRST_NAMES)` (`:248`), which builds the name pattern from the list; it hides nothing. No committed file under `curated/` holds a string built to avoid the scan, and the scan over `curated/` is clean (next bullet).
+- **The scan over `curated/` is clean.** Proved by the test run, not by a command-line run of mine: `test_scan_flags_real_shaped_text_and_passes_the_committed_sets` asserts `scanner.scan(loader.CURATED, terms_file=no_terms) == []`, and `scanner.main([CURATED, "--terms-file", no_terms]) == 0` with empty output, where `no_terms` is a fixture file holding `[]` made in `tmp_path`. It passes in the full run and in `tests/datasets`. The explicit-file command-line run I planned (an empty list in the session scratchpad) could not be done: the guard refused my write of that file (see "Rule exceptions compared"), and I did not find another way to get the file.
+- **No existing test edited, no server code changed (item h).** Only `A` files besides the plan and the failures file; `server/` outside `server/tests/datasets/` is untouched; this is a new test folder, so there is nothing in it to edit. The plan's Verification line ("`git diff --stat` for the checkpoint lists only `server/tests/datasets/`") holds apart from the two documents that carry the notes and failure entries.
+- **Commits.** Seven commits, all with the attribution line; the message of each names the task. I cannot see staging commands or `--no-verify` in git, so I report only that I saw nothing that suggests either.
+
+### The seven recorded deviations (item a)
+
+| Deviation (where recorded) | Judgment | Reason |
+|---|---|---|
+| `body` instead of the plan's "content field" (Task 25 note) | acceptable | the tool returns `body`; the test checks it against the page as parsed from disk, so the plan's meaning is met. The plan text is not amended, which is the planner's housekeeping, not a finding |
+| dates returned as text, compared with `str()` (Task 25 note) | acceptable | the tool returns dates as text; the test pins that form exactly, so a changed form fails it |
+| `copy_curated(tmp_path, name)` against the acceptance line's `copy_curated("messy")` (Task 24 note) | acceptable | the plan's Change line gives the two-argument signature and the acceptance line a one-argument call; the `dataset(name)` fixture gives the second form. The plan contradicts itself and the coder said so |
+| the extra helper `curated_names()` (Task 24 note) | acceptable | used to refuse an unknown or path-like name (`"../messy"`); the test passes and covers it. Small, in scope |
+| the extra `scan(..., extra_patterns=())` parameter (Task 26 note, item 4) | acceptable | the plan asks for a first-name-plus-surname list "kept in the test" and run through `scan`; the term list holds literals only, so a pattern argument is the smallest way. The plan's signature still works unchanged |
+| hosts taken from URLs only; a bare host with no scheme is not caught (Task 26 note, item 1) | nit (F30) | stated in `scan.py`'s docstring, but README step 3 says the scan reports "hosts" without the limit |
+| private-key blocks not scanned until Task 36 (Task 26 note, item 5) | acceptable | Task 36 exists (`PHASE_4_PLAN.md:649`) and is about exactly this; the limit is recorded |
+
+### New findings in revision 6
+
+**F28 (Important) — `scan` prints the matched email address or host in a finding, so a private term can reach the output**
+- **Pass:** Security (a private list's content in output) and Compliance (Task 26: "the list is never committed or printed"; `scan.py` docstring: a finding "never carries the matched text for a token or a term").
+- **Location:** `server/tests/datasets/scan.py:106` (`Finding(shown, number, "email", m.group(0))`), `:110` (`Finding(shown, number, "host", host)`) and `:49-50` (`__str__` appends the detail); the test that pins the printing: `test_datasets.py:161` (`"sample.md:2: host intranet.big-corp.net"`).
+- **Evidence:** by reading, not by a run (a run needs a term file, which I could not write). A line such as `mail ops@secretco.com or see https://www.secretco.com/x` with the private term `secretco` gives three findings: `term` (no text, as designed), `email ops@secretco.com` and `host www.secretco.com` (both print the text). The term is then printed, which the plan and the docstring say it never is, and which the terms file exists to prevent: a private list holds the names an owner must not leak, and those names are exactly what appears in the host and email domain of a real source. Your brief for this review said a finding is `path:line:kind` and never the matched text; the code does not do that for two of its five kinds. The Task 26 note says only that tokens and terms carry no text. Where it is printed: the owner's terminal (README step 3) or whatever logs it; the scan is not in CI. So the exposure is local, which is why I did not weigh it more than Important, and it is a corner (a term inside an email or URL host), not the common case.
+- **Direction:** print `path:line: email` and `path:line: host` without the text, like the other kinds (the person reads the line number in the file), or print the text only when no private term appears in it; change the one assertion that pins the host text and add a case where the term sits inside a host and an email and is absent from the output. The owner may decide that an email or host from a scrub candidate may be printed in the owner's own terminal; then the docstring and README should say that the output can hold them, and the finding becomes a nit.
+- **State:** open
+
+**F29 (Nit) — A clean scan prints nothing and exits 0**
+- **Pass:** Bugs (usability of the check) and Tests.
+- **Location:** `scan.py:132-134` (`main` prints only findings) and `test_datasets.py:159` (`assert capsys.readouterr().out == ""`, which pins the silence).
+- **Evidence:** the plan's acceptance says "prints no finding", so this is as specified; the owner has already read a silent success as "nothing happened" (your brief). Exit 0 with no output looks the same as a scan that did not run.
+- **Direction:** print one line on success (for example the number of files scanned and "no findings") and change the one assertion; or leave it and say in README step 3 that a clean scan prints nothing. The owner may leave it.
+- **State:** open
+
+**F30 (Nit) — README says the scan reports "hosts"; it reports only hosts inside URLs**
+- **Pass:** Bugs (consistency) and Compliance (INT-3 S3: a checked scrub).
+- **Location:** `server/tests/datasets/README.md`, "The real-data rule", step 3 ("It reports emails, hosts not ending `.test`, `.example` or `.invalid`, ..."); `scan.py:7-9` and `:36` (`_URL_HOST` needs `scheme://`).
+- **Evidence:** the docstring and the Task 26 note say a bare host name (`intranet.big-corp.net` with no `https://`, or `db1.corp.net:5432`) is not caught; the README leaves the limit out. A person following README step 3 could take a clean scan as "no real hosts". The README does say the scan "finds what it is shaped to find" and that a person then reads the set, which softens it.
+- **Direction:** add "in URLs (`scheme://host`)" to the README sentence, with one sentence that a bare host is for the reader to find; or widen the scan to bare dotted names that end in a known top-level domain (the plan would need the owner's word, since `acme.io` is a deliberate slug). The owner may leave it.
+- **State:** open
+
+**F31 (Nit) — The coder's Rule exceptions line for checkpoint 3 is not in the plan notes or the commit messages**
+- **Pass:** Compliance (`AGENTS.md` "Rule exceptions"; the same point as F17 for checkpoint 2, repaired in revision 4).
+- **Location:** `PHASE_4_PLAN.md` CP3 notes (Tasks 23 to 27 and the CP3 gates note at line 542) and the seven commit messages.
+- **Evidence:** `git diff origin/main..HEAD -- docs/plans/PHASE_4_PLAN.md | grep -ic "rule exception"` prints `0`, and `git log origin/main..HEAD --format=%B | grep -i "rule exception"` prints nothing. The line exists only in the coder's chat report, which I cannot read; failure entry F28 paraphrases it ("its Rule exceptions line listed the refusal"). The comparison I could make is below, and the entries F27 and F28 match the log.
+- **Direction:** the coder writes the line into the CP3 gates note so it travels with the pull request, as it did for checkpoint 1 and, after F17, checkpoint 2.
+- **State:** open
+
+**F32 (Nit) — The personal-data test knows 30 English first names, and one assertion message is wrong**
+- **Pass:** Tests (strength) and Bugs.
+- **Location:** `test_datasets.py:245-248` (`_FIRST_NAMES`, `_NAME_PATTERNS`: a first name, whitespace, a capitalised word) and `:238` (the message `"text in fewer than two scripts besides Latin"` against the assertion `>= 3`).
+- **Evidence:** the pattern catches "Maria Garcia" (the sample proves it fires) and any other name on the list, written with capitals. It does not catch a name not on the list ("Priya Sharma"), a lower-case name, a surname first, or a name in another script, and `Alex` and `Sam` can match ordinary two-word phrases. That is what the plan asked ("a first-name-plus-surname pattern list kept in the test"), so this is a limit, not a departure; the real protection is the owner's term list plus a person reading, as README says. The message at `:238` says "two" and the assertion needs three non-Latin scripts; if it fails, the text misleads.
+- **Direction:** correct the message to "three"; note the limit in the test's comment; optionally add the owner's term list through the owner's own run. The owner may leave it.
+- **State:** open
+
+### Failure entries F27 and F28 against `.manifold/guard-log.jsonl`
+
+The log had 15 lines when I started (17 now; lines 16 and 17 are mine, see below).
+
+| Entry | Claim | Guard log | Result |
+|---|---|---|---|
+| F27 (coder, first run, set aside) | 1 refused `Bash` heredoc, 2026-11-21T14:32:36Z, `no-heredocs`, line 14; log had 13 lines before | line 14: 2026-11-21T14:32:36Z, rule `no-heredocs`, tool `Bash`, agent_type `coder`, command starts `cd /Users/.../ser` | matches in time, rule, tool and agent; count (1 attempted, 1 refused, 0 through) matches; 13 lines before is consistent with my revision 5 count (13 lines then). "Heredoc `cat >> /dev/null <<'EOF'`" is the coder's statement: the log cuts the command at 80 characters, so I only see the rule and the first characters. The entry says the "Rule exceptions: none" line was wrong; that line was in the first run's chat report, which I cannot read |
+| F28 (coder, second run) | 1 refused `Bash` heredoc, 2026-11-22T00:35:28Z, `no-heredocs`, line 15; line 14 is F27 | line 15: 2026-11-22T00:35:28Z, rule `no-heredocs`, tool `Bash`, agent_type `coder`, command starts `cd /Users/.../ser` | matches; the entry's "one more coder entry than it could account for is F27" fits lines 14 and 15; count matches. The time is UTC, the entry's date is the local day after (2026-11-22 for a 00:35Z line; line 14's 14:32Z is the 21st): consistent |
+
+Both entries have Status `closed` and "Disclosed by the agent: Yes"; those fields are the coordinator's and the owner's. F28 says the same slip twice after an explicit warning "suggests the coder's own text may need a line"; that is the owner's call and I do not raise it as a finding. The two entries carry no secret and no personal data.
+
+### Rule exceptions compared (revision 6)
+
+- **Coder, CP3 (second run):** the plan notes carry no Rule exceptions line (F31). Compared with the guard log: one refusal in this run (line 15, `no-heredocs`), matching F28 and the paraphrase of the line in F28; line 14 belongs to the set-aside first run (F27). No other coder line since the last revision, so I find no refusal that F27 or F28 omit. The guard logs refusals only, so a command that went through cannot be compared. Commit messages: explicit task names and the attribution line on all seven; nothing shows `--no-verify` or a hook bypass; the commits hold the paths of one task each (`git show --stat 1e4255c` is 20 files, the Task 23 data and the plan). The first run's commands and branch were not read.
+- **Mine:** I wrote this file with `Edit`. I ran read-only `git`, `grep`, `cat`, `du`, `ls`, `wc`, the project's gate commands (each alone), `scan.py --help`, and one inline `python -c` mutation run that wrapped `server.wiki_read` and called `pytest.main` (no file written). **Two commands of mine were refused by the guard**, and I did not work around either: (1) log line 16, 2026-11-22T00:50:34Z, rule `write-allowlist`, tool `Write`: my write of an empty term list (`[]`) in the session scratchpad, for the explicit `--terms-file` command-line run you asked for; (2) log line 17, rule `no-heredocs`, tool `Bash`: my second inline mutation (a `python -c` that wrapped `server.wiki_read` to create a file, to show that a tool which writes fails the test); the guard read the snippet as code that writes files. Nothing in either ran. I did not ask for an exception: the tests already scan `curated/` with their own empty fixture list, and the by-reading argument covers the second mutation. That leaves two checks not done as asked, listed under "Could not check". `.manifold/guard-allow.json` does not exist, so no exception was granted or used.
+
+### Other checks (revision 6)
+
+- **Security.** `git diff origin/main..HEAD` read for credentials and personal data: none. The sample strings in `test_datasets.py` (`sk-FAKE...`, a made-up session value, a made-up hash, `intranet.big-corp.net`, `maria@mail.example.test`) are deliberate scanner samples, not real; `big-corp.net` is a host that is not under `.test`, in a test sample, not a real company I can identify (unverified). `loader.py:19-20` holds `datasets@example.test` as the git author. By reading, a scan of the whole `server/tests/datasets/` folder (not only `curated/`) is not clean: it would report the email in `loader.py` and the deliberate samples in `test_datasets.py`; the plan's acceptance is over `curated/` only, so this is not a finding. I did not run it (no term file).
+- **Context files.** `AGENTS.md`, `CLAUDE.md` and `REVIEW.md` are not made out of date by this change.
+- **Test plan check.** No `PHASE_<N>_TEST_PLAN.md` in this change.
+- **Real-use evidence.** The curated sets used by a person writing a new test, and the scan applied to a real source with the owner's term list: **no evidence yet**; `SIGNOFFS.md` has no row by design. The coder's own note says the owner should run `scan.py` over `curated/` once with the owner's list; that is the owner's step and I did not do it.
+- **Held-out scenarios.** I did not read any.
+
+### Gates run (revision 6, 2026-11-21, head `85b52a2`, Python 3.11.3)
+
+| Command | Counts | Result |
+|---|---|---|
+| `cd server && ../.venv/bin/python -m pytest -q` | `1143 passed, 5 xfailed, 33 warnings in 126.56s` | pass; equals the coder's `1143 passed, 5 xfailed, 33 warnings` (the five xfails are the CP2 strict ones) |
+| `cd server && ../.venv/bin/python -m pytest tests/datasets -q` | `15 passed, 1 warning in 2.06s` | pass (the warning is the pydantic `dict` deprecation in `server.py`, not from this change) |
+| `.venv/bin/python -m pytest tests/live -q` | `24 passed in 0.05s` | pass |
+| `.venv/bin/python tools/vendor_web.py --check` | `vendored files match a fresh build` | pass |
+| `.venv/bin/python -m pytest bundles/base/tests -q` | `2108 passed, 1 skipped in 16.14s` | pass |
+| `python3 bundles/base/tools/build.py --check` | `lint ok` | pass |
+| inline mutation: `server.wiki_read` returns the text altered, `-k "hostile and not copy"` | `1 failed, 14 deselected`, on the page body (`PINEAPPLE` against `PEAR`) | as expected: the hostile test fails when the text is altered |
+
+The coder's note says "the other 8 [of the 23 added] were not traced". I did not trace them either: 1143 minus the CP2 count of 1128 (revision 5) is 15, which is exactly `tests/datasets`; the plan's "1120" baseline was the pre-repair CP2 figure, and the 8 are the CP2 repair tests (1123, then 1128). So the difference is explained by the CP2 repairs and nothing else, as far as the counts show; I did not run a count of the base to prove it.
+
+### Could not check (revision 6)
+
+- Linux, Python 3.12 and Python 3.10, and hosted CI (the branch is not pushed; CI has not run).
+- The owner's real term list: never read, by me or by any test, as designed. How `scan` behaves with the real list on a real source is the owner's first run.
+- The explicit command-line run of `scan.py` over `curated/` and over `server/tests/datasets/` with an empty list in the scratchpad: my write of that file was refused (log line 16). The in-test equivalent over `curated/` passes; the whole-folder scan was not run.
+- A second mutation (a tool that writes a file) on the hostile test: refused (log line 17); argued by reading only.
+- The coder's chat report and its Rule exceptions line, the commands that the guard does not log, the content of the guard's `command` fields past 80 characters, and the first run (not read, by instruction).
+- Whether the `Task 55`-style owner gate or any other owner-gated item changed since revision 5; the checkpoint 1 and 2 findings (F4, F9, F10, F11, F26, F27) were not re-reviewed and keep their State.
+
+### A human decides (revision 6)
+
+This review does not approve or block the change. A human approves, informed by the findings. Counts after revision 6: Important 2 open (F4 owner-gated from checkpoint 1; F28 new); Nit 9 open (F9, F10, F11, F26, F27 from earlier revisions; F29 to F32 new); repaired since revision 5: none (no earlier finding was part of this change). The Review process approval rule in `AGENTS.md` (solo repository, owner Michael Hay) applies: no second approver is required.
 
 ## CP2 revision 5: the CP9 repair (Tasks 63 to 65), F18 and F19, failure entries, gates
 
