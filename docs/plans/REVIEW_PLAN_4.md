@@ -5,7 +5,7 @@
 **Commit reviewed:** `1bf3836550ffd37ea0bae9f4aff3e33898327361` on branch `claude/phase-4-cp1` (pull request 35; base `claude/phase-4-plan` at `c6b059e92a8a5e4b725ec5f651e233b60b93ee86`; full change `c6b059e..1bf3836`, 36 files; repairs since revision 1 `3724f88..1bf3836`, 11 commits, 24 files). The head came from `git rev-parse HEAD` after `git log -3`.
 **Plan version:** `PHASE_4_PLAN.md`; the plan is approved by Michael Hay on Nov 14, 2026, and the review amendment (round 1) is approved by him (`**Amendment approved by:** Michael Hay on Nov 14, 2026`, commit `da496ef`, the owner's edit). Task 55 is owner-gated (see F4) and was deliberately not run.
 **Policy used:** `REVIEW.md` (passes, Important and Nit meaning, nit cap of 5 per report). The `Review process` approval rule in `AGENTS.md` (solo repository, owner Michael Hay, no second approver) applies: no second person is required, and the owner's approval is his own. GitHub's own Approve review is a separate act and is not something this file can show.
-**Revision:** 6, 2026-11-21 (checkpoint 3, curated test data sets, Tasks 23 to 27; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4 header, the revision 5 header and the revision 6 header)
+**Revision:** 7, 2026-11-21 (checkpoint 3 repair, CP10, Tasks 66 to 72, scan output; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4, 5, 6 and 7 headers)
 
 **Checkpoint 2 header (revision 3).**
 - **Phase:** `docs/plans/PHASE_4_PLAN.md`, checkpoint 2 only (Tasks 14 to 22, "Contract tests and hardening for the server"). Checkpoints 3 to 6 are not part of this change.
@@ -35,6 +35,13 @@
 - **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
 - **Not my work:** I wrote none of the code, data or plan text under review.
 
+**Revision 7 header (checkpoint 3 repair, CP10).**
+- **Phase:** `docs/plans/PHASE_4_PLAN.md`, "Review amendment (round 4, checkpoint 3: scan output)", Tasks 66 to 72 (CP10). Checkpoints 4 to 6 are not part of this change.
+- **Commit reviewed:** `f9ead7d81128d6ae1fe56f08c6f1fb659f3402c9` (`git rev-parse HEAD`), branch `claude/phase-4-cp3`, draft pull request 37. Since revision 6 (`85b52a2`): `32cde84` (revision 6 and failure F29), `b2bad35` (the planner's round 4 amendment), `0df5d0d` (the owner's answers to Open questions 1 and 2), `7df5d38` (the owner's signature), `7ef9f3d` (the coder's code, test and README changes, Tasks 66 to 70), `f9ead7d` (the coder's plan notes, Tasks 71 and 72). `git diff --stat 85b52a2..HEAD` is 6 files: `server/tests/datasets/README.md`, `scan.py`, `test_datasets.py`, `docs/plans/PHASE_4_PLAN.md`, `docs/plans/REVIEW_PLAN_4.md` and `docs/agents/claude-desktop-failures.md`; nothing under `server/` outside `server/tests/datasets/`.
+- **Plan version:** `**Amendment approved by:** Michael Hay on Nov 21, 2026`. Order in git: amendment (`b2bad35`), answers (`0df5d0d`), signature (`7df5d38`), then the code (`7ef9f3d`): the signature came before the repair, as `REVIEW_CYCLE.md` asks. The owner decided F28 (option 2: no matched text for any kind), Open question 1 (yes) and Open question 2 (no) in chat; I cannot read the chat, so I rely on the plan's record of it.
+- **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
+- **Not my work:** I wrote none of the code or plan text under review (the repair is the coder's).
+
 ## Revision log
 
 | Revision | Timestamp | Commit reviewed | What this revision did |
@@ -45,19 +52,112 @@
 | 4 | 2026-11-15 14:55 | `9a28de75eead69b45f4de34a49bced3f3b9883ea` | Re-review of checkpoint 2 and its repair (Tasks 57 to 62): F12 to F17 all repaired (evidence below); new findings F18 and F19 (nits, process record); the failure entries F21 and F22 checked against the guard log; CP1 findings F4, F9, F10, F11 not re-reviewed, state unchanged |
 | 5 | 2026-11-15 20:40 | `559810201389a7eb763d592598932bde157c47c7` | Review of the CP9 repair (Tasks 63 to 65, commit `f35fb11`, tests only): no Important finding; new nits F26 and F27; F18 and F19 re-checked and repaired; failure entries F22 to F25 checked against the guard log (13 lines); CP1 findings F4, F9, F10, F11 not re-reviewed, state unchanged |
 | 6 | 2026-11-21 | `85b52a2de1499db4e4003556d59093a975fdda46` | First review of checkpoint 3 (Tasks 23 to 27, the coder's second run): one Important (F28) and four nits (F29 to F32); failure entries F27 and F28 checked against the guard log (15 lines when I started); the seven recorded deviations judged; the checkpoint 1 and 2 findings (F4, F9, F10, F11, F26, F27) not re-reviewed and keep their State. Review finding numbers F28 and later are review findings; they are not the failure entries F26 to F28 of `claude-desktop-failures.md` |
+| 7 | 2026-11-21 | `f9ead7d81128d6ae1fe56f08c6f1fb659f3402c9` | Review of the checkpoint 3 repair (CP10, Tasks 66 to 72): F28 (Important) and F29 to F32 (nits) all repaired, evidence below; one new nit (F33, date convention in the amendment); failure entry F29 and the coder's CP10 and CP3 Rule exceptions lines checked against the guard log (17 lines before and after my commands); the checkpoint 1 and 2 findings (F4, F9, F10, F11, F26, F27) not re-reviewed. Review finding numbers F28 and later are not the failure entries F26 to F29 of `claude-desktop-failures.md` |
 
 ## Counts by severity
 
 | Severity | Open | Repaired |
 |---|---|---|
-| Important | 2 (F4, owner-gated, checkpoint 1; F28 new in revision 6) | 4 (F1, F2, F3; F12 repaired in revision 4) |
-| Nit | 9 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F29 to F32 new in revision 6) | 11 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5) |
+| Important | 1 (F4, owner-gated, checkpoint 1) | 5 (F1, F2, F3; F12 repaired in revision 4; F28 repaired in revision 7) |
+| Nit | 6 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F33 new in revision 7) | 15 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5; F29 to F32 repaired in revision 7) |
 
-No finding is shown as deferred or rejected: that is a human's decision, recorded in the pull request, and none was recorded in anything I read. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 two; revision 5 two; revision 6 reports four new nits and left none out.
+No finding is shown as deferred or rejected by me. The plan's "Findings not repaired" table for round 4 records two parts as deferred (the longer first-name list, and widening the scan to bare hosts); the owner signed the amendment with that table and answered Open question 2 no, so those two parts are the owner's decisions, and F30 and F32 are repaired in the parts the owner approved. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 two; revision 5 two; revision 6 four; revision 7 one.
 
-Revision 6's own sections come first, under "CP3 revision 6". The sections for revisions 3 to 5 follow, unchanged.
+Revision 7's own section comes first, under "CP3 revision 7". Revision 6's sections follow, under "CP3 revision 6" (their State lines for F28 to F32 are updated in place with the revision 7 evidence). The sections for revisions 3 to 5 follow, unchanged.
 
 The sections headed "CP2: ..." further down are the revision 3 text, kept; their State lines for F12 to F17 are updated in place with the revision 4 evidence. Revision 4's own sections come under "CP2 revision 4" (F18 and F19 keep their text there, with the State set in revision 5). Revision 5's own sections come first, under "CP2 revision 5".
+
+## CP3 revision 7: the scan-output repair (CP10, Tasks 66 to 72)
+
+### Verdict
+
+No Important finding. F28 (Important) and the four nits F29 to F32 of revision 6 are repaired; one new nit (F33). Evidence is mine, run on head `f9ead7d` on Python 3.11. Only `server/tests/datasets/README.md`, `scan.py`, `test_datasets.py` and documents changed since revision 6; no server code changed.
+
+### F28 to F32: set from evidence
+
+| Finding | State | Evidence |
+|---|---|---|
+| F28 | repaired (rev 7) | `scan.py:43-49`: `Finding` is `(path, line, kind)`, `__str__` is `"%s:%d: %s"`; the `detail` field is gone. `grep -rn "\.detail\|detail="` over `server/tests/datasets/` prints nothing, and the only users of `scan` are `test_datasets.py` and the command line (no other file imports it), so no caller or test depends on the removed field. Output paths, read in full (`scan.py:121-135`): the findings loop prints `Finding.__str__` (file, line, kind); the clean line is a constant; the error line prints `exc` for an `OSError` or `ValueError`. I ran the error paths with the coder's fixtures: a missing terms file prints `[Errno 2] No such file or directory: '.manifold/scratch/nope.json'` (the path I gave, not content); a missing scan path prints `nothing to scan at <path>`; a terms file that is not JSON prints `the term list must be a JSON list of strings; this file is not valid JSON` (`load_terms` raises with `from None`, so no `JSONDecodeError` text, which can quote a line, is shown). A term list of the wrong shape prints a constant message (`:64`). No exception message carries a scanned line, an email, a host, a token or a term. Limits: the file name or relative path is printed (`shown`); it is not matched text, but a file named after a term would show it, and a terms file that is not valid UTF-8 raises `UnicodeDecodeError` (a `ValueError`), whose message names a byte and a position, not text (argued by reading, not run). The scan of the whole `server/tests/datasets/` folder, which I could not run in revision 6, I ran now with the coder's empty-list fixture: 14 lines, each `file:line: kind`, no text (README, `loader.py`, `scan.py`, `test_datasets.py` hold deliberate samples and an author address; the plan's acceptance is over `curated/` only, so this is not a finding). The Task 66 sample with the fixture `["secretco"]` printed exactly `page.md:1: email`, `page.md:1: host`, `page.md:1: term`, exit 1. |
+| F29 | repaired (rev 7) | `scan.py:133-134`; I ran `scan.py server/tests/datasets/curated --terms-file .manifold/scratch/empty_terms.json` (path argument only, file not read by me): `scan: no findings`, exit 0. The owner said yes to Open question 1 |
+| F30 | repaired (rev 7), widening deferred | README step 3 now says "hosts in URLs (`scheme://host`)" (`README.md:29`), that a bare host name with no scheme is not caught (`:32-33`), that a finding prints only the file, the line and the kind (`:33-34`) and that a clean scan prints `scan: no findings` and exits 0 (`:35`). Each sentence matches `scan.py`. Widening to bare hosts stays deferred: the signed amendment gives the reason (`acme.io` is a deliberate slug) |
+| F31 | repaired (rev 7) | see "Task 71 line checked" below |
+| F32 | repaired (rev 7), list not extended | message corrected at `test_datasets.py:256`; comment added above `_FIRST_NAMES`; list unchanged (30 names), by the owner's answer to Open question 2 |
+
+### The two existing-test edits (item 2)
+
+`git diff 85b52a2..HEAD -- server/tests/datasets/test_datasets.py` removes three lines: (1) the silence assertion (`out == ""`), (2) the host-text assertion, (3) the old message of the scripts assertion (Task 70, message only, the assertion `>= 3` is unchanged). (1) and (2) are the two the plan names; (3) is named in Task 70 and the owner signed the amendment, so it is planned.
+
+- **Silence assertion.** Approval recorded in the Task 68 note ("Owner's yes: Open question 1, answered Yes by Michael Hay, 2026-11-22", and in the Open question itself). The new assertion `== "scan: no findings\n"` is exact and pins the new behavior; it does not weaken the test. Run by me, inline mutation (`python -c` importing `tests.datasets.scan`, wrapping `scan.main` to drop the `scan: no findings` line from standard output, `pytest.main(['tests/datasets','-q','-k','scan'])`, no file written): `1 failed, 4 passed, 11 deselected`, in `test_scan_flags_real_shaped_text_and_passes_the_committed_sets`. So the assertion fails when the line is missing, as the old silent scan would.
+- **Host-text assertion.** Approval recorded in the Task 66 note (the owner's chat decision of Nov 22, 2026, option 2). The old assertion was a substring test that the output contained `sample.md:2: host intranet.big-corp.net`; the new pair is `"%s:2: host" % sample in out.splitlines()` (an exact whole-line match of file, line and kind) and `"intranet.big-corp.net" not in out`. That is stronger on both sides: it fails if the host text is printed (the line would no longer equal the expected line, and the second assertion fails), and it fails if the finding disappears.
+- **The recorded deviation (full path, not `sample.md`).** Judged acceptable. `main` passes `args.path` to `scan`, and for a file `scan` prints `str(file)` as given (`scan.py:101`, `shown = str(file if root.is_file() else file.relative_to(root))`), so with `str(sample)` (a `tmp_path` file) the line starts with the full path. The literal `sample.md:2: host` could not match a whole line. The replacement keeps the file, the line and the kind and adds the exact-line form; the deviation is recorded in the task note with its reason. It does not weaken the test.
+- **No other existing test touched.** The three removed lines above are the only removals in `test_datasets.py`; the rest of the diff is additions (the new test, a comment). The server suite passes in full (below).
+
+### The new test and its teeth (item 2)
+
+`test_scan_never_shows_matched_text_for_any_kind` (`test_datasets.py:166-180`): a page holding an email and a URL host that both contain the private term, a term list `["secretco"]`, the kinds `{"email", "host", "term"}` on line 1, `"secretco" not in str(findings).lower()` and the printed output exactly the three lines, with no `secretco`. Two strengths: `str(findings)` is the list's `repr`, which shows every field of each `Finding`, so a returned `detail` field would fail it even if `__str__` hid it; and the command-line output is an exact list of lines, not a substring test. Run by me, inline mutation (`python -c` importing `tests.datasets.scan`, setting `Finding.__str__` to a version that appends `secretco intranet.big-corp.net`, `pytest.main(['tests/datasets','-q','-k','scan'])`, no file written): `2 failed, 3 passed, 11 deselected`: `test_scan_flags_real_shaped_text_and_passes_the_committed_sets` and `test_scan_never_shows_matched_text_for_any_kind`, the same count as the coder's run against the old `scan.py`. By reading, against the old `scan.py` the new test fails on the returned `detail` in the `repr` and on the printed `page.md:1: email ops@secretco.com`, which is the coder's `2 failed, 3 passed`. A finding kind the test does not cover is `token` and `pattern`, which never carried text (and are tested in `test_scan_flags_real_shaped_text_and_passes_the_committed_sets` and `test_no_set_contains_personal_data`); every kind is covered by the two tests together. The coder ran the tests failing first against the unchanged `scan.py` (`2 failed, 3 passed, 11 deselected`, Task 66 note); I cannot see the intermediate state (the test and the code are in one commit, `7ef9f3d`), so that order rests on the note and on my own mutation above.
+
+### Task 71 line checked (F31)
+
+`PHASE_4_PLAN.md` "Rule exceptions (CP3, coder)": two refused `Bash` heredocs, rule `no-heredocs`, `agent_type` coder, log line 14 (2026-11-21T14:32:36Z, first run, failure F27) and line 15 (2026-11-22T00:35:28Z, second run, failure F28), neither worked around, no other coder line since the last revision. Checked against `.manifold/guard-log.jsonl`: line 14 and line 15 carry those times, rule `no-heredocs`, tool `Bash`, `agent_type` coder; lines 16 and 17 are `reviewer` (mine, revision 6). It matches the log and failures F27 and F28, and it says it was written from them and not from the coder's own report. The line is accurate. Nothing else in the Task 71 edit changed plan text (`git diff` of the plan shows the one added line under the CP3 gates note).
+
+### Task 72, the CP10 Rule exceptions line, and failure F29
+
+- **Coder, CP10 (`none`).** `.manifold/guard-log.jsonl` had 17 lines when I started, the Task 72 note says 17 at the start and 17 at the end, and there is no `coder` line after line 15 (lines 16 and 17 are `reviewer`). So `none` is consistent with the log. The guard logs refusals only: a command that went through cannot be compared. The commits: `7ef9f3d` (code, Tasks 66 to 70) and `f9ead7d` (plan notes), explicit paths, attribution line present, no `--no-verify` or hook bypass visible; the first holds the three files in `server/tests/datasets/` only (`git show --stat 7ef9f3d`), the second the plan only. I did not see whether a heredoc was typed and the guard let it through: the log has none. The coder's fixtures in `.manifold/scratch/` (`empty_terms.json`, `terms_secretco.json`, a `sample` folder, two `update_pr*.py` helper scripts) are gitignored (`git status --short` is empty); I did not read the fixtures or the scripts.
+- **Diff stat (item 3).** The Task 72 acceptance says `git diff --stat origin/main..HEAD` lists only `server/tests/datasets/` and the plan; the coder ran `git diff --stat 7df5d38 HEAD` instead and says why (the branch's earlier checkpoints add files outside that folder, and the plan edits came in the next commit). The reason is right: `origin/main..HEAD` also holds the failures file and the REVIEW_PLAN documents. My own `git diff --stat 85b52a2..HEAD` is the 6 files named in the header. Acceptable; the plan's acceptance line was loose and the deviation is recorded.
+- **Task 72 counts reproduce.** `tests/datasets` `16 passed`, the full suite `1144 passed, 5 xfailed`, as the note says (below).
+- **Failure entry F29** (`docs/agents/claude-desktop-failures.md`): it claims line 16 (2026-11-22T00:50:34Z, rule `write-allowlist`, tool `Write`, `reviewer`) and line 17 (2026-11-22T00:51:51Z, rule `no-heredocs`, tool `Bash`, `reviewer`). The log lines match in time, rule, tool and agent; count (2 attempted, 2 refused, 0 through) matches. It was committed in `32cde84` with revision 6. Its Status is `open`, the owner's field. It states "fifth time in three runs"; I did not recount earlier entries (not read again beyond the numbers), so that count is the coordinator's.
+
+### New finding in revision 7
+
+**F33 (Nit) — The round 4 amendment dates the owner's signature Nov 21 and his decisions Nov 22**
+- **Pass:** Compliance (traceability; a date an agent or a later reader may use to order events) and Bugs (consistency).
+- **Location:** `PHASE_4_PLAN.md`, round 4 amendment: `**Amendment approved by:** Michael Hay on Nov 21, 2026`, against the Provenance ("decided F28 in chat on Nov 22, 2026"), Task 66 and 67 Sources ("Nov 22, 2026") and the answers to Open questions 1 and 2 ("2026-11-22").
+- **Evidence:** `git log --format='%h %ad' --date=iso` for the commits `b2bad35`, `0df5d0d`, `7df5d38`, `7ef9f3d`, `f9ead7d` shows all five on 2026-11-21 (20:25 to 20:49, -0800). The decisions are dated Nov 22 (that is the UTC day, as the guard log's timestamps), the signature Nov 21 (the local day). Read literally, the signature on Nov 21 comes before the decisions it signs (Nov 22), against the order in git (answers `0df5d0d` before signature `7df5d38`). It does not change the order check, which git settles, but a reader who uses the text would be misled; the same UTC/local gap was noted for the failure entries in revision 6.
+- **Direction:** the planner or owner picks one date convention for the amendment (the local day, Nov 21, or the UTC day) and applies it to the signature, the Provenance and the answers. The owner may leave it: the signature is the owner's text, so the reviewer does not suggest editing it silently.
+- **State:** open
+
+### Other checks (revision 7)
+
+- **Security.** `git diff 85b52a2..HEAD` read for credentials and personal data: none. The sample strings (`secretco`, `ops@secretco.com`, `intranet.big-corp.net`) are deliberate test samples; `secretco` is not a real organization I can identify (unverified). The owner's private file `~/.manifold/excluded_terms.json` was never opened, read or printed by me; every scan I ran passed an explicit `--terms-file` (the coder's `empty_terms.json` and `terms_secretco.json`, used as arguments only, content not read by me) or no terms file where the scan failed before reading it. A run with no `--terms-file` was not made.
+- **README accuracy.** Each of the four sentences in step 3 matches `scan.py` (above). One cosmetic point, not reported as a finding: the sentence is wrapped with a short line (`token-shaped strings and`) at `README.md:30`, and `scan.py:104` keeps an unused loop variable `m` in the email loop; neither changes behavior.
+- **Context files.** `AGENTS.md`, `CLAUDE.md` and `REVIEW.md` are not made out of date by this change.
+- **Test plan check.** No `PHASE_<N>_TEST_PLAN.md` in this change.
+- **Real-use evidence.** The scan on a real source with the owner's term list, and a person following README step 3 with the new output: **no evidence yet**; `SIGNOFFS.md` has no row by design, and the owner's own first run is still his step.
+- **CI (the head).** I read both runs with `gh run view`: `ci` 44986843560 `completed`, `success`; `server` 44986843643 `completed`, `success` (status and conclusion only; I did not read the job list or the Linux and Python 3.12 job logs).
+- **Held-out scenarios.** I did not read any.
+
+### Gates run (revision 7, 2026-11-21, head `f9ead7d`, Python 3.11)
+
+| Command | Counts | Result |
+|---|---|---|
+| `cd server && ../.venv/bin/python -m pytest tests/datasets -q` | `16 passed, 1 warning` | pass; equals the coder's `16 passed` (one more than revision 6's 15: the new test) |
+| `cd server && ../.venv/bin/python -m pytest -q` | `1144 passed, 5 xfailed, 33 warnings in 122.76s` | pass; equals the coder's `1144 passed, 5 xfailed` (1143 plus the new test) |
+| `.venv/bin/python -m pytest tests/live -q` | `24 passed in 0.05s` | pass |
+| `.venv/bin/python tools/vendor_web.py --check` | `vendored files match a fresh build` | pass |
+| `.venv/bin/python -m pytest bundles/base/tests -q` | `2108 passed, 1 skipped in 19.05s` | pass |
+| `python3 bundles/base/tools/build.py --check` | `lint ok` | pass |
+| `scan.py server/tests/datasets/curated --terms-file .manifold/scratch/empty_terms.json` | `scan: no findings`, exit 0 | as intended |
+| `scan.py .manifold/scratch/sample --terms-file .manifold/scratch/terms_secretco.json` | `page.md:1: email`, `page.md:1: host`, `page.md:1: term`, exit 1 | as intended |
+| `scan.py server/tests/datasets --terms-file .manifold/scratch/empty_terms.json` | 14 lines `file:line: kind`, exit 1 | no text printed |
+| inline mutation: `Finding.__str__` appends text, `-k scan` | `2 failed, 3 passed, 11 deselected` | the changed host assertion and the new test fail |
+| inline mutation: `main` drops the `scan: no findings` line, `-k scan` | `1 failed, 4 passed, 11 deselected` | the silence assertion's replacement fails |
+
+### Could not check (revision 7)
+
+- Linux, Python 3.12 and Python 3.10 by me (CI for the head is `success` by status only, read above); the owner's real term list (never read, by design).
+- The order "tests failing first, then the code" inside `7ef9f3d` (one commit): it rests on the Task 66 note and my own mutations.
+- A `UnicodeDecodeError` from a terms file that is not UTF-8 (argued by reading, not run: it would need a fixture I cannot write).
+- The owner's chat decisions (read only as the plan records them), the coder's chat report, commands the guard does not log, and the content of the guard's `command` fields past 80 characters.
+- The checkpoint 1 and 2 findings (F4, F9, F10, F11, F26, F27) were not re-reviewed and keep their State.
+
+### Rule exceptions compared (revision 7)
+
+- **Coder, CP10:** compared above: `none` against a log with no coder line after line 15 (17 lines before and after the coder's run, per its note, and 17 when I started). The Task 71 line (CP3) matches lines 14 and 15. Failure F29 matches lines 16 and 17.
+- **Mine:** I wrote this file with `Edit`. I ran read-only `git`, `grep`, `sed`, `wc`, `cut`, `tail`, `ls`, `gh run view` (status only), the project's gate commands (each alone), `scan.py` with an explicit `--terms-file` pointing at the coder's gitignored fixtures (and for the error paths a missing file and a non-JSON file, `page.md`, as the terms file), and two inline `python -c` mutation runs that patch `tests.datasets.scan` in memory and call `pytest.main` (no file written). The guard log had 17 lines before my commands and 17 after (`wc -l`, `tail -n +18` printed nothing): **none of my commands was refused**, and I did not write or ask for a fixture. `.manifold/guard-allow.json` was not read; I saw no sign an exception was used.
+
+### A human decides (revision 7)
+
+This review does not approve or block the change. A human approves, informed by the findings. Counts after revision 7: Important 1 open (F4, owner-gated, checkpoint 1); Nit 6 open (F9, F10, F11, F26, F27 from earlier revisions; F33 new); repaired since revision 6: F28, F29, F30, F31, F32. The Review process approval rule in `AGENTS.md` (solo repository, owner Michael Hay) applies: no second approver is required.
 
 ## CP3 revision 6: curated test data sets (Tasks 23 to 27)
 
@@ -99,35 +199,35 @@ One Important finding (F28, the scan prints matched emails and hosts, which can 
 - **Location:** `server/tests/datasets/scan.py:106` (`Finding(shown, number, "email", m.group(0))`), `:110` (`Finding(shown, number, "host", host)`) and `:49-50` (`__str__` appends the detail); the test that pins the printing: `test_datasets.py:161` (`"sample.md:2: host intranet.big-corp.net"`).
 - **Evidence:** by reading, not by a run (a run needs a term file, which I could not write). A line such as `mail ops@secretco.com or see https://www.secretco.com/x` with the private term `secretco` gives three findings: `term` (no text, as designed), `email ops@secretco.com` and `host www.secretco.com` (both print the text). The term is then printed, which the plan and the docstring say it never is, and which the terms file exists to prevent: a private list holds the names an owner must not leak, and those names are exactly what appears in the host and email domain of a real source. Your brief for this review said a finding is `path:line:kind` and never the matched text; the code does not do that for two of its five kinds. The Task 26 note says only that tokens and terms carry no text. Where it is printed: the owner's terminal (README step 3) or whatever logs it; the scan is not in CI. So the exposure is local, which is why I did not weigh it more than Important, and it is a corner (a term inside an email or URL host), not the common case.
 - **Direction:** print `path:line: email` and `path:line: host` without the text, like the other kinds (the person reads the line number in the file), or print the text only when no private term appears in it; change the one assertion that pins the host text and add a case where the term sits inside a host and an email and is absent from the output. The owner may decide that an email or host from a scrub candidate may be printed in the owner's own terminal; then the docstring and README should say that the output can hold them, and the finding becomes a nit.
-- **State:** open
+- **State:** repaired (rev 7). Evidence in "CP3 revision 7" (F28 section): `Finding` has no `detail` field (`scan.py:43-49`), every kind prints `path:line: kind`, and the command line shows it on the owner's decided option 2.
 
 **F29 (Nit) — A clean scan prints nothing and exits 0**
 - **Pass:** Bugs (usability of the check) and Tests.
 - **Location:** `scan.py:132-134` (`main` prints only findings) and `test_datasets.py:159` (`assert capsys.readouterr().out == ""`, which pins the silence).
 - **Evidence:** the plan's acceptance says "prints no finding", so this is as specified; the owner has already read a silent success as "nothing happened" (your brief). Exit 0 with no output looks the same as a scan that did not run.
 - **Direction:** print one line on success (for example the number of files scanned and "no findings") and change the one assertion; or leave it and say in README step 3 that a clean scan prints nothing. The owner may leave it.
-- **State:** open
+- **State:** repaired (rev 7). `scan.py:133-134` prints `scan: no findings` and exits 0; the assertion at `test_datasets.py:159` is now `== "scan: no findings\n"`; the owner said yes (Open question 1). Run by me: the line and exit 0 on `curated/` with the coder's empty-list fixture.
 
 **F30 (Nit) — README says the scan reports "hosts"; it reports only hosts inside URLs**
 - **Pass:** Bugs (consistency) and Compliance (INT-3 S3: a checked scrub).
 - **Location:** `server/tests/datasets/README.md`, "The real-data rule", step 3 ("It reports emails, hosts not ending `.test`, `.example` or `.invalid`, ..."); `scan.py:7-9` and `:36` (`_URL_HOST` needs `scheme://`).
 - **Evidence:** the docstring and the Task 26 note say a bare host name (`intranet.big-corp.net` with no `https://`, or `db1.corp.net:5432`) is not caught; the README leaves the limit out. A person following README step 3 could take a clean scan as "no real hosts". The README does say the scan "finds what it is shaped to find" and that a person then reads the set, which softens it.
 - **Direction:** add "in URLs (`scheme://host`)" to the README sentence, with one sentence that a bare host is for the reader to find; or widen the scan to bare dotted names that end in a known top-level domain (the plan would need the owner's word, since `acme.io` is a deliberate slug). The owner may leave it.
-- **State:** open
+- **State:** repaired (rev 7) for the README wording; the widening of the scan is deferred in the signed amendment. `README.md:29` says "hosts in URLs (`scheme://host`)" and `:32-33` says a bare host name with no scheme (`db1.corp.net:5432`) is not caught, so the reader looks for it. Matches `scan.py` (`_URL_HOST` needs `scheme://`).
 
 **F31 (Nit) — The coder's Rule exceptions line for checkpoint 3 is not in the plan notes or the commit messages**
 - **Pass:** Compliance (`AGENTS.md` "Rule exceptions"; the same point as F17 for checkpoint 2, repaired in revision 4).
 - **Location:** `PHASE_4_PLAN.md` CP3 notes (Tasks 23 to 27 and the CP3 gates note at line 542) and the seven commit messages.
 - **Evidence:** `git diff origin/main..HEAD -- docs/plans/PHASE_4_PLAN.md | grep -ic "rule exception"` prints `0`, and `git log origin/main..HEAD --format=%B | grep -i "rule exception"` prints nothing. The line exists only in the coder's chat report, which I cannot read; failure entry F28 paraphrases it ("its Rule exceptions line listed the refusal"). The comparison I could make is below, and the entries F27 and F28 match the log.
 - **Direction:** the coder writes the line into the CP3 gates note so it travels with the pull request, as it did for checkpoint 1 and, after F17, checkpoint 2.
-- **State:** open
+- **State:** repaired (rev 7). `PHASE_4_PLAN.md` now has "Rule exceptions (CP3, coder)" after the CP3 gates note (Task 71); it matches guard log lines 14 and 15 (see "Task 71 line checked" in the revision 7 section). It was written from the log and failures F27 and F28, not from the coder's own report, and says so.
 
 **F32 (Nit) — The personal-data test knows 30 English first names, and one assertion message is wrong**
 - **Pass:** Tests (strength) and Bugs.
 - **Location:** `test_datasets.py:245-248` (`_FIRST_NAMES`, `_NAME_PATTERNS`: a first name, whitespace, a capitalised word) and `:238` (the message `"text in fewer than two scripts besides Latin"` against the assertion `>= 3`).
 - **Evidence:** the pattern catches "Maria Garcia" (the sample proves it fires) and any other name on the list, written with capitals. It does not catch a name not on the list ("Priya Sharma"), a lower-case name, a surname first, or a name in another script, and `Alex` and `Sam` can match ordinary two-word phrases. That is what the plan asked ("a first-name-plus-surname pattern list kept in the test"), so this is a limit, not a departure; the real protection is the owner's term list plus a person reading, as README says. The message at `:238` says "two" and the assertion needs three non-Latin scripts; if it fails, the text misleads.
 - **Direction:** correct the message to "three"; note the limit in the test's comment; optionally add the owner's term list through the owner's own run. The owner may leave it.
-- **State:** open
+- **State:** repaired (rev 7) in the parts the owner approved: the message now reads "fewer than three scripts besides Latin" (`test_datasets.py:256`, assertion `>= 3` unchanged) and a three-line comment above `_FIRST_NAMES` states the limit (30 English first names; I counted 30) and the real protection. The list was not extended, by the owner's answer to Open question 2.
 
 ### Failure entries F27 and F28 against `.manifold/guard-log.jsonl`
 
