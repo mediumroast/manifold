@@ -492,7 +492,9 @@ INT-3 scenario seeds: S1 (instance by size) is deferred (owner confirmed, Open q
 **Action:** CREATE
 **Change:** `copy_curated(tmp_path, name)` and `long_page(chars)` (a long-page text of the stated size). `copy_curated` copies a folder of `curated/` and initialises git and commits as the `acme` fixture of `test_example_acme.py` does, with a fixed author and no network. A pytest fixture `dataset` in the datasets test module wraps them.
 **Acceptance:** a test runs `copy_curated("messy")` and `copy_curated("hostile")` and `wiki_health` reports healthy for each.
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: added `server/tests/datasets/loader.py` (`copy_curated`, `long_page`, plus a small `curated_names` helper) and, in `test_datasets.py`, the `dataset` fixture and tests (health and git-backed for both sets, fixed author and a same-commit check, unknown or path-like names refused, `long_page` size). Difference from the plan's wording: `copy_curated(tmp_path, name)` takes the temporary folder as its first argument, as the plan's signature says, but the plan's acceptance wrote `copy_curated("messy")`; the `dataset(name)` fixture gives that one-argument form. Followed `acme` in `server/tests/test_example_acme.py` (copy, `git init`, add, commit; the author is fixed with environment variables and a fixed date instead of `git config`). No `__init__.py` was needed in `tests/datasets/`. Command: `cd server && ../.venv/bin/python -m pytest tests/datasets -q` gave `8 passed`.
 
 ---
 
