@@ -505,7 +505,9 @@ INT-3 scenario seeds: S1 (instance by size) is deferred (owner confirmed, Open q
 **Action:** CREATE
 **Change:** `test_hostile_pages_are_returned_as_content_and_not_acted_on`: with `ToolWorld` over `copy_curated("hostile")`, `wiki_read_tool` returns each page's text unchanged in its content field; `wiki_inventory_tool` and `wiki_freshness_tool` run over the instance; the wiki tree and `log.md` are unchanged afterwards, and the git log has no new commit.
 **Acceptance:** `cd server && ../.venv/bin/python -m pytest tests/datasets -q -k hostile` passes (counts reported).
-**Todo:** [ ]
+**Todo:** [x]
+
+> Note: added `test_hostile_pages_are_returned_as_content_and_not_acted_on` and a `tool_world(name)` fixture (a `ToolWorld` over `copy_curated`, following `open_world` in `server/tests/contracts/harness.py` and `ToolWorld` in `server/tests/conftest.py`) to `test_datasets.py`. Differences from the plan's wording: (1) the plan says "content field"; `wiki_read_tool` returns the page text in `body` (with `path`, `frontmatter`, `etag`, `links`), so the test checks `body`, equal to the page as parsed from disk, and `frontmatter`; (2) `frontmatter` arrives with dates as text (`'2026-02-02'`), so it is compared after `str()` of each value. The test reads all four hostile pages, runs `wiki_inventory_tool` and `wiki_freshness_tool` (result: `harbor-api` fresh, nothing stale or unknown), then checks every file byte for byte (so `log.md` and the tree), that the page the bait text asks for does not exist, one commit in the git log and a clean `git status`. Command: `cd server && ../.venv/bin/python -m pytest tests/datasets -q -k hostile` gave `2 passed, 7 deselected, 1 warning` (the warning is a pydantic deprecation in `server.py`, not from this change; the second pass is the parametrized health test for `hostile`).
 
 ---
 
