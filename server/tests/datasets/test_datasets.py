@@ -1,12 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 """The curated test instances: they load, they are healthy, and (later tasks) they behave."""
 
+import importlib
+import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
-from tests.datasets import loader
+from tests.datasets import loader, scan as scanner
 from wiki_backend.health import wiki_health
+
+
+@pytest.fixture()
+def no_terms(tmp_path):
+    """A term list with no terms, so a scan never looks for the owner's real list in the home folder."""
+    path = tmp_path / "no_terms.json"
+    path.write_text("[]", encoding="utf-8")
+    return path
 
 
 @pytest.fixture()
@@ -126,3 +137,61 @@ def test_hostile_pages_are_returned_as_content_and_not_acted_on(tool_world):
     assert not (root / "wiki" / "notes" / "should-never-exist.md").exists()
     assert _git(root, "rev-list", "--count", "HEAD") == commits_before == "1\n"
     assert _git(root, "status", "--porcelain") == ""
+
+
+def test_scan_flags_real_shaped_text_and_passes_the_committed_sets(tmp_path, no_terms, capsys):
+    sample = tmp_path / "sample.md"
+    sample.write_text(
+        "Write to someone@mail.example.test for help.\n"
+        "The wiki lives at https://intranet.big-corp.net/wiki today.\n"
+        "The key is sk-FAKEFAKEFAKEFAKEFAKE0000 in the notes.\n"
+        "A session value Zx9Qm4Tr7Lp2Vc8Bn5Hd3Kw6Js1Yf0Ga is here.\n"
+        "A hash 0123456789abcdef0123456789abcdef01234567 is here.\n"
+        "Safe: https://shop.example.test/a, https://x.invalid/b, https://y.example/c and the slug acme.io.\n",
+        encoding="utf-8")
+    found = {(f.line, f.kind) for f in scanner.scan(sample, terms_file=no_terms)}
+    assert found == {(1, "email"), (2, "host"), (3, "token"), (4, "token"), (5, "token")}
+
+    # The committed sets hold nothing real-shaped, by the scan and by the command line.
+    assert scanner.scan(loader.CURATED, terms_file=no_terms) == []
+    assert scanner.main([str(loader.CURATED), "--terms-file", str(no_terms)]) == 0
+    assert capsys.readouterr().out == ""
+    assert scanner.main([str(sample), "--terms-file", str(no_terms)]) == 1
+    assert "sample.md:2: host intranet.big-corp.net" in capsys.readouterr().out
+
+
+def test_scan_finds_private_terms_without_ever_showing_them(tmp_path):
+    terms = tmp_path / "terms.json"
+    terms.write_text(json.dumps(["Zebrafruit", "  "]), encoding="utf-8")  # a blank term must not match everything
+    page = tmp_path / "page.md"
+    page.write_text("nothing here\nthe ZEBRAFRUIT project\n", encoding="utf-8")
+    findings = scanner.scan(page, terms_file=terms)
+    assert [(f.line, f.kind) for f in findings] == [(2, "term")]
+    assert "zebrafruit" not in str(findings).lower()
+
+
+def test_scan_refuses_a_bad_term_list_without_quoting_it(tmp_path):
+    page = tmp_path / "page.md"
+    page.write_text("x\n", encoding="utf-8")
+    with pytest.raises(FileNotFoundError):
+        scanner.scan(page, terms_file=tmp_path / "missing.json")
+    for text in ('{"a": "secretword"}', "[1, 2]", "not json secretword"):
+        bad = tmp_path / "bad.json"
+        bad.write_text(text, encoding="utf-8")
+        with pytest.raises(ValueError) as excinfo:
+            scanner.scan(page, terms_file=bad)
+        assert "secretword" not in str(excinfo.value)
+    assert scanner.main([str(page), "--terms-file", str(tmp_path / "missing.json")]) == 2
+
+
+def test_scan_looks_for_the_default_term_list_only_when_it_runs(tmp_path, monkeypatch):
+    def refuse():
+        raise AssertionError("the home folder was consulted")
+    monkeypatch.setattr(Path, "home", staticmethod(refuse))
+    importlib.reload(scanner)  # importing must not look for the default file
+    stand_in = tmp_path / "stand_in_terms.json"
+    stand_in.write_text('["pineapple"]', encoding="utf-8")
+    monkeypatch.setattr(scanner, "default_terms_file", lambda: stand_in)  # a fixture, never the real default
+    page = tmp_path / "page.md"
+    page.write_text("a pineapple\n", encoding="utf-8")
+    assert [f.kind for f in scanner.scan(page)] == ["term"]
