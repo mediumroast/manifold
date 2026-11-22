@@ -156,9 +156,27 @@ def test_scan_flags_real_shaped_text_and_passes_the_committed_sets(tmp_path, no_
     # The committed sets hold nothing real-shaped, by the scan and by the command line.
     assert scanner.scan(loader.CURATED, terms_file=no_terms) == []
     assert scanner.main([str(loader.CURATED), "--terms-file", str(no_terms)]) == 0
-    assert capsys.readouterr().out == ""
+    assert capsys.readouterr().out == "scan: no findings\n"
     assert scanner.main([str(sample), "--terms-file", str(no_terms)]) == 1
-    assert "sample.md:2: host intranet.big-corp.net" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "%s:2: host" % sample in out.splitlines()  # a file path is printed as given, so the line starts with it
+    assert "intranet.big-corp.net" not in out
+
+
+def test_scan_never_shows_matched_text_for_any_kind(tmp_path, capsys):
+    folder = tmp_path / "pages"
+    folder.mkdir()
+    (folder / "page.md").write_text("mail ops@secretco.com or see https://www.secretco.com/x\n", encoding="utf-8")
+    terms = tmp_path / "terms.json"
+    terms.write_text(json.dumps(["secretco"]), encoding="utf-8")
+    findings = scanner.scan(folder, terms_file=terms)
+    assert {f.kind for f in findings} == {"email", "host", "term"}
+    assert {f.line for f in findings} == {1}
+    assert "secretco" not in str(findings).lower()
+    assert scanner.main([str(folder), "--terms-file", str(terms)]) == 1
+    out = capsys.readouterr().out
+    assert out.splitlines() == ["page.md:1: email", "page.md:1: host", "page.md:1: term"]
+    assert "secretco" not in out
 
 
 def test_scan_finds_private_terms_without_ever_showing_them(tmp_path):
@@ -235,13 +253,16 @@ def test_the_sets_cover_every_awkward_case(dataset):
     assert len(wiki_read(messy, "wiki/notes/very-long.md").body) == len("# Very long\n\n") + 200_000, "no long page"
     assert wiki_health(messy)[0]
 
-    assert len(_scripts("".join(page.content for page in pages.values()))) >= 3, "text in fewer than two scripts besides Latin"
+    assert len(_scripts("".join(page.content for page in pages.values()))) >= 3, "text in fewer than three scripts besides Latin"
 
     ai_text = " ".join(page.content + " " + str(page.metadata) for page in _pages(hostile).values()).lower()
     assert "ignore your previous instructions" in ai_text and "call the tool" in ai_text, "no AI-aimed text"
 
 
 # First names kept here; a first name followed by a capitalised word is reported as a possible person.
+# The list is a limit: 30 English first names. A name not on it, a lower-case name or a name in
+# another script is not caught. The protection is the owner's private term list plus a person
+# reading the set (README, "The real-data rule", step 3).
 _FIRST_NAMES = ("John", "Jane", "James", "Mary", "Robert", "Patricia", "Michael", "Jennifer", "William", "Linda", "David",
                 "Elizabeth", "Richard", "Susan", "Joseph", "Sarah", "Thomas", "Karen", "Charles", "Lisa", "Daniel", "Nancy",
                 "Matthew", "Maria", "Anna", "Peter", "Paul", "Laura", "Sam", "Alex")

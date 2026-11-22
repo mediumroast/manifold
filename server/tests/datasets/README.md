@@ -26,9 +26,13 @@ person has checked. Until then only invented data is committed.
 2. **Scrub.** Work on a copy outside this repository. Remove or replace every person's name, every
    host (use a name ending `.test`), every secret (keys, tokens, passwords) and every email address.
 3. **Check.** Run `python server/tests/datasets/scan.py <folder> --terms-file <your term list>`.
-   It reports emails, hosts not ending `.test`, `.example` or `.invalid`, token-shaped strings and
+   It reports emails, hosts in URLs (`scheme://host`) not ending `.test`, `.example` or `.invalid`,
+   token-shaped strings and
    every term of your private term list (a JSON list of strings kept outside every checkout, by
-   default `~/.manifold/excluded_terms.json`; it is never committed or printed). The scan finds
+   default `~/.manifold/excluded_terms.json`; it is never committed or printed). A bare host name
+   with no scheme (`db1.corp.net:5432`) is not caught, so look for it yourself. A finding prints only
+   the file, the line and the kind, never the matched text, so open the line in the file. A clean
+   scan prints `scan: no findings` and exits 0. The scan finds
    what it is shaped to find: a person then reads the scrubbed set, and the person who did is named
    in the sign-off.
 4. **Record.** Add a row to `SIGNOFFS.md`: source, owner, permission date, who checked the scrub,

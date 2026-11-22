@@ -10,8 +10,8 @@
   letter-and-digit runs);
 * every term in a private term list, a JSON list of strings kept outside every checkout.
 
-A finding names the file, the line and the kind.  It never carries the matched text for a token or
-a term, so a report and a log never hold a secret or a private term.  The term list is never
+A finding names the file, the line and the kind.  It never carries the matched text for any kind,
+so a report and a log never hold an address, a host, a secret or a private term.  The term list is never
 committed or printed.
 
 The term list path is always an argument.  Called with no ``terms_file`` the scan uses
@@ -44,10 +44,9 @@ class Finding(NamedTuple):
     path: str
     line: int
     kind: str  # "email", "host", "token", "term" or "pattern"
-    detail: str = ""  # the email address or host; empty for a token, a term or a pattern
 
     def __str__(self):
-        return "%s:%d: %s%s" % (self.path, self.line, self.kind, " " + self.detail if self.detail else "")
+        return "%s:%d: %s" % (self.path, self.line, self.kind)
 
 
 def default_terms_file() -> Path:
@@ -103,11 +102,11 @@ def scan(path, terms_file=None, extra_patterns: Sequence["re.Pattern"] = ()) -> 
         text = file.read_text(encoding="utf-8", errors="replace")
         for number, line in enumerate(text.splitlines(), 1):
             for m in _EMAIL.finditer(line):
-                findings.append(Finding(shown, number, "email", m.group(0)))
+                findings.append(Finding(shown, number, "email"))
             for m in _URL_HOST.finditer(line):
                 host = m.group(1).rstrip(".").lower()
                 if not host.endswith(SAFE_HOST_SUFFIXES):
-                    findings.append(Finding(shown, number, "host", host))
+                    findings.append(Finding(shown, number, "host"))
             if (_VENDOR_TOKEN.search(line) or any(_mixed_token(m.group(0)) for m in _MIXED_RUN.finditer(line))
                     or _HEX_RUN.search(line)):
                 findings.append(Finding(shown, number, "token"))
@@ -131,6 +130,8 @@ def main(argv=None) -> int:
         return 2
     for finding in findings:
         print(finding)
+    if not findings:
+        print("scan: no findings")
     return 1 if findings else 0
 
 
