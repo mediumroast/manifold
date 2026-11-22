@@ -406,6 +406,42 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** open
 **Intent raised:** none yet
 
+## F27 — The `coder` sent one no-op heredoc in Phase 4 checkpoint 3, then reported "Rule exceptions: none"; refused; disclosed in the body of the report (2026-11-21)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`); Rule exceptions (every report lists each exception).
+**What happened:** During the checkpoint 3 build the `coder` sent a `Bash` call holding a heredoc (`cat >> /dev/null <<'EOF'`) that had no purpose. The guard refused it and nothing was written. The coder used `Edit` for every file change afterwards and described the refusal in its report, but its closing line said "Rule exceptions: none", which contradicts that.
+**Evidence:** `.manifold/guard-log.jsonl`, line 14, 2026-11-21T14:32:36Z (rule `no-heredocs`, tool `Bash`, agent_type `coder`); the coder's report. The log had 13 lines before and has 14 now.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. The "none" line was wrong: a refused command is to be listed.
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the body of the report; the Rule exceptions line itself said `none`).
+**Suggested change:** None to the guard; it held. The reviewer should compare the Rule exceptions line with the log, as it did before.
+**Status:** closed
+**Intent raised:** none
+
+## F28 — The `coder` sent the same no-op heredoc again in the second Phase 4 checkpoint 3 run; refused; disclosed (2026-11-22)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** In the second checkpoint 3 run, after the first was set aside on branch `claude/phase-4-cp3-run1`, the `coder` again sent a `Bash` call with a no-op heredoc (`cat >> /dev/null <<'EOF'`) while writing `test_datasets.py`. The brief had said "no heredocs, even no-op ones". The guard refused it, nothing was written, and the coder did not retry or work around it; it used `Write` and `Edit` afterwards. This time its Rule exceptions line listed the refusal. It also said the guard log held one more coder entry than it could account for; that entry is F27 from the first run.
+**Evidence:** `.manifold/guard-log.jsonl`, line 15, 2026-11-22T00:35:28Z (rule `no-heredocs`, tool `Bash`, agent_type `coder`); line 14 is F27; the coder's report.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. Same slip as F27 in two runs in a row, even with the rule named in the brief (inference: the coder reaches for the same no-op form while writing a test file).
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report, and on its Rule exceptions line).
+**Suggested change:** None to the guard; it held. For the owner: a repeated slip of the same form after an explicit warning suggests the coder's own text may need a line about it (the rule is already in `AGENTS.md`); decide later whether to raise it.
+**Status:** closed
+**Intent raised:** none yet
+
+## F29 — The `reviewer` had two commands refused in Phase 4 checkpoint 3 review revision 6 (a scratchpad write and an inline mutation script); disclosed (2026-11-22)
+
+**Rule:** Write allowlist (guard rule `write-allowlist`) and shell writes to files (guard rule `no-heredocs`).
+**What happened:** To run the scan with an explicit empty terms list, the `reviewer` used `Write` to create an empty file in the session scratchpad; the guard refused it. Later it ran an inline `python -c` mutation that wrapped `wiki_read` and created a file; the guard refused that too. It did not retry or work around either. Effect on the review: the explicit `--terms-file` scan over `curated/` and over `server/tests/datasets/` and the second mutation (a tool that writes a file) were not run; the reviewer argued them by reading and says so.
+**Evidence:** `.manifold/guard-log.jsonl`, line 16 (2026-11-22T00:50:34Z, rule `write-allowlist`, tool `Write`, agent_type `reviewer`) and line 17 (2026-11-22T00:51:51Z, rule `no-heredocs`, tool `Bash`, agent_type `reviewer`); the reviewer's report.
+**Count:** 2 attempted, 2 refused, 0 breaches that went through; disclosed.
+**Agent:** reviewer
+**Disclosed by the agent:** Yes (on its Rule exceptions line).
+**Suggested change:** The same open question as F19, F23 and F26: the reviewer's allowlist (only its review file) blocks the scratchpad and any snippet that writes a file. Fifth time in three runs. The owner decides whether the allowlist should permit the scratchpad, or whether the scan should be run by the coordinator instead.
+**Status:** open
+**Intent raised:** none yet
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
