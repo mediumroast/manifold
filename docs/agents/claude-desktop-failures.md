@@ -418,6 +418,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none
 
+## F28 — The `coder` sent the same no-op heredoc again in the second Phase 4 checkpoint 3 run; refused; disclosed (2026-11-22)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** In the second checkpoint 3 run, after the first was set aside on branch `claude/phase-4-cp3-run1`, the `coder` again sent a `Bash` call with a no-op heredoc (`cat >> /dev/null <<'EOF'`) while writing `test_datasets.py`. The brief had said "no heredocs, even no-op ones". The guard refused it, nothing was written, and the coder did not retry or work around it; it used `Write` and `Edit` afterwards. This time its Rule exceptions line listed the refusal. It also said the guard log held one more coder entry than it could account for; that entry is F27 from the first run.
+**Evidence:** `.manifold/guard-log.jsonl`, line 15, 2026-11-22T00:35:28Z (rule `no-heredocs`, tool `Bash`, agent_type `coder`); line 14 is F27; the coder's report.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed. Same slip as F27 in two runs in a row, even with the rule named in the brief (inference: the coder reaches for the same no-op form while writing a test file).
+**Agent:** coder
+**Disclosed by the agent:** Yes (in the report, and on its Rule exceptions line).
+**Suggested change:** None to the guard; it held. For the owner: a repeated slip of the same form after an explicit warning suggests the coder's own text may need a line about it (the rule is already in `AGENTS.md`); decide later whether to raise it.
+**Status:** closed
+**Intent raised:** none yet
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
