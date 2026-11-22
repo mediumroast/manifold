@@ -5,7 +5,7 @@
 **Commit reviewed:** `1bf3836550ffd37ea0bae9f4aff3e33898327361` on branch `claude/phase-4-cp1` (pull request 35; base `claude/phase-4-plan` at `c6b059e92a8a5e4b725ec5f651e233b60b93ee86`; full change `c6b059e..1bf3836`, 36 files; repairs since revision 1 `3724f88..1bf3836`, 11 commits, 24 files). The head came from `git rev-parse HEAD` after `git log -3`.
 **Plan version:** `PHASE_4_PLAN.md`; the plan is approved by Michael Hay on Nov 14, 2026, and the review amendment (round 1) is approved by him (`**Amendment approved by:** Michael Hay on Nov 14, 2026`, commit `da496ef`, the owner's edit). Task 55 is owner-gated (see F4) and was deliberately not run.
 **Policy used:** `REVIEW.md` (passes, Important and Nit meaning, nit cap of 5 per report). The `Review process` approval rule in `AGENTS.md` (solo repository, owner Michael Hay, no second approver) applies: no second person is required, and the owner's approval is his own. GitHub's own Approve review is a separate act and is not something this file can show.
-**Revision:** 7, 2026-11-21 (checkpoint 3 repair, CP10, Tasks 66 to 72, scan output; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4, 5, 6 and 7 headers)
+**Revision:** 8, 2026-11-22 (CP11, Task 73, the owner's Megaroast setup guide, branch `claude/phase-4-cp4`; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4, 5, 6, 7 and 8 headers)
 
 **Checkpoint 2 header (revision 3).**
 - **Phase:** `docs/plans/PHASE_4_PLAN.md`, checkpoint 2 only (Tasks 14 to 22, "Contract tests and hardening for the server"). Checkpoints 3 to 6 are not part of this change.
@@ -42,6 +42,13 @@
 - **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
 - **Not my work:** I wrote none of the code or plan text under review (the repair is the coder's).
 
+**Revision 8 header (CP11, the owner's setup guide).**
+- **Phase:** `docs/plans/PHASE_4_PLAN.md`, "Review amendment (round 5, checkpoint 4: owner's setup guide)", Task 73 (CP11), and the Correction, Effect and six answered Open questions of that amendment. Read against INT-3 and Concerns 7 to 9. Tasks 28 to 35 are the content source; they are not themselves under review (CP4 and CP5 are the owner's acts and not run yet).
+- **Commit reviewed:** `408e86fb` (`git log` head, "Phase 4 CP11 Task 73 ..."), branch `claude/phase-4-cp4`; diff `origin/main..HEAD` (`7ba6e3b`) is 4 files, 118 insertions, 1 deletion: `docs/megaroast-setup.md` (new, 60 lines), `docs/README.md` (+1 row), `server/tests/test_docs_links.py` (one list entry), `docs/plans/PHASE_4_PLAN.md` (+56). Four commits: `82d5bf2` (first round 5 text), `b76cba4` (rewritten for a from-scratch setup), `1b23c92` (the owner's answers), `756e3b0` (the owner's signature), then `408e86f` (the coder). The signature came before the coder's work, as `REVIEW_CYCLE.md` asks.
+- **Plan version:** `**Amendment approved by:** Michael Hay on Nov 22, 2026`. The approved plan itself is Michael Hay, Nov 14, 2026.
+- **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
+- **Not my work:** I wrote none of the guide, test or plan text under review (the coder did).
+
 ## Revision log
 
 | Revision | Timestamp | Commit reviewed | What this revision did |
@@ -53,19 +60,154 @@
 | 5 | 2026-11-15 20:40 | `559810201389a7eb763d592598932bde157c47c7` | Review of the CP9 repair (Tasks 63 to 65, commit `f35fb11`, tests only): no Important finding; new nits F26 and F27; F18 and F19 re-checked and repaired; failure entries F22 to F25 checked against the guard log (13 lines); CP1 findings F4, F9, F10, F11 not re-reviewed, state unchanged |
 | 6 | 2026-11-21 | `85b52a2de1499db4e4003556d59093a975fdda46` | First review of checkpoint 3 (Tasks 23 to 27, the coder's second run): one Important (F28) and four nits (F29 to F32); failure entries F27 and F28 checked against the guard log (15 lines when I started); the seven recorded deviations judged; the checkpoint 1 and 2 findings (F4, F9, F10, F11, F26, F27) not re-reviewed and keep their State. Review finding numbers F28 and later are review findings; they are not the failure entries F26 to F28 of `claude-desktop-failures.md` |
 | 7 | 2026-11-21 | `f9ead7d81128d6ae1fe56f08c6f1fb659f3402c9` | Review of the checkpoint 3 repair (CP10, Tasks 66 to 72): F28 (Important) and F29 to F32 (nits) all repaired, evidence below; one new nit (F33, date convention in the amendment); failure entry F29 and the coder's CP10 and CP3 Rule exceptions lines checked against the guard log (17 lines before and after my commands); the checkpoint 1 and 2 findings (F4, F9, F10, F11, F26, F27) not re-reviewed. Review finding numbers F28 and later are not the failure entries F26 to F29 of `claude-desktop-failures.md` |
+| 8 | 2026-11-22 | `408e86fb` | Review of CP11 (Task 73, the owner's Megaroast setup guide): no Important finding; five new nits (F34 to F38) and three more not itemized; the guide checked point by point against Tasks 28 to 35 (holds); the coder's Rule exceptions `none` compared with the guard log (17 lines before and after); F4, F9, F10, F11, F26, F27, F33 carried forward unchanged. Review finding numbers F34 and later are review findings |
 
 ## Counts by severity
 
 | Severity | Open | Repaired |
 |---|---|---|
 | Important | 1 (F4, owner-gated, checkpoint 1) | 5 (F1, F2, F3; F12 repaired in revision 4; F28 repaired in revision 7) |
-| Nit | 6 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F33 new in revision 7) | 15 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5; F29 to F32 repaired in revision 7) |
+| Nit | 11 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F33 from revision 7; F34 to F38 new in revision 8) plus 3 not itemized (nit cap) | 15 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5; F29 to F32 repaired in revision 7) |
 
 No finding is shown as deferred or rejected by me. The plan's "Findings not repaired" table for round 4 records two parts as deferred (the longer first-name list, and widening the scan to bare hosts); the owner signed the amendment with that table and answered Open question 2 no, so those two parts are the owner's decisions, and F30 and F32 are repaired in the parts the owner approved. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 two; revision 5 two; revision 6 four; revision 7 one.
 
-Revision 7's own section comes first, under "CP3 revision 7". Revision 6's sections follow, under "CP3 revision 6" (their State lines for F28 to F32 are updated in place with the revision 7 evidence). The sections for revisions 3 to 5 follow, unchanged.
+Revision 8's own section comes first, under "CP11 revision 8". Revision 7's section follows, under "CP3 revision 7". Revision 6's sections follow, under "CP3 revision 6" (their State lines for F28 to F32 are updated in place with the revision 7 evidence). The sections for revisions 3 to 5 follow, unchanged.
 
 The sections headed "CP2: ..." further down are the revision 3 text, kept; their State lines for F12 to F17 are updated in place with the revision 4 evidence. Revision 4's own sections come under "CP2 revision 4" (F18 and F19 keep their text there, with the State set in revision 5). Revision 5's own sections come first, under "CP2 revision 5".
+
+## CP11 revision 8: the owner's Megaroast setup guide (Task 73)
+
+### Verdict
+
+No Important finding. Five new nits (F34 to F38) and three more not itemized (nit cap). Task 73's acceptance (a) to (g) reproduces; the guide matches Tasks 28 to 35 in every step I compared; the plan edits by the coder are only Task 73's Todo and Note. Evidence is mine, run on head `408e86f` (Python 3.11). The earlier findings F4, F9, F10, F11, F26, F27 and F33 were not re-decided and keep their State.
+
+### (1) The guide against Task 73, point by point
+
+| Task 73 point | Result | Evidence |
+|---|---|---|
+| 1. Title, purpose, placeholders | holds | `docs/megaroast-setup.md:2-14`: `<ORG>`, `<source-owner>`, `<source-repo>`, `<repo-role>` (four roles), `<new url>`, `<App-name>`, `<INSTALLATION_ID>`, and `MANIFOLD_APP_KEY_FILE` by name. See F35 for the word "Megaroast" |
+| 2. Rules block, four bullets | holds | `:18-21`: no agent reads holdout QA, the key or a token; a ticked box is the owner's act and the coder ticks none; the mirror rule; secrets never in chat, a log, a pull request or any repository file |
+| 3. Where a tick is mirrored | holds | `:20`: plan Todo and pull request description; Part 0 mirrored in the pull request description only; Task 29's note says "created in Part 0"; the guide's boxes are the working copy (Open question 2's answer) |
+| 4. Part 0, `Step 0a` to `Step 0e`, no `Plan:` line | holds | `:29-42`; `grep -c "Step 0a"` to `"Step 0e"` print `1` each; no `Plan:` on those lines; all private |
+| 5. Steps 1 to 8 for Tasks 28 to 35 | holds | `:48-58`; `grep -c "Plan: Task 28"` to `"Plan: Task 35"` print `1` each; the order CP4 (1 to 4) then CP5 (5 to 8) as written |
+| 6. "unverified: confirm with <source>" for anything the plan lacks | holds | every Part 0 `git` line (`:32-35`, the force-with-lease flags `:37`) and `./manifold` (`:42`) says "unverified"; the three `gh` forms are marked "verified". I ran `gh repo create --help`: a name plus `--private` is the documented non-interactive form (help line "supply the repository name and one of `--public`, `--private`, or `--internal`"), and `--add-readme`, `--license` and `--gitignore` exist, as the guide says. `git push -h` lists `--[no-]tags` and `--[no-]force-with-lease[=<refname>:<expect>]`, and `git remote -h` lists `add`, `rename` and `remove`, so the guide's "unverified" is conservative and not wrong |
+| 7. Last line | holds | `:60` |
+
+Acceptance, run by me: (a) `ls docs/megaroast-setup.md` prints the path. (b) `grep -c "^- \[ \]"` prints `13`, `grep -c "^- \[x\]"` prints `0`. (c) the sixteen counts above are all `1`. (d) `MANIFOLD_APP_KEY_FILE` is on lines 12, 56 and 58; `grep -nE "https?://|[A-Za-z0-9_.+-]+@[A-Za-z0-9-]+\."` prints nothing; `grep -niE "company_dns|testbed|discovery|mediumroast"` prints nothing. (d2) as in point 6. (e) `.venv/bin/python server/tests/datasets/scan.py docs/megaroast-setup.md --terms-file .manifold/scratch/empty_terms.json` printed `scan: no findings`, exit 0 (see "Could not check" for the fixture). (f) `python3 bundles/base/tools/build.py --check` printed `lint ok`; `cd server && ../.venv/bin/python -m pytest tests/test_docs_links.py -q` printed `12 passed`. (g) `git diff origin/main..HEAD --stat` lists the four files named in the header and nothing else. No real repository name, organization display name, App ID, installation ID, key, token, address or full URL is in the guide (read in full). Nothing is stated about GitHub or git beyond the plan and the command help except as listed in F38 and the not-itemized nits.
+
+### (2) The facts against Tasks 28 to 35 and Concerns 7 to 9
+
+No step is added or changed in meaning; one inherited contradiction is F34.
+
+- **Step 1 / Task 28:** owner writes the rows, private, stop if not private, "nothing committed here", only table rows in the diff. Matches (`PHASE_4_PLAN.md:556-557`). Minor points in the not-itemized nits.
+- **Step 2 / Task 29:** `gh repo view ... --json visibility` once per repository, "3 of 3 exist". Matches (`:568-569`).
+- **Step 3 / Task 30:** exists, private, no builder access; "Nothing is read or cloned" is an addition that agrees with Concerns 8 (`:114`) and Task 30's "Builder agents never read, clone"; no change in meaning.
+- **Step 4 / Task 31:** private terms file at `~/.manifold/excluded_terms.json`, never printed, stop if missing; clone to a scratch folder outside every checkout; start command not copied from the quickstart; `wiki_health` and `wiki_inventory_tool`; counts per kind, never quoted; no file copied (`:591-593`). Matches. The terms file is named only as a path to the owner's own file; I did not open it. See F36 for the scan command.
+- **Step 5 / Task 32:** the five "still to read" facts are exactly those of `:609` (JWT claims and algorithm; Metadata always granted; `GET /installation/repositories` needs only Metadata; lost-key revocation; private App transfer).
+- **Step 6 / Task 33:** settings path, name with a fallback said in chat first, "Only on this account", webhook Active unchecked, no callback URL, no user authorization, no device flow, Metadata read-only and no Contents, Pull requests, Issues, Administration or Secrets, one key saved outside every repository at the path held in `MANIFOLD_APP_KEY_FILE`, nothing secret in chat. Matches `:621-622`. The key is held only by the variable name `MANIFOLD_APP_KEY_FILE`; no path is written.
+- **Step 7 / Task 34:** "Only select repositories", three repositories, not holdout QA, owner-approval step recorded if it appears, count 3, no App or installation ID in a committed file. Matches `:633-634`.
+- **Step 8 / Task 35:** key file by variable name, JWT signing unverified, `POST /app/installations/<INSTALLATION_ID>/access_tokens` with `permissions` limited to Metadata read, one listing request, discard, repeat after one hour and expect a refusal, HTTP status only. Matches `:645-646` (and the contradiction in F34 is Task 35's).
+- **Holdout QA never read by builders:** `:18`, `:41`, `:50`. Metadata read only: `:56`. Matches Concerns 8 and 9.
+
+### (3) The push-rejected guidance
+
+`megaroast-setup.md:37`: prefer creating the repository empty; otherwise inspect the remote first; only then "replace `main` with a force-with-lease push (flags unverified: confirm with `git push --help`). You decide this; no agent does it." It does not tell the owner to force-push as the default, puts inspection first, marks the flags unverified and says the decision is the owner's. That meets the instruction. It would be clearer if it said in so many words that the push overwrites the remote `main` and cannot be undone from the copy (see the not-itemized nits); not a finding on its own. The cause it states is the guide's, not the plan's (see the not-itemized nits).
+
+### (4) The index row and the link test
+
+`docs/README.md`: one new table row (`[Megaroast setup](megaroast-setup.md)`), the target resolves. `server/tests/test_docs_links.py`: `git diff` is one list entry, `"docs/megaroast-setup.md"`, added to `DOCS`; no assertion, test function or other line changed (`git diff origin/main..HEAD -- server/tests/test_docs_links.py` is 1 insertion and 1 deletion on the list's second line, a re-wrap). The guide has no relative link (its `docs/quickstart.md` mention is in a code span), so the link test has nothing to check in it today; it will if a link is added. This follows Open question 1's answer (yes).
+
+### (5) The coder's plan edits and Rule exceptions
+
+`git show 408e86f -- docs/plans/PHASE_4_PLAN.md`: two lines removed and two added, the Todo and the Note of Task 73, and nothing else. The Todo has five items ticked, all by the coder as the task says (the plan Todo is the coder's to tick; the guide's boxes are the owner's and none is ticked). The Note's counts reproduce (13 and 0; each `Plan:` and `Step 0` label 1; `MANIFOLD_APP_KEY_FILE` on 3 lines; `scan: no findings`; `lint ok`; `12 passed`; the full server run, below).
+
+Rule exceptions line, coder, `none`: `.manifold/guard-log.jsonl` had 17 lines when I started and 17 after all my commands (`wc -l`). The last `coder` line is line 15 (2026-11-22T00:35:28Z, `no-heredocs`, CP10), the last two are `reviewer` lines (16 and 17, revision 7). So `none` is consistent with the log, and the Note's "still has 17 lines" is accurate. The guard logs refusals only; a command that went through cannot be compared. The commits: `408e86f` holds four files and ends with the attribution line; the others are the planner's and the owner's. I did not see `--no-verify` or a hook bypass in the log. Nothing in `git status --short` is untracked or changed.
+
+### (6) The earlier tasks still read "fork" and "exists": is the Effect paragraph enough?
+
+For the guide's reader, yes: the guide never says "fork" or "already exist", Part 0 says the repositories are created, and its Rules block says where the tick of Task 29 is noted. For a reader of the plan, not completely: see F37. The amendment's Effect covers Tasks 28 to 31 (`:1228`); it does not cover Task 34's "choosing the fork" (`:633`), the CP4 introduction's second sentence "nothing is created" (`:548`), the "Needs from other repositories" line (`:95`), Concerns 7's "The repositories already exist" (`:113`) and Open question 16's parenthesis (`:766`). The Correction names only the first sentence of `:548`, and not "nothing is created". The owner signed "none is edited", so the plan text stays as it is by his decision; the risk is an agent reading CP4 top to bottom. It is reported as a nit because the amendment is signed and names the correction.
+
+### New findings in revision 8
+
+**F34 (Nit) — Step 8 tells the owner to discard the token, then to use the same token an hour later**
+- **Pass:** Bugs (consistency) and Compliance (secrets handling).
+- **Location:** `docs/megaroast-setup.md:58`, inherited from `PHASE_4_PLAN.md:645-646` (Task 35: "discards the token ... After one hour the owner repeats the one request" and "the same token is refused after one hour").
+- **Evidence:** read. A discarded token cannot be re-used; to repeat the request the owner has to keep it somewhere for an hour, and the only rule given is "never write it to a file, chat or log". A reader may save it to a file to keep it, which is what the rule forbids. The guide copies the contradiction faithfully (Task 73 says take the wording from the plan, add no new fact), so the fault is in Task 35.
+- **Direction:** the planner amends Task 35 and the guide together (for example, say where the token may be held until the check, and that it is discarded after it); not for the coder to change alone.
+- **State:** open
+
+**F35 (Nit) — The guide says no organization name belongs in it, and names "Megaroast" in its title and first sentence**
+- **Pass:** Bugs (consistency).
+- **Location:** `docs/megaroast-setup.md:2`, `:4`, and `docs/README.md` (new row) against `:14` ("No real repository name, organization name ... belongs in this file") and Task 73 point 1.
+- **Evidence:** read; `grep -ni megaroast docs/megaroast-setup.md` prints lines 2 and 4. The amendment calls the organization `MegaRoast`, and the owner chose the file name, so this may be the project's name and not the organization's. It is still against the guide's own rule and against its aim (a later organization reuses it). The acceptance grep (`company_dns|testbed|discovery`) does not look for it, which is why it passed.
+- **Direction:** the owner decides: keep "Megaroast" as the name of the project (and say so in line 14), or retitle the guide with the placeholder.
+- **State:** open
+
+**F36 (Nit) — Step 4 says "run the scan" but does not name it**
+- **Pass:** Compliance (traceability) and Bugs (a step the owner cannot follow from the guide alone).
+- **Location:** `docs/megaroast-setup.md:51` against `PHASE_4_PLAN.md:592` ("Run `scan.py` (Task 26)").
+- **Evidence:** read. The guide names no command, file or flag for the scan; the file is `server/tests/datasets/scan.py` with a `--terms-file` option (revision 7 ran it). The owner can find it, but the step is the only one with a command that is not given, and the plan names it.
+- **Direction:** name `server/tests/datasets/scan.py` and say that its README (`server/tests/datasets/README.md`, step 3) gives the usage, without copying the terms path into any command line that is logged.
+- **State:** open
+
+**F37 (Nit) — The plan's earlier text still says "nothing is created", "the fork" and "already exist" in places the Effect paragraph does not name**
+- **Pass:** Compliance (consistency between the amendment and the plan it amends).
+- **Location:** `PHASE_4_PLAN.md:95`, `:113`, `:548` ("nothing is created"), `:633` (Task 34, "the fork"), `:766`; Effect paragraph `:1228`.
+- **Evidence:** read, and `grep -n "fork\|already exist\|nothing is created"` over the plan. The Effect names Tasks 28 to 31; the "nothing is created" half of `:548` contradicts Part 0 (which creates five repositories), and Task 34 is not in the Effect at all. The amendment is signed with "none is edited", so this is the owner's decision; the point is that an agent reading CP4 before the amendment is told the opposite.
+- **Direction:** the planner extends the Effect line to Task 34 and to the CP4 introduction, or the owner accepts the reading order. Not for the coder.
+- **State:** open
+
+**F38 (Nit) — Step 0b states GitHub's behavior as a cause**
+- **Pass:** Bugs (verified claims).
+- **Location:** `docs/megaroast-setup.md:37`: "GitHub created the repository with a README or licence, so the histories diverge".
+- **Evidence:** the plan's own record (Correction, `:1227`) says "GitHub had created the repository with an initial commit", the owner's observation, with the flags unverified. "README or licence" is the guide's wording; it is a plausible reading, not recorded in the plan or in `gh repo create --help` (which only shows that `--add-readme`, `--license` and `--gitignore` exist). Task 73 point 6 asks that a fact the plan does not record be marked "unverified".
+- **Direction:** write "an initial commit (owner's observation)" or mark the cause "unverified".
+- **State:** open
+
+**Three more nits, not itemized (nit cap of 5):** (i) Step 1 asks for rows for the standalone UI and the example instance as repositories that "derive from the company repository" (Task 28's wording) while the Effect paragraph says the fresh repositories hold no content from it; the guide does not say what to write for them. (ii) Step 1 says "stop and tell the owner" in a guide that addresses the owner as "you". (iii) Step 0b does not say in so many words that the force-with-lease push overwrites the remote `main` for good (point 3 above).
+
+### Carried forward, not re-decided
+
+F4 (Important, owner-gated, checkpoint 1), F9, F10, F11 (checkpoint 1), F26, F27 (checkpoint 2), F33 (the date convention in the round 4 amendment). Their State lines are unchanged and are in the sections below. Observation only: round 5 uses one date, Nov 22, 2026, for both the owner's answers and his signature, so F33's mismatch does not recur there; `git log` for `1b23c92` and `756e3b0` was not read for the local day.
+
+### Other checks (revision 8)
+
+- **Security.** The diff read in full for credentials and personal data: none. No real repository, organization display name, address, ID, key or token is in the guide. The owner's `~/.manifold/excluded_terms.json` was never opened, read or printed by me, and no run without an explicit `--terms-file` was made. The guide names that path only as the owner's own file. The held-out QA repository was not opened or cloned.
+- **Intent.** INT-3's constraint (written permission, a scrub before any real content is public) holds: Part 0b's risk line and Step 1 carry it. INT-7 (App, least privilege, key outside every repository, no long-lived secret) holds in Steps 6 to 8.
+- **Context files.** `AGENTS.md`, `CLAUDE.md` and `REVIEW.md` are not made out of date by this change. `AGENTS.md` lists no document index that needs the new file.
+- **Test plan check.** No `PHASE_<N>_TEST_PLAN.md` in this change.
+- **Real-use evidence (point d of the prose standard).** The owner has not yet followed the guide: no box is ticked, no step has been run from it. **No evidence yet.** The guide changes no agent behavior by itself; the owner's approval of text that changes agent behavior (g) is the signed amendment, which approves Task 73's text.
+- **CI.** Not checked for this head: not read (`gh run view` not run); the branch may not be pushed. State: not checked.
+- **Held-out scenarios.** I did not read any.
+
+### Gates run (revision 8, 2026-11-22, head `408e86f`, Python 3.11)
+
+| Command | Counts | Result |
+|---|---|---|
+| `.venv/bin/python server/tests/datasets/scan.py docs/megaroast-setup.md --terms-file .manifold/scratch/empty_terms.json` | `scan: no findings`, exit 0 | pass (fixture: see "Could not check") |
+| `cd server && ../.venv/bin/python -m pytest tests/test_docs_links.py -q` | `12 passed in 0.02s` | pass; equals the coder's `12 passed` |
+| `python3 bundles/base/tools/build.py --check` | `lint ok` | pass |
+| `cd server && ../.venv/bin/python -m pytest -q` | `1146 passed, 5 xfailed, 33 warnings in 123.61s` | pass; equals the coder's `1146 passed, 5 xfailed` (revision 7 had 1144; I did not trace the two added tests, I compared only with the coder's note) |
+| `grep -c` acceptance (b), (c), (d) | `13`, `0`, sixteen counts of `1`, no match for the URL, address and name greps | as in the table above |
+| `gh repo create --help`, `git push -h`, `git remote -h` | help text read | supports the guide's statements; no repository was created or changed |
+| Not run | | `.venv/bin/python -m pytest bundles/base/tests -q`, `tests/live`, `tools/vendor_web.py --check`: nothing they cover changed; not run by me |
+
+### Could not check (revision 8)
+
+- **The empty-list fixture.** The task asked for an empty `[]` fixture; I cannot write one (my only write is this file). I used `.manifold/scratch/empty_terms.json`, left by the coder's earlier runs (gitignored). I did not read its content; the scan accepted it as a term list (a wrong shape would have printed the constant error), so it is a JSON list, and a clean run means no email, host, token-shaped string or personal-data pattern in the guide with that list. A run with the owner's real term list is the owner's step.
+- The owner's chat statements (Correction and answers are read only as the plan records them), the coder's chat report, and any command the guard does not log.
+- Every GitHub fact: the guide marks its own unverified items and I did not check GitHub's documentation or run `gh` against a real repository (I made no network call to the organization).
+- Whether the pull request description has the matching tick lines (the guide's mirror rule): no pull request was read.
+- Linux, Python 3.10 and 3.12 (CI not read).
+
+### Rule exceptions compared (revision 8)
+
+- **Coder, CP11:** compared in (5): `none` against a guard log with no `coder` line after line 15 (17 lines before and after my commands).
+- **Mine:** I wrote only this file, with `Edit`. I ran read-only `git` (`log`, `diff`, `show`, `status`), `grep`, `ls`, `wc`, `tail`, the project's gate commands (each alone), `gh repo create --help`, `git push -h`, `git remote -h`, and `scan.py` with an explicit `--terms-file` (the coder's gitignored fixture, as an argument only). **No command of mine was refused or blocked**; the guard log has 17 lines before and after (`wc -l` read before the write). I did not use a heredoc, `sed -i`, a redirect or `/tmp`. `.manifold/guard-allow.json` was not read. If a later check shows a line 18 from me, it is the review file write and not a breach I hid.
+
+### A human decides (revision 8)
+
+This review does not approve or block the change. A human approves, informed by the findings. Counts after revision 8: Important 1 open (F4, owner-gated, checkpoint 1); Nit 11 open (F9, F10, F11, F26, F27, F33 earlier; F34 to F38 new) plus 3 not itemized; nothing repaired in this revision. The `Review process` approval rule in `AGENTS.md` (solo repository, owner Michael Hay) applies: no second approver is required. F34, F35, F36 and F37 are the owner's or the planner's to decide; the coder's CP11 text matches Task 73.
 
 ## CP3 revision 7: the scan-output repair (CP10, Tasks 66 to 72)
 
