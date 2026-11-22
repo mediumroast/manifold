@@ -8,7 +8,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ["README.md", "server/README.md", "docs/README.md", "docs/operations.md", "docs/tls.md", "docs/quickstart.md",
-        "docs/concepts.md", "examples/starter/README.md"]
+        "docs/concepts.md", "docs/megaroast-setup.md", "examples/starter/README.md"]
 
 pytestmark = pytest.mark.skipif(not (ROOT / "docs" / "operations.md").is_file(), reason="no docs/ beside the server")
 
