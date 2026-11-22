@@ -1,0 +1,18 @@
+# Curated test instance "messy": awkward but harmless data. Everything here is invented.
+version: 1
+name: Messy Test Wiki
+server_name: manifold
+
+components:
+  - slug: acme.io
+    owner: "Team Dot"
+    repo: "https://example.test/messy/acme.io"
+    description: "A component whose slug has a dot; it looks like a host name."
+  - slug: acme-io
+    owner: "Team Dash"
+    repo: "https://example.test/messy/acme-io"
+    description: "A look-alike of acme.io that differs by one character."
+  - slug: orders-core
+    owner: "Team Orders"
+    repo: "https://example.test/messy/orders-core"
+    description: "A component whose page is older than its newest raw note."
