@@ -1132,7 +1132,7 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
 ## Review amendment (round 4, checkpoint 3: scan output)
 
 **Source:** `docs/plans/REVIEW_PLAN_4.md` revision 6, checkpoint 3 (commit `85b52a2`, branch `claude/phase-4-cp3`): F28 (Important), F29, F30, F31, F32 (nits). Review finding numbers are not the failure entries F26 to F28 of `docs/agents/claude-desktop-failures.md`.
-**Amendment approved by:** <Insert the owner's name and the date>
+**Amendment approved by:** Michael Hay on Nov 21, 2026
 **Instructions:** read this amendment, then replace the whole slug above, brackets included, with your name and the date. The planner and every other agent leave it as it is. The `coder` does not start CP10 before you have signed it. Task 68 also waits for your answer to Open question 1.
 
 **Provenance:** the owner decided F28 in chat on Nov 22, 2026: option 2, the scan must not print matched text for any kind; a finding prints only its kind and location (`path:line: kind`), as it already does for tokens and terms. No instruction was given for the nits; they are proposed below. The code was read at head `32cde84`: `Finding` has a fourth field `detail` (`scan.py` lines 46 to 50), set only for `email` (line 106) and `host` (line 110); nothing else in `server/tests/datasets/` reads `detail`. Existing-test changes, both of which need the owner's yes: (a) the assertion `"sample.md:2: host intranet.big-corp.net" in capsys.readouterr().out` in `test_scan_flags_real_shaped_text_and_passes_the_committed_sets` (`test_datasets.py` line 161) is approved by the owner's chat decision of Nov 22, 2026 and changes in Task 66; (b) the assertion `capsys.readouterr().out == ""` (line 159) changes only in Task 68, which needs the owner's explicit yes (Open question 1). Who repairs: the `coder`. The diagnosis is already confirmed by the review and the direction is decided, so this is planned work, not a root-cause hunt for the `bug-coder`; the `coder` stages explicit paths and writes no shell heredoc (failures F27 and F28).
@@ -1140,6 +1140,7 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
 ### CP10 — Repairs from review round 4 (checkpoint 3)
 
 - [ ] **Task 66 — Pin the new output: no matched text for any kind, shown failing first.** In `server/tests/datasets/test_datasets.py`, (1) in `test_scan_flags_real_shaped_text_and_passes_the_committed_sets` replace the assertion at line 161 with two: `"sample.md:2: host" in out.splitlines()` and `"intranet.big-corp.net" not in out`, where `out = capsys.readouterr().out`; (2) add `test_scan_never_shows_matched_text_for_any_kind`: a file holding the line `mail ops@secretco.com or see https://www.secretco.com/x`, a terms file `["secretco"]`, `scanner.scan` returns the kinds `{"email", "host", "term"}` for line 1, `"secretco" not in str(findings).lower()`, and the output of `scanner.main([...])` (through `capsys`) is exactly the three lines `page.md:1: email`, `page.md:1: host`, `page.md:1: term` and does not contain `secretco`. Run the tests before Task 67 to show them failing.
+
   - **Source:** `REVIEW_PLAN_4.md` F28; owner's chat decision, Nov 22, 2026 (option 2). **Existing-test approval:** the owner approved changing the assertion at line 161, which pinned the printing of `intranet.big-corp.net`, in that chat decision; the new assertion pins `sample.md:2: host` with no host text. Record the approval in the task note.
   - **Files:** `server/tests/datasets/test_datasets.py`.
   - **Change:** as above; no other assertion changes.
@@ -1147,6 +1148,7 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
   - **Todo:** [ ] assertion changed, [ ] new test added, [ ] both shown failing, [ ] approval recorded in the note.
 
 - [ ] **Task 67 — Remove the matched text from every finding.** In `server/tests/datasets/scan.py`, remove the field `detail` from `Finding` and make `Finding.__str__` return `"%s:%d: %s" % (self.path, self.line, self.kind)`; call `Finding(shown, number, "email")` (line 106) and `Finding(shown, number, "host")` (line 110) with no text (keep `host` as the local used for the suffix test); in the module docstring change "It never carries the matched text for a token or a term" to say that a finding never carries the matched text for any kind.
+
   - **Source:** `REVIEW_PLAN_4.md` F28; owner's chat decision, Nov 22, 2026.
   - **Files:** `server/tests/datasets/scan.py`.
   - **Change:** as above; no change to what is detected.
@@ -1154,6 +1156,7 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
   - **Todo:** [ ] field removed, [ ] docstring changed, [ ] tests green.
 
 - [ ] **Task 68 — Print one line on a clean scan (only after Open question 1 is answered yes).** In `server/tests/datasets/scan.py` `main`, after the findings loop, print `scan: no findings` to standard output when `findings` is empty (exit code stays 0). In `test_datasets.py` change the assertion at line 159 from `capsys.readouterr().out == ""` to `capsys.readouterr().out == "scan: no findings\n"`.
+
   - **Source:** `REVIEW_PLAN_4.md` F29. **Existing-test change:** this edits an assertion that pins the silence; it needs the owner's explicit yes in Open question 1 and the coder records the yes in the task note. Without it, skip this task and mark it `[-]` with the reason.
   - **Files:** `server/tests/datasets/scan.py`, `server/tests/datasets/test_datasets.py`.
   - **Change:** as above.
@@ -1161,6 +1164,7 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
   - **Todo:** [ ] owner's yes recorded, [ ] line added, [ ] assertion changed.
 
 - [ ] **Task 69 — Say in README step 3 what the scan reports and prints.** In `server/tests/datasets/README.md`, "The real-data rule", step 3, change "hosts not ending `.test`, `.example` or `.invalid`" to "hosts in URLs (`scheme://host`) not ending `.test`, `.example` or `.invalid`"; add one sentence that a bare host name with no scheme (`db1.corp.net:5432`) is not caught and the reader must look for it; add one sentence that a finding prints only the file, the line and the kind, never the matched text, so the reader opens the line in the file. If Task 68 was done, add that a clean scan prints `scan: no findings`; if it was skipped, add that a clean scan prints nothing and exits 0.
+
   - **Source:** `REVIEW_PLAN_4.md` F30 (and F28, F29 for the output sentences). The scan is not widened to bare hosts: `acme.io` is a deliberate slug and widening needs the owner's word (out of scope).
   - **Files:** `server/tests/datasets/README.md`.
   - **Change:** as above.
@@ -1168,6 +1172,7 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
   - **Todo:** [ ] three sentences written, [ ] greps checked.
 
 - [ ] **Task 70 — Correct the assertion message and note the limit of the name list.** In `server/tests/datasets/test_datasets.py`, change the message of the `_scripts(...) >= 3` assertion in `test_the_sets_cover_every_awkward_case` from "text in fewer than two scripts besides Latin" to "text in fewer than three scripts besides Latin" (the assertion itself is not changed), and add a `#` comment above `_FIRST_NAMES` saying the list is a limit (30 English first names; a name not on it, a lower-case name or a name in another script is not caught) and that the protection is the owner's private term list plus a person reading the set (README step 3). Do not extend the name list (Open question 2).
+
   - **Source:** `REVIEW_PLAN_4.md` F32.
   - **Files:** `server/tests/datasets/test_datasets.py`.
   - **Change:** as above.
@@ -1175,6 +1180,7 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
   - **Todo:** [ ] message corrected, [ ] comment added.
 
 - [ ] **Task 71 — Add the CP3 Rule exceptions line to the plan notes.** In this plan, append to the "CP3 gates" note (after Task 27, before CP4) a line `Rule exceptions (CP3, coder), written from the guard log and failure entries F27 and F28 because the coder's own report was not kept:` with: two refused `Bash` heredocs, rule `no-heredocs`, `agent_type` coder, `.manifold/guard-log.jsonl` line 14 (2026-11-21T14:32:36Z, the first run, set aside, failure F27) and line 15 (2026-11-22T00:35:28Z, the second run, failure F28); neither was worked around; no other coder line in the log since the last revision. Make the edit with the `Edit` tool.
+
   - **Source:** `REVIEW_PLAN_4.md` F31 and its table of failure entries F27 and F28 against the guard log.
   - **Files:** `docs/plans/PHASE_4_PLAN.md`.
   - **Change:** as above; no other plan text changes.
@@ -1182,6 +1188,7 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
   - **Todo:** [ ] line written, [ ] greps checked.
 
 - [ ] **Task 72 — Replay the gates and record the result.** Run `cd server && ../.venv/bin/python -m pytest tests/datasets -q` and `cd server && ../.venv/bin/python -m pytest -q` (the server count was `1143 passed, 5 xfailed` at CP3, plus the new tests), then `git diff --stat origin/main..HEAD` must show only `server/tests/datasets/` and this plan. Write the counts and a Rule exceptions line for CP10 in a note under this task, then stop; the coordinator reads the result.
+
   - **Source:** all tasks above.
   - **Files:** `docs/plans/PHASE_4_PLAN.md` (the note only).
   - **Change:** none to code.
@@ -1192,11 +1199,11 @@ Problem, read from the failed run: `test_the_tool_still_matches_its_recording[wi
 
 **Findings not repaired:**
 
-| Finding | End | Reason |
-| ------- | --- | ------ |
-| F29 (nit) | repair if the owner says yes (Task 68); otherwise defer, with the README saying a clean scan prints nothing | Changing the silent success is an existing-test change and needs the owner's yes (Open question 1). |
-| F32, first-name list (nit, part) | defer | A longer list adds false positives (`Alex`, `Sam` already match ordinary phrases) and still misses other scripts; the real protection is the owner's term list and a reader. The message and the comment are repaired (Task 70). |
-| F30, widening the scan to bare hosts (nit, part) | defer | `acme.io` is a deliberate slug; widening needs the owner's word. The README wording is repaired (Task 69). |
+| Finding                                          | End                                                                                                         | Reason                                                                                                                                                                                                                           |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F29 (nit)                                        | repair if the owner says yes (Task 68); otherwise defer, with the README saying a clean scan prints nothing | Changing the silent success is an existing-test change and needs the owner's yes (Open question 1).                                                                                                                              |
+| F32, first-name list (nit, part)                 | defer                                                                                                       | A longer list adds false positives (`Alex`, `Sam` already match ordinary phrases) and still misses other scripts; the real protection is the owner's term list and a reader. The message and the comment are repaired (Task 70). |
+| F30, widening the scan to bare hosts (nit, part) | defer                                                                                                       | `acme.io` is a deliberate slug; widening needs the owner's word. The README wording is repaired (Task 69).                                                                                                                       |
 
 **Open questions:**
 
