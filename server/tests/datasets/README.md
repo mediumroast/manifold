@@ -35,7 +35,7 @@ person has checked. Until then only invented data is committed.
    scan prints `scan: no findings` and exits 0. The scan finds
    what it is shaped to find: a person then reads the scrubbed set, and the person who did is named
    in the sign-off.
-4. **Record.** Add a row to `SIGNOFFS.md`: source, owner, permission date, who checked the scrub,
+4. **Record.** Add a row to `SIGNOFFS.md`: source, owner, permission date, visibility, nothing committed here, who checked the scrub,
    scan result.
 5. **The original is never committed**, and neither is a scrub nobody checked.
 
