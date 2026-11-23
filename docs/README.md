@@ -8,6 +8,7 @@
 | [`manifold.yaml` reference](manifold-yaml.md) | You are setting up or editing an instance's settings and component registry |
 | [Operations](operations.md) | You are running the server for other people: credentials and roles, settings, backups, updates, troubleshooting |
 | [TLS](tls.md) | You want the server reachable over HTTPS, and your clients to trust it |
+| [Megaroast setup](megaroast-setup.md) | You are the organization owner setting up the Megaroast test repositories and the GitHub App |
 | [Server README](../server/README.md) | You want the tools, endpoints and environment variables |
 | [Plans](plans/README.md) | You want to know how Manifold is planned and developed |
 
