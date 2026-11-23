@@ -555,7 +555,8 @@ The four repositories already exist (owner's statement, Nov 14, 2026). The tasks
 **Who:** the owner writes the rows; the coder only prepares the empty table (Task 26) and an **Instructions** line above it.
 **Change:** Add one row per Megaroast repository that derives from the company repository (the fork, the standalone GUI, and the example instance if its content derives from it): source (by role), owner, permission date, the repository's visibility (private or public), and "nothing committed here". The owner writes the name and date; the coder does not fill any cell. Open question 16 is answered (the owner gives permission; all repositories are private this phase), so it blocks nothing; if a row's visibility is not private, stop and tell the owner.
 **Acceptance:** each row is filled by the owner; `git diff` shows no content from any Megaroast repository, only the table rows.
-**Todo:** [ ]
+**Todo:** [x]
+**Note:** Nov 22, 2026: the owner wrote the one row (commit `aa5301c`): the copy with history, owner, Nov 22, 2026, Private, "Yes, nothing committed here", the last two cells blank. The coordinator re-read it after the owner's save: seven cells, scan with an empty terms list `scan: no findings`. The owner ticked this Todo.
 
 ---
 
@@ -567,8 +568,8 @@ The four repositories already exist (owner's statement, Nov 14, 2026). The tasks
 **Who:** the owner, with their own GitHub login; the coder does not run it.
 **Change:** The owner confirms in chat that the fork of `company_dns`, the standalone GUI repository and the example manifold instance exist in the Megaroast organization, and reads each one's visibility with `gh repo view <Megaroast>/<name> --json visibility` (read-only; `visibility` is a listed `--json` field, gh 2.86.0). The note records: three repositories exist, and the visibility of each by role. Repository names are written only after the owner supplies them (Open question 18); until then the note uses roles.
 **Acceptance:** the note says "3 of 3 exist" with each visibility, and the visibility matches the Task 28 rows; `git diff` shows no Megaroast content.
-**Todo:** [ ]
-**Note:** Nov 22, 2026: the owner ran `gh repo view <ORG>/<name> --json visibility` for the copy with history, the standalone UI repository and the example instance: 3 of 3 exist, all PRIVATE (roles only, no names). The Todo and this task's tick stay the owner's.
+**Todo:** [x]
+**Note:** Nov 22, 2026: the owner ran `gh repo view <ORG>/<name> --json visibility` for the copy with history, the standalone UI repository and the example instance: 3 of 3 exist, all PRIVATE (roles only, no names). The owner ticked the Todo. Coordinator sanity check, same day, read-only, with the owner's permission for the Megaroast area: `gh repo view <ORG>/<name> --json visibility,isEmpty,defaultBranchRef,isFork` printed PRIVATE for all three and not a fork; the copy with history is not empty, default branch `main`, and its local clone shows 507 commits (matches the owner's count); the example instance is not empty, default branch `main`, local clone 14 commits (matches the Step 0e check), clean working tree; the standalone UI repository is empty (no default branch), as Step 0c intends. `gh api orgs/<ORG>/repos` lists exactly five repositories, all private (the four working ones and the stale one the owner kept, now private).
 
 ---
 
@@ -580,8 +581,8 @@ The four repositories already exist (owner's statement, Nov 14, 2026). The tasks
 **Who:** the owner. Builder agents never read, clone or ask for its content.
 **Change:** The owner confirms the holdout QA repository exists, is private, and that no builder session (this repository's agents) has been given access to it. The App is not installed on it (Task 34). Which repositories its scenarios test, and who writes them, is the quality side's decision and is not planned here.
 **Acceptance:** the note records "exists, private, not read by builders"; the coder's report states that it did not read it.
-**Todo:** [ ]
-**Note:** Nov 22, 2026: the owner confirmed in chat that the holdout QA repository exists, that `gh repo view` printed PRIVATE, and that no builder session has had access. The coder did not read it. The Todo and this task's tick stay the owner's.
+**Todo:** [x]
+**Note:** Nov 22, 2026: the owner confirmed in chat that the holdout QA repository exists, that `gh repo view` printed PRIVATE, and that no builder session has had access. The coder did not read it. The owner ticked the Todo. Coordinator sanity check, same day: `gh repo view` printed PRIVATE for the holdout QA repository, empty, not a fork (metadata only; no content was read or cloned, and no clone of it exists beside the other local clones). "No builder access" rests on the owner's statement; nothing could check it.
 
 ---
 
