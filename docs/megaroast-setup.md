@@ -1,4 +1,5 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Megaroast setup guide
 
 This is the organization owner's ordered checklist for the Megaroast test repositories and the GitHub App. It is written with placeholders so a later organization can reuse it:
@@ -26,8 +27,8 @@ Anything this guide does not already know from the plan is marked "unverified: c
 
 Nothing in Part 0 is a plan task; it is the precondition of the checks in Steps 1 to 8.
 
-- [ ] **Step 0a: record the organization's starting state.** `<ORG>` is owned by you and holds one stale, unrelated repository (you state it was made private, not deleted, and holds nothing needed). Confirm in chat that it is private: `gh repo view <ORG>/<stale-repo> --json visibility` (form verified in the plan). It is outside the four roles; the App is never installed on it. Not verified by the coordinator.
-- [ ] **Step 0b: create the copy with history** in `<ORG>` as `<repo-role>` "copy with history" (not a GitHub fork, not a transfer; the source keeps its place). First create the empty private repository: `gh repo create <ORG>/<copy-name> --private` (verified with `gh repo create --help`: a name plus `--private` creates it without prompts; do not pass `--add-readme`, `--license` or `--gitignore`, so it stays empty). Then, in a folder outside every checkout:
+- [x] **Step 0a: record the organization's starting state.** `<ORG>` is owned by you and holds one stale, unrelated repository (you state it was made private, not deleted, and holds nothing needed). Confirm in chat that it is private: `gh repo view <ORG>/<stale-repo> --json visibility` (form verified in the plan). It is outside the four roles; the App is never installed on it. Not verified by the coordinator.
+- [x] **Step 0b: create the copy with history** in `<ORG>` as `<repo-role>` "copy with history" (not a GitHub fork, not a transfer; the source keeps its place). First create the empty private repository: `gh repo create <ORG>/<copy-name> --private` (verified with `gh repo create --help`: a name plus `--private` creates it without prompts; do not pass `--add-readme`, `--license` or `--gitignore`, so it stays empty). Then, in a folder outside every checkout:
   - `gh repo clone <source-owner>/<source-repo> <copy-name>` (form verified in the plan).
   - `git remote rename origin source` (unverified: confirm with `git remote --help`).
   - `git remote add origin <new url>` (unverified: confirm with `git remote --help`).
@@ -37,9 +38,9 @@ Nothing in Part 0 is a plan task; it is the precondition of the checks in Steps 
   - If the push is rejected: GitHub created the repository with a README or licence, so the histories diverge. Preferred: create it empty (above). Otherwise inspect what is on the remote first, then replace `main` with a force-with-lease push (flags unverified: confirm with `git push --help`). You decide this; no agent does it.
   - The source's other branches are not pushed (owner's answer: `main` and the tags only).
   - Risk: the history may hold secrets. Private is fine; a history scrub is required before any public release (V1), and is not part of this phase.
-- [ ] **Step 0c: create the fresh standalone UI repository**, empty and private, no history from elsewhere: `gh repo create <ORG>/<name> --private` (verified with `gh repo create --help`).
-- [ ] **Step 0d: create the fresh holdout QA repository**, empty and private: `gh repo create <ORG>/<name> --private` (verified with `gh repo create --help`). No builder creates, fills, clones or reads it; you (or the quality side) do all of it.
-- [ ] **Step 0e: create the fresh example instance repository**, private. `./manifold init` runs once, from a manifold checkout, and makes one instance: the example instance. It is not run on the other repositories; they are component repositories. The sub-steps below are plain numbered lines, not boxes; this one box is yours to tick when all of them are done.
+- [x] **Step 0c: create the fresh standalone UI repository**, empty and private, no history from elsewhere: `gh repo create <ORG>/<name> --private` (verified with `gh repo create --help`).
+- [x] **Step 0d: create the fresh holdout QA repository**, empty and private: `gh repo create <ORG>/<name> --private` (verified with `gh repo create --help`). No builder creates, fills, clones or reads it; you (or the quality side) do all of it.
+- [x] **Step 0e: create the fresh example instance repository**, private. `./manifold init` runs once, from a manifold checkout, and makes one instance: the example instance. It is not run on the other repositories; they are component repositories. The sub-steps below are plain numbered lines, not boxes; this one box is yours to tick when all of them are done.
   1. Clone manifold into its own folder, outside every checkout of this project and outside the worktree: `git clone <manifold-repo-url> <folder>` (the address is in `docs/quickstart.md`, section 1).
   2. You need Docker running, Python 3.11 or newer, git, and a few minutes for the first build.
   3. Pick the instance path before `init`: an explicit `--instance` path, outside the manifold clone and outside every checkout of this project, and not holding the data folder. Then check that its parent folder is not inside any git repository: `git -C <parent folder> rev-parse --show-toplevel` must print "fatal: not a git repository" (the exact message as seen on macOS git, Nov 22, 2026). If it prints a path, that folder is a repository (your `~/dev` was an empty one): look at what its `.git` holds first, and remove it only if you decide to.
@@ -53,9 +54,9 @@ Nothing in Part 0 is a plan task; it is the precondition of the checks in Steps 
 
 ### Checkpoint 4: the test repositories
 
-- [ ] **Step 1.** Plan: Task 28. Write the permission, visibility and date rows in `server/tests/datasets/SIGNOFFS.md` yourself: one row per repository that derives from the company repository (the copy with history, the standalone UI, and the example instance if its content derives from it), with source by role, owner, permission date, visibility and "nothing committed here". Private for every repository this phase; stop and tell the owner if any row says otherwise. Confirm in chat that each row is filled by you and the diff shows only table rows.
-- [ ] **Step 2.** Plan: Task 29. Run `gh repo view <ORG>/<repo-name> --json visibility` once per working repository (the copy with history, the standalone UI, the example instance). Confirm in chat: "3 of 3 exist", each private, matching the Step 1 rows.
-- [ ] **Step 3.** Plan: Task 30. Confirm in chat that the holdout QA repository exists, is private, and that no builder session has been given access to it. Nothing is read or cloned.
+- [x] **Step 1.** Plan: Task 28. Write the permission, visibility and date rows in `server/tests/datasets/SIGNOFFS.md` yourself: one row, for the copy with history (the other repositories were created fresh and derive nothing; the standalone UI gets a row if company code is added to it), with source by role, owner, permission date, visibility and "nothing committed here". Private this phase; stop and tell the owner if the row says otherwise. Confirm in chat that the row is filled by you and the diff shows only table rows.
+- [x] **Step 2.** Plan: Task 29. Run `gh repo view <ORG>/<repo-name> --json visibility` once per working repository (the copy with history, the standalone UI, the example instance). Confirm in chat: "3 of 3 exist", each private, matching the Step 1 row for the copy; record the other repositories' visibility by role in the note.
+- [x] **Step 3.** Plan: Task 30. Confirm in chat that the holdout QA repository exists, is private, and that no builder session has been given access to it. Nothing is read or cloned.
 - [ ] **Step 4.** Plan: Task 31. Needs your private terms file at `~/.manifold/excluded_terms.json` (never committed, never printed; if it does not exist, stop). Clone the example instance to a scratch folder outside every checkout: `gh repo clone <ORG>/<repo-name> <scratch folder>` (form verified in the plan). Start the server against it as described in `docs/quickstart.md` (see that file; the start command is not copied here), then call `wiki_health` and `wiki_inventory_tool`, and run the scan over the clone with your private terms file. Confirm in chat: health is healthy, the number of components listed (you expect two), and the count of scan findings per kind (counts only, never quoted). No file is copied into this repository.
 
 ### Checkpoint 5: the GitHub App

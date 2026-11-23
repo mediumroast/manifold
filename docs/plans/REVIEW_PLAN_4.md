@@ -5,7 +5,7 @@
 **Commit reviewed:** `1bf3836550ffd37ea0bae9f4aff3e33898327361` on branch `claude/phase-4-cp1` (pull request 35; base `claude/phase-4-plan` at `c6b059e92a8a5e4b725ec5f651e233b60b93ee86`; full change `c6b059e..1bf3836`, 36 files; repairs since revision 1 `3724f88..1bf3836`, 11 commits, 24 files). The head came from `git rev-parse HEAD` after `git log -3`.
 **Plan version:** `PHASE_4_PLAN.md`; the plan is approved by Michael Hay on Nov 14, 2026, and the review amendment (round 1) is approved by him (`**Amendment approved by:** Michael Hay on Nov 14, 2026`, commit `da496ef`, the owner's edit). Task 55 is owner-gated (see F4) and was deliberately not run.
 **Policy used:** `REVIEW.md` (passes, Important and Nit meaning, nit cap of 5 per report). The `Review process` approval rule in `AGENTS.md` (solo repository, owner Michael Hay, no second approver) applies: no second person is required, and the owner's approval is his own. GitHub's own Approve review is a separate act and is not something this file can show.
-**Revision:** 9, 2026-11-22 (CP11, Task 74, the Step 0e rewrite of the owner's Megaroast setup guide, commit `1b2833b`, branch `claude/phase-4-cp4`, round 6 amendment signed by Michael Hay on Nov 22, 2026; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4, 5, 6, 7 and 8 headers; revision 9's header is its own section, "CP11 revision 9")
+**Revision:** 10, 2026-11-22 (CP11, Task 75 and the owner's Task 28 row, commits `500ec9b` and `aa5301c`, branch `claude/phase-4-cp4b`, round 7 amendment signed by Michael Hay on Nov 22, 2026; revision 10's header is its own section, "CP11 revision 10"). Earlier revision line, kept as history: 9, 2026-11-22 (CP11, Task 74, the Step 0e rewrite of the owner's Megaroast setup guide, commit `1b2833b`, branch `claude/phase-4-cp4`, round 6 amendment signed by Michael Hay on Nov 22, 2026; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4, 5, 6, 7 and 8 headers; revision 9's header is its own section, "CP11 revision 9")
 
 **Checkpoint 2 header (revision 3).**
 - **Phase:** `docs/plans/PHASE_4_PLAN.md`, checkpoint 2 only (Tasks 14 to 22, "Contract tests and hardening for the server"). Checkpoints 3 to 6 are not part of this change.
@@ -62,19 +62,112 @@
 | 7 | 2026-11-21 | `f9ead7d81128d6ae1fe56f08c6f1fb659f3402c9` | Review of the checkpoint 3 repair (CP10, Tasks 66 to 72): F28 (Important) and F29 to F32 (nits) all repaired, evidence below; one new nit (F33, date convention in the amendment); failure entry F29 and the coder's CP10 and CP3 Rule exceptions lines checked against the guard log (17 lines before and after my commands); the checkpoint 1 and 2 findings (F4, F9, F10, F11, F26, F27) not re-reviewed. Review finding numbers F28 and later are not the failure entries F26 to F29 of `claude-desktop-failures.md` |
 | 8 | 2026-11-22 | `408e86fb` | Review of CP11 (Task 73, the owner's Megaroast setup guide): no Important finding; five new nits (F34 to F38) and three more not itemized; the guide checked point by point against Tasks 28 to 35 (holds); the coder's Rule exceptions `none` compared with the guard log (17 lines before and after); F4, F9, F10, F11, F26, F27, F33 carried forward unchanged. Review finding numbers F34 and later are review findings |
 | 9 | 2026-11-22 | `1b2833b4fc54c0284dac7101e02a3e5d848c6994` | Review of CP11 Task 74 (the Step 0e rewrite, round 6 amendment): no Important finding; the nine points of "How Step 0e reads" all present and acceptance (a) to (f) reproduces; three new nits (F39 to F41); F34 to F38, F4, F9, F10, F11, F26, F27, F33 and the 3 not itemized carried forward unchanged; the owner's "missing steps" gap is settled in substance, with two residual gaps (F39); the coder's Rule exceptions `none` compared with the guard log (17 lines before and after). Review finding numbers F34 and later are review findings |
+| 10 | 2026-11-22 | `aa5301c43261c48710b0bf3b937f2c0097bae39b` | Review of CP11 Task 75 (the SIGNOFFS table, commit `500ec9b`) and the owner's Task 28 row (commit `aa5301c`): no Important finding; five new nits (F42 to F46); the seven columns, the Instructions line, README line 38 and guide Steps 1 and 2 match the round 7 amendment; all gates re-run; all earlier open findings carried forward unchanged. Review finding numbers F34 and later are review findings |
 
 ## Counts by severity
 
 | Severity | Open | Repaired |
 |---|---|---|
 | Important | 1 (F4, owner-gated, checkpoint 1) | 5 (F1, F2, F3; F12 repaired in revision 4; F28 repaired in revision 7) |
-| Nit | 14 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F33 from revision 7; F34 to F38 from revision 8; F39 to F41 new in revision 9) plus 3 not itemized (nit cap, from revision 8) | 15 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5; F29 to F32 repaired in revision 7) |
+| Nit | 19 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F33 from revision 7; F34 to F38 from revision 8; F39 to F41 from revision 9; F42 to F46 new in revision 10) plus 3 not itemized (nit cap, from revision 8) | 15 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5; F29 to F32 repaired in revision 7) |
 
 No finding is shown as deferred or rejected by me. The plan's "Findings not repaired" table for round 4 records two parts as deferred (the longer first-name list, and widening the scan to bare hosts); the owner signed the amendment with that table and answered Open question 2 no, so those two parts are the owner's decisions, and F30 and F32 are repaired in the parts the owner approved. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 two; revision 5 two; revision 6 four; revision 7 one.
 
-Revision 9's own section comes first, under "CP11 revision 9" (Task 74). Revision 8's section follows, under "CP11 revision 8". Revision 7's section follows, under "CP3 revision 7". Revision 6's sections follow, under "CP3 revision 6" (their State lines for F28 to F32 are updated in place with the revision 7 evidence). The sections for revisions 3 to 5 follow, unchanged.
+Revision 10's own section comes first, under "CP11 revision 10" (Task 75 and the Task 28 row). Revision 9's section follows, under "CP11 revision 9" (Task 74). Revision 8's section follows, under "CP11 revision 8". Revision 7's section follows, under "CP3 revision 7". Revision 6's sections follow, under "CP3 revision 6" (their State lines for F28 to F32 are updated in place with the revision 7 evidence). The sections for revisions 3 to 5 follow, unchanged.
 
 The sections headed "CP2: ..." further down are the revision 3 text, kept; their State lines for F12 to F17 are updated in place with the revision 4 evidence. Revision 4's own sections come under "CP2 revision 4" (F18 and F19 keep their text there, with the State set in revision 5). Revision 5's own sections come first, under "CP2 revision 5".
+
+## CP11 revision 10: the SIGNOFFS table (Task 75) and the owner's Task 28 row
+
+**Header (revision 10).**
+- **Phase:** `docs/plans/PHASE_4_PLAN.md`, "Review amendment (round 7, checkpoint 4: the SIGNOFFS table and Task 28)" (`PHASE_4_PLAN.md:1311` onward), Task 75 (CP11), the Task 28 text (`:550`), and the Task 29 and 30 notes. Read against INT-3 (the permission, no-real-content and "nothing committed here" constraints).
+- **Commits reviewed:** `500ec9b` (the coder, Task 75: `docs/megaroast-setup.md`, `docs/plans/PHASE_4_PLAN.md`, `server/tests/datasets/README.md`, `server/tests/datasets/SIGNOFFS.md`; 12 insertions, 8 deletions) and `aa5301c` (the Task 28 row; `git show --stat` lists `server/tests/datasets/SIGNOFFS.md` only, 3 insertions, 2 deletions). Head `aa5301c43261c48710b0bf3b937f2c0097bae39b` (`git rev-parse HEAD`), branch `claude/phase-4-cp4b`, working tree clean. Diff from `922549e`: 4 files.
+- **Plan version:** `**Amendment approved by:** Michael Hay on Nov 22, 2026` (commit `d1a5a78`, before the coder's `500ec9b`: the signature came first, as `REVIEW_CYCLE.md` asks).
+- **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
+- **Not my work:** I wrote none of the table, README, guide or plan text under review.
+
+### Verdict (revision 10)
+
+No Important finding. Five new nits (F42 to F46). The table has seven columns in the amendment's order, the Instructions line says what Task 75 (b) lists, README line 38 and guide Steps 1 and 2 carry the amendment's wording, and no URL, address-shaped text or real repository name is in the diff. The earlier open findings (F4, F9, F10, F11, F26, F27, F33 to F41 and the 3 not itemized) are not touched by these commits and keep their State.
+
+### Checks asked for
+
+| Check | Result | Evidence |
+|---|---|---|
+| Seven columns, amendment's order | holds | `SIGNOFFS.md:11`: Source, Owner, Permission date, Visibility, Nothing committed here, Scrub checked by, Scan result; equals Provenance (4) of the amendment. The separator at `:12` has seven cells, the row at `:13` has seven cells |
+| The row was written by the owner; the coder's commit filled no cell | holds as far as git shows; see F46 | `git show 500ec9b` for `SIGNOFFS.md` adds only header, separator and the Instructions line (the table has no row); `aa5301c` touches `SIGNOFFS.md` only. I cannot see who typed the row; see F46 |
+| Row content | holds | Source by role ("Copy with history of the company repository"), owner, date `Nov 22, 2026`, `Private`, "Yes, nothing committed here"; Visibility is private, so Task 28's stop rule does not fire |
+| Stale sentence "The table has no rows yet." | present at `SIGNOFFS.md:7`, now false | F43 |
+| Task 75 header ticked by the coder | yes, `PHASE_4_PLAN.md:1326` is `- [x]` from `500ec9b` | F42. Convention check: `git log -S'- [x] **Task 73'` finds only `922549e`, the owner's commit (author Michael Hay); Task 74 at `:1294` is `- [ ]`. So the owner ticks the task header |
+| Task 29 and 30 notes: roles only, no names; headers and Todos unticked | holds | `PHASE_4_PLAN.md` Task 29 and Task 30 notes use `<ORG>/<name>` and roles; both `**Todo:** [ ]` lines are unchanged; no `###` header is ticked. See F44 for scope |
+| No real repository name, URL or email-shaped text in the diff | holds | `git diff 922549e aa5301c`, added lines, searched for URLs, `@host.`, `github.com`, `company_dns`, `mediumroast`, `testbed`: only a match inside the coder's own Note text that quotes the acceptance grep command (it names `company_dns`, `testbed`, a pattern, no repository name); address and URL grep on the guide, README and `SIGNOFFS.md` prints nothing. "Megaroast" is in the Instructions line (`:9`) as the organization word the plan already uses (see F35) |
+| README line 38 | holds | `README.md:38` reads "...: source, owner, permission date, visibility, nothing committed here, who checked the scrub," then `scan result.` on line 39; nothing else changed in the file (`git diff` hunk is 2 lines) |
+| Guide Step 1 and Step 2 | hold | `megaroast-setup.md:56-57` carry the amendment's wording ("one row, for the copy with history (the other repositories were created fresh and derive nothing; the standalone UI gets a row if company code is added to it)" and "matching the Step 1 row for the copy; record the other repositories' visibility by role in the note"); the diff hunk is those two lines only |
+
+### Gates, run by me (head `aa5301c`, Python 3.11)
+
+| Command | Result |
+|---|---|
+| `cd server && ../.venv/bin/python -m pytest -q` | `1146 passed, 5 xfailed, 33 warnings in 159.66s` (equals the coder's Note and revision 9) |
+| `cd server && ../.venv/bin/python -m pytest tests/datasets tests/test_docs_links.py -q` | `28 passed, 1 warning in 4.42s` (equals the coder's Note) |
+| `python3 bundles/base/tools/build.py --check` | `lint ok` |
+| `.venv/bin/python server/tests/datasets/scan.py server/tests/datasets/SIGNOFFS.md --terms-file <empty_terms.json fixture in the scratchpad>` | `scan: no findings`, exit 0 |
+| same scan on `docs/megaroast-setup.md` | `scan: no findings`, exit 0 |
+| guide box counts: `grep -c "^- \[ \]"` and `grep -c "^- \[x\]"` | `13` and `0` |
+| Task 75 acceptance (a) to (c), re-run on the head | (b) Instructions grep `1`; (c) README grep matches line 38; (a) now reads header grep `0`, separator grep `0`, `^|` count `3`: not a defect of the coder's commit, because the owner's row and a table formatter changed the file after the coder ran it (the coder's own tree, `500ec9b`, has the unpadded header and separator; see F45) |
+
+The fixture exists and I did not read it; the owner's `~/.manifold/excluded_terms.json` was not used or read. Held-out scenarios: none read.
+
+### New findings in revision 10
+
+**F42 (Nit) — The coder ticked the Task 75 header, which is the owner's tick by the convention of Tasks 73 and 74**
+- **Pass:** Compliance (traceability; the owner's gate).
+- **Location:** `docs/plans/PHASE_4_PLAN.md:1326` (`- [x] **Task 75 ...`) from commit `500ec9b`.
+- **Evidence:** the commit diff changes `- [ ]` to `- [x]` on the header together with the six Todo boxes. For Task 73 the header tick came in `922549e`, the owner's commit; Task 74's header is `- [ ]` (`:1294`), and the Task 74 Note says the coder left it unticked. Task 75's own text says only "the Todo and Note of Task 75" are the coder's. The tick is the owner's statement that the task is done, and the owner has not yet looked at the result (the Verification line says the owner opens the file).
+- **Direction:** the coder (or the owner) sets the header back to `- [ ]`; the owner ticks it after reading the table. The six Todo boxes may stay.
+- **State:** open
+
+**F43 (Nit) — "The table has no rows yet." is now false**
+- **Pass:** Bugs (consistency).
+- **Location:** `server/tests/datasets/SIGNOFFS.md:7`, against the row at `:13` and the Instructions line at `:9` ("There is one row").
+- **Evidence:** read. The sentence has been in the file since `7ba6e3b`; the amendment said the table would have no row until Task 28, and Task 75's acceptance (a) wanted exactly 2 table lines, so the coder correctly left the sentence. After `aa5301c` the file contradicts itself.
+- **Direction:** delete or re-word the sentence (for example "The table has one row so far") as the owner's edit or by a one-line amendment; not for the coder alone, because Task 28 says the diff shows only table rows.
+- **State:** open
+
+**F44 (Nit) — The coder wrote the Task 29 and Task 30 notes in the Task 75 commit; Task 75's text allows no other task's Note**
+- **Pass:** Compliance (a changed file region outside the task's inventory; deviation not recorded).
+- **Location:** `docs/plans/PHASE_4_PLAN.md` Task 29 note (the line after `**Todo:** [ ]`, about `:571`) and Task 30 note (about `:584`), both added in `500ec9b`; Task 75 text (`:1326`: "Edit no test, no other file, no other task's Todo or Note") and its Files line ("this plan (the Todo and Note of Task 75 only)"); the coder's Note (g): "the three files and this plan only".
+- **Evidence:** the diff `500ec9b` shows the two added lines. The content fits the amendment's Effect on Task 29 (visibility of the other repositories recorded by role in Task 29's note) and Task 30's acceptance, and both end "The Todo and this task's tick stay the owner's". But the Task 75 Note does not mention them, and the notes state that the owner ran `gh repo view` and confirmed in chat; I cannot read the chat, so those statements are unverified by me. The owner's instruction may have been given in chat; the plan does not record it.
+- **Direction:** record in the Task 75 Note (or the amendment) that the owner asked for the two notes, and by whom the statements were entered; otherwise move them out of the Task 75 commit's record.
+- **State:** open
+
+**F45 (Nit) — The Task 28 edit reformatted the header and separator lines, and Task 75's acceptance (a) no longer reproduces**
+- **Pass:** Compliance (Task 28 acceptance: "`git diff` shows only table rows") and Tests (acceptance commands).
+- **Location:** `server/tests/datasets/SIGNOFFS.md:11-12` (`aa5301c`); Task 28 text (`PHASE_4_PLAN.md:550` onward); the Instructions line `:9` ("Scrub checked by and Scan result are the owner's to fill or to mark as not applicable") against the empty cells at `:13`.
+- **Evidence:** `git show aa5301c` rewrites both table header lines with column padding (an editor's table formatter) as well as adding the row; they are table rows, so the Task 28 line holds in the plain sense, but the exact-match greps of Task 75 (a) now print `0`, `0` and `3`. Two cells (Scrub checked by, Scan result) are empty, though the Instructions line says the owner fills them or marks them "not applicable"; a blank cell cannot be told from one not yet written.
+- **Direction:** the owner writes "not applicable" in the two cells (or says in the Task 28 note why they are blank), and Task 28's note records that the padding is formatter output. Task 75's acceptance was true at `500ec9b` and needs no change.
+- **State:** open
+
+**F46 (Nit) — Who wrote the Task 28 row cannot be shown from git**
+- **Pass:** Compliance (the owner's cell must be the owner's; INT-3 permission).
+- **Location:** commit `aa5301c` (author `mihay42`, the same identity as `500ec9b`; message "the owner writes the SIGNOFFS row for the copy with history"; trailer `Co-Authored-By: Claude Sonnet 5.5`).
+- **Evidence:** the commit touches `SIGNOFFS.md` only, and the padded table looks like a Markdown editor's output (the owner edits Markdown in a rendered editor, per the project's notes); both fit "the owner wrote the row". But the commit identity is shared with the coder's, and the Claude co-author trailer on a commit said to hold the owner's own text could be read as the agent having written the permission statement. The permission date and "Yes, nothing committed here" are the owner's statements for INT-3 and need to be the owner's words.
+- **Direction:** the owner confirms in the pull request description or the Task 28 note that he typed the row; the coder or coordinator, who made the commit, drops the co-author trailer from a commit of the owner's text next time, or says in the message that the agent only committed it. No change to the row.
+- **State:** open
+
+(The nit cap of 5 per report is reached: five nits reported, none left out.)
+
+### Rule exceptions
+
+The coder's Rule exceptions line in the Task 75 Note is `none`. Compared with the diff (`git show --stat 500ec9b`: the four files Task 75 allows, plus the Task 29 and 30 notes inside the plan, see F44), the commit log (two commits, no hook bypass, staged paths in the message scope) and `.manifold/guard-log.jsonl` (17 lines before and after my commands, unchanged): nothing matched an exception. The Task 28 commit carries no Rule exceptions line; it is the owner's.
+
+### What I could not check
+
+The owner's chat statements behind the Task 29 and 30 notes and the typing of the row (F44, F46); real-use evidence of the owner writing a row unaided ("no evidence yet", because the Task 75 Verification line is the owner's reading of the file); the Task 28 box in the guide stays unticked, and the Task 28 header and Todo stay open in the plan, which is right.
+
+### Summary
+
+No Important finding, five new nits (F42 to F46), nothing repaired in this revision, all earlier open findings carried forward. A human decides; these findings do not approve or block the change.
 
 ## CP11 revision 9: Step 0e of the setup guide (Task 74)
 
