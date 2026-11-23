@@ -5,7 +5,7 @@
 **Commit reviewed:** `1bf3836550ffd37ea0bae9f4aff3e33898327361` on branch `claude/phase-4-cp1` (pull request 35; base `claude/phase-4-plan` at `c6b059e92a8a5e4b725ec5f651e233b60b93ee86`; full change `c6b059e..1bf3836`, 36 files; repairs since revision 1 `3724f88..1bf3836`, 11 commits, 24 files). The head came from `git rev-parse HEAD` after `git log -3`.
 **Plan version:** `PHASE_4_PLAN.md`; the plan is approved by Michael Hay on Nov 14, 2026, and the review amendment (round 1) is approved by him (`**Amendment approved by:** Michael Hay on Nov 14, 2026`, commit `da496ef`, the owner's edit). Task 55 is owner-gated (see F4) and was deliberately not run.
 **Policy used:** `REVIEW.md` (passes, Important and Nit meaning, nit cap of 5 per report). The `Review process` approval rule in `AGENTS.md` (solo repository, owner Michael Hay, no second approver) applies: no second person is required, and the owner's approval is his own. GitHub's own Approve review is a separate act and is not something this file can show.
-**Revision:** 10, 2026-11-22 (CP11, Task 75 and the owner's Task 28 row, commits `500ec9b` and `aa5301c`, branch `claude/phase-4-cp4b`, round 7 amendment signed by Michael Hay on Nov 22, 2026; revision 10's header is its own section, "CP11 revision 10"). Earlier revision line, kept as history: 9, 2026-11-22 (CP11, Task 74, the Step 0e rewrite of the owner's Megaroast setup guide, commit `1b2833b`, branch `claude/phase-4-cp4`, round 6 amendment signed by Michael Hay on Nov 22, 2026; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4, 5, 6, 7 and 8 headers; revision 9's header is its own section, "CP11 revision 9")
+**Revision:** 11, 2026-11-23 (CP4 Task 31, the coder's note in commit `7a25b93`, and failure entry F30 in commit `aea23c9`, branch `claude/phase-4-cp4c`; revision 11's header is its own section, "CP4 revision 11"). Earlier revision line, kept as history: 10, 2026-11-22 (CP11, Task 75 and the owner's Task 28 row, commits `500ec9b` and `aa5301c`, branch `claude/phase-4-cp4b`, round 7 amendment signed by Michael Hay on Nov 22, 2026; revision 10's header is its own section, "CP11 revision 10"). Earlier still: 9, 2026-11-22 (CP11, Task 74, the Step 0e rewrite of the owner's Megaroast setup guide, commit `1b2833b`, branch `claude/phase-4-cp4`, round 6 amendment signed by Michael Hay on Nov 22, 2026; the header fields above this line describe checkpoint 1 as of revision 2 and are kept as history; the checkpoint 2 header is the next block, then the revision 4, 5, 6, 7 and 8 headers; revision 9's header is its own section, "CP11 revision 9")
 
 **Checkpoint 2 header (revision 3).**
 - **Phase:** `docs/plans/PHASE_4_PLAN.md`, checkpoint 2 only (Tasks 14 to 22, "Contract tests and hardening for the server"). Checkpoints 3 to 6 are not part of this change.
@@ -63,19 +63,96 @@
 | 8 | 2026-11-22 | `408e86fb` | Review of CP11 (Task 73, the owner's Megaroast setup guide): no Important finding; five new nits (F34 to F38) and three more not itemized; the guide checked point by point against Tasks 28 to 35 (holds); the coder's Rule exceptions `none` compared with the guard log (17 lines before and after); F4, F9, F10, F11, F26, F27, F33 carried forward unchanged. Review finding numbers F34 and later are review findings |
 | 9 | 2026-11-22 | `1b2833b4fc54c0284dac7101e02a3e5d848c6994` | Review of CP11 Task 74 (the Step 0e rewrite, round 6 amendment): no Important finding; the nine points of "How Step 0e reads" all present and acceptance (a) to (f) reproduces; three new nits (F39 to F41); F34 to F38, F4, F9, F10, F11, F26, F27, F33 and the 3 not itemized carried forward unchanged; the owner's "missing steps" gap is settled in substance, with two residual gaps (F39); the coder's Rule exceptions `none` compared with the guard log (17 lines before and after). Review finding numbers F34 and later are review findings |
 | 10 | 2026-11-22 | `aa5301c43261c48710b0bf3b937f2c0097bae39b` | Review of CP11 Task 75 (the SIGNOFFS table, commit `500ec9b`) and the owner's Task 28 row (commit `aa5301c`): no Important finding; five new nits (F42 to F46); the seven columns, the Instructions line, README line 38 and guide Steps 1 and 2 match the round 7 amendment; all gates re-run; all earlier open findings carried forward unchanged. Review finding numbers F34 and later are review findings |
+| 11 | 2026-11-23 | `aea23c9cf7c7b28179c725143de21f10476dba94` | Review of CP4 Task 31 (the coder's note, commit `7a25b93`) and failure entry F30 (commit `aea23c9`): one Important (F47, a real repository name in the plan note) and two nits (F48, F49); the note's facts re-checked against what I could reproduce; F30 matches guard-log line 18; the Todo is unticked; nothing from the scratch clone reached this repository; all gates re-run; all earlier open findings carried forward unchanged. Review finding numbers F34 and later are review findings; F30 here is the failure entry, not a review finding |
 
 ## Counts by severity
 
 | Severity | Open | Repaired |
 |---|---|---|
-| Important | 1 (F4, owner-gated, checkpoint 1) | 5 (F1, F2, F3; F12 repaired in revision 4; F28 repaired in revision 7) |
-| Nit | 19 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F33 from revision 7; F34 to F38 from revision 8; F39 to F41 from revision 9; F42 to F46 new in revision 10) plus 3 not itemized (nit cap, from revision 8) | 15 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5; F29 to F32 repaired in revision 7) |
+| Important | 2 (F4, owner-gated, checkpoint 1; F47 new in revision 11) | 5 (F1, F2, F3; F12 repaired in revision 4; F28 repaired in revision 7) |
+| Nit | 21 (F9, F10, F11 from checkpoint 1; F26, F27 from revision 5; F33 from revision 7; F34 to F38 from revision 8; F39 to F41 from revision 9; F42 to F46 from revision 10; F48, F49 new in revision 11) plus 3 not itemized (nit cap, from revision 8) | 15 (F5, F6, F7, F8; F13 to F17 repaired in revision 4; F18, F19 repaired in revision 5; F29 to F32 repaired in revision 7) |
 
 No finding is shown as deferred or rejected by me. The plan's "Findings not repaired" table for round 4 records two parts as deferred (the longer first-name list, and widening the scan to bare hosts); the owner signed the amendment with that table and answered Open question 2 no, so those two parts are the owner's decisions, and F30 and F32 are repaired in the parts the owner approved. The nit cap (5) applies per review: revision 3 reported five new nits and left none out; revision 4 two; revision 5 two; revision 6 four; revision 7 one.
 
-Revision 10's own section comes first, under "CP11 revision 10" (Task 75 and the Task 28 row). Revision 9's section follows, under "CP11 revision 9" (Task 74). Revision 8's section follows, under "CP11 revision 8". Revision 7's section follows, under "CP3 revision 7". Revision 6's sections follow, under "CP3 revision 6" (their State lines for F28 to F32 are updated in place with the revision 7 evidence). The sections for revisions 3 to 5 follow, unchanged.
+Revision 11's own section comes first, under "CP4 revision 11" (Task 31 and failure entry F30). Revision 10's section follows, under "CP11 revision 10" (Task 75 and the Task 28 row). Revision 9's section follows, under "CP11 revision 9" (Task 74). Revision 8's section follows, under "CP11 revision 8". Revision 7's section follows, under "CP3 revision 7". Revision 6's sections follow, under "CP3 revision 6" (their State lines for F28 to F32 are updated in place with the revision 7 evidence). The sections for revisions 3 to 5 follow, unchanged.
 
 The sections headed "CP2: ..." further down are the revision 3 text, kept; their State lines for F12 to F17 are updated in place with the revision 4 evidence. Revision 4's own sections come under "CP2 revision 4" (F18 and F19 keep their text there, with the State set in revision 5). Revision 5's own sections come first, under "CP2 revision 5".
+
+## CP4 revision 11: the Task 31 note and failure entry F30
+
+**Header (revision 11).**
+- **Phase:** `docs/plans/PHASE_4_PLAN.md`, Task 31 "Check the example instance from a scratch clone" (`:589`; Change `:595`, Acceptance `:596`, Todo `:597`, the coder's Note after it). Read against INT-3 (no real content, nothing committed here, the owner's private terms file never read or printed).
+- **Commits reviewed:** `7a25b93` (the coder: `docs/plans/PHASE_4_PLAN.md`, 8 insertions) and `aea23c9` (the coordinator: `docs/agents/claude-desktop-failures.md`, 12 insertions, entry F30). Head `aea23c9cf7c7b28179c725143de21f10476dba94` (`git log`), branch `claude/phase-4-cp4c`, working tree clean before and after my commands.
+- **Plan version:** `**Approved by:** Michael Hay on Nov 14, 2026` (`PHASE_4_PLAN.md:3`); Task 31 is "unchanged" by the later amendments (`:1239`).
+- **Policy used:** `REVIEW.md`. The `Review process` approval rule in `AGENTS.md` (solo, owner Michael Hay, no second approver) applies; nothing here needs a second person.
+- **Not my work:** I wrote none of the note or the failure entry. I did not read `~/.manifold/excluded_terms.json` and read no held-out scenario.
+
+### Verdict (revision 11)
+
+One Important finding (F47) and two nits (F48, F49). The note covers all four parts of the acceptance line (commands, healthy, component count, scan count per kind), the facts I could reproduce hold, the Todo and the task header stay unticked, nothing from the scratch clone is in this repository, and F30 matches guard-log line 18. The Important finding is a real repository name in the committed note, which the plan says not to write until the owner supplies names.
+
+### Checks asked for
+
+| Check | Result | Evidence |
+|---|---|---|
+| Acceptance: commands recorded | holds | Note bullets: clone, the "Without Docker" route, the four admin steps, the server start with `PORT=8699`, `curl -s http://127.0.0.1:8699/health`, the MCP inventory call, the `scan.py` command with `--terms-file` |
+| Acceptance: health healthy | holds, as written | `{"status":"healthy"}` from the `/health` endpoint. I could not reproduce it (server stopped, credential deleted, as the note says). `server/server.py:936` shows `/health` calls `wiki_health(WIKI_ROOT)` and returns `"status"`, so the claim is consistent with the code |
+| Acceptance: component count (owner expects two) | holds as written; not reproduced | Note: 2 components (`example-api`, `example-web`), 1 handoff, 7 files. The plan's own provenance (`:1297`) says the example instance has `example-api` and `example-web`, one handoff, and nine tracked files; 7 inventory files plus `README.md` and `manifold.yaml` is nine, so the numbers agree |
+| Acceptance: scan count per kind | holds as written | "`scan: no findings`: 0 findings of every kind, including the terms kind", with the terms file passed by path only. I did not re-run it on the clone, because that needs the owner's terms file, which I must not read |
+| Acceptance: `git status --short` in this repository unchanged | holds | `git status --short` prints nothing at the head; `git diff 7a25b93~1 aea23c9 --stat` is the two files above |
+| Clone untouched | holds | The scratch clone (`<scratchpad>/testbed-clone`): `git status --short` prints no line, 14 commits, 9 tracked files (the same numbers as the Note and as `:1297`) |
+| Production containers untouched | holds as far as I can see | `docker ps` now: `manifold-production Up 19 hours (healthy)` and `manifold-caddy-production Up 19 hours 127.0.0.1:8686->8686/tcp`. The note says `Up 19 hours` before and after; I saw only the current state, so "before" is the coder's word |
+| Scratch server stopped | holds | `lsof -nP -iTCP:8699 -sTCP:LISTEN` prints nothing |
+| Throwaway credential deleted | holds | the scratch data folder holds only `manifold.db`, `manifold.db-shm`, `manifold.db-wal`; no `*.secret` file anywhere in the scratchpad listing |
+| Todo and task header unticked (owner's) | holds | `PHASE_4_PLAN.md:597` is `**Todo:** [ ]`; the header at `:589` has no tick |
+| No secret, credential, repository content, URL or email-shaped text in the diff | holds, except one name (F47) | Added lines searched for `@host.tld` and `https?://`: the only match is `http://127.0.0.1:8699/health`, a local loopback address, not a repository URL. No credential text, no file content from the clone, no commit hash or author of the clone. The one real name is F47 |
+| Nothing from the clone reached this repository | holds | `grep -rIl` for the repository name (not repeated here) over the worktree (without `.git`, `.venv`) finds only `PHASE_4_PLAN.md` (the note) and this file (after my edit); `git diff 7a25b93~1 aea23c9` touches the two files above only |
+| Plan wording about `wiki_health` | see F48 | |
+| F30 against `.manifold/guard-log.jsonl` line 18 | holds | The log has 18 lines (`wc -l`, before and after my commands). Line 18: `2026-11-23T14:04:42Z`, rule `no-heredocs`, tool `Bash`, agent_type `coder`, the command text beginning with a shell variable assignment (`S=/private/tmp/...`). The commit `7a25b93` is stamped 06:05:24 -0800, which is 14:05:24Z, about 40 seconds after the log line. The entry's date, rule, agent and count ("1 attempted, 1 refused") match. The log is git-ignored (`git check-ignore` prints the path), so the line cannot be checked from the commit alone |
+| F30 against the coder's "Rule exceptions: none" wording | partly compared; see F49 | The coder's report was not given to me as text; I compared with what the entry says about it. The plan Note does not hold a "Rule exceptions" line; its last bullet states the refused attempt in plain words, and that matches F30's account (not worked around; started as a background command without a redirect) |
+
+### Gates, run by me (head `aea23c9`, Python 3.11)
+
+| Command | Result |
+|---|---|
+| `cd server && ../.venv/bin/python -m pytest -q` | `1146 passed, 5 xfailed, 33 warnings in 136.65s` (equals revision 10) |
+| `.venv/bin/python -m pytest server/tests/test_docs_links.py -q` | `12 passed in 0.02s` |
+| `python3 bundles/base/tools/build.py --check` | `lint ok` |
+
+### New findings in revision 11
+
+**F47 (Important) — The Task 31 note names the real repository (`<ORG>/<repo>` is the plan's rule), and the plan says to write roles until the owner supplies names**
+- **Pass:** Compliance (the plan's rule on names) and Security (INT-3: no real content or names committed).
+- **Location:** `docs/plans/PHASE_4_PLAN.md` Task 31 Note, the "Clone:" bullet (the first line after the `**Note:**` line, about `:599`): the full `gh repo clone <organization>/<repository name> ...` text with the real organization and the real name of the example instance repository (the note is the only place in the plan that has the repository name; it was 0 matches at `7a25b93~1`).
+- **Evidence:** `git show 7a25b93` added line; `git show 7a25b93~1:docs/plans/PHASE_4_PLAN.md | grep -c <the repository name>` prints `0`. The plan says: Task 28's lead paragraph (`:548`): "The owner permits naming the repositories (Open question 18) but has supplied no names; until the owner supplies them, rows and notes use the role names"; the Task 30 acceptance (`:645`) "No names or IDs in the note until the owner supplies repository names (Open question 18)"; the CP4 gate (`:122`) "permission to name the repositories is given, no names are supplied"; the round 7 amendment's Tasks 29 and 30 notes use `<ORG>/<name>`; Task 31's own plan text in the CP4 checklist uses `<ORG>/<repo-name>`. The owner's answer to Open question 18 ("It is ok to name it since the intention is to eventually provide a public demonstration") gives permission, which the plan reads as permission without names. The commit message and Note do not say the owner supplied the name. The name is of a repository the owner made fresh (it holds no company content, `:1238`), which lowers the harm; it does not remove the departure from the plan, and the name now sits in a file that will be public.
+- **Direction:** replace the real name in the note with the role text and `<ORG>/<repo-name>` (as Tasks 29 and 30 do), or, if the owner has supplied the name for the record, say so in the note and in Open question 18's answer, so that the departure is the owner's decision. The commit stays as history; a new commit repairs it.
+- **State:** open
+
+**F48 (Nit) — The plan's Task 31 Change line still says `wiki_health` is a tool; the coder found it is the `/health` endpoint, and the plan is wrong, not the coder**
+- **Pass:** Bugs (consistency; the plan misleads a later reader).
+- **Location:** `docs/plans/PHASE_4_PLAN.md:595` ("then call `wiki_health` and `wiki_inventory_tool`") and Acceptance `:596` ("health reports healthy"); the Note's "Health:" bullet.
+- **Evidence:** `server/server.py:36` imports `wiki_health` from `wiki_backend.health` and `:936` calls it inside the `/health` handler; it is a Python function, not a registered MCP tool (the Note says an MCP call returned `Unknown tool`; I did not call it, the server being stopped). The same name is used correctly as a function in Task 9 (`:494`, "`wiki_health` reports healthy" in a test) and the guide. So the Task 31 Change line used a tool-style name by mistake; the Acceptance line (health reports healthy) is met through the endpoint. The coder recorded this in the Note and did not edit the Change line, which is right (the plan is the planner's text).
+- **Direction:** the planner (not the coder) corrects the Change line by a one-line amendment ("check the `/health` endpoint, then call `wiki_inventory_tool`"), signed by the owner; no change to the note.
+- **State:** open
+
+**F49 (Nit) — F30's "Rule exceptions" argument and its Status line**
+- **Pass:** Compliance (the Rule exceptions line must say what happened; a refused command is listed, not hidden) and Bugs (consistency of the entry).
+- **Location:** `docs/agents/claude-desktop-failures.md` entry F30, "What happened" (last sentence) and "Disclosed by the agent".
+- **Evidence:** the entry says the coder's line said `none` and then described the refused attempt in the same line, and says a refused command "is a flagged attempt, not an exception granted". That reading is the entry's own; `AGENTS.md` ("Rule exceptions") says "If you are unsure whether something was an exception, list it", which points to listing the refused attempt, and the coder did list it (in the report) while writing `none`. The two statements are the inconsistency; the entry records it and sets `Status: closed` with "Transcript not compared". I could not compare the coder's report text, and the Note in the plan has no Rule exceptions line to compare.
+- **Direction:** nothing to change in the entry's account; the owner decides whether to make the coder's wording rule explicit ("a refused command goes on the line"), as the entry already leaves it open under "Suggested change".
+- **State:** open
+
+### Rule exceptions
+
+The coder's line, as given to me for this review, is `none`, with the refused redirect attempt described in the report body. Compared with the diff (`7a25b93`: the plan only, the Task 31 note; `aea23c9`: the failures file only), the commit log (two commits, trailers present, no hook bypass visible) and `.manifold/guard-log.jsonl` (18 lines before and after my commands; line 18 is the coder's refused `no-heredocs` attempt): the diff and the log agree with F30; the word `none` against the one refused attempt is the mismatch recorded in F49. Not compared: the coder's transcript, and the exact report text (I was given its content by the caller, not the report itself). My own commands: read-only `git`, `grep`, `ls`, `lsof`, `docker ps`, `cat` of a task output file, and the three gate commands; none was refused; the only file I wrote is this one.
+
+### What I could not check
+
+The note's health, component-count, handoff and file numbers on the live server (stopped; credential deleted); the scan on the clone with the owner's terms file (I may not read it); that the production containers were `Up 19 hours` before the run (only the current state is visible); the coder's report text and transcript; whether the owner supplied the repository name in chat (F47); real-use evidence of the owner reading the Task 31 note and ticking the Todo ("no evidence yet").
+
+### Summary
+
+One Important finding (F47), two nits (F48, F49); nothing repaired in this revision; all earlier open findings (F4, F9, F10, F11, F26, F27, F33 to F46 and the 3 not itemized) carried forward unchanged. Gates: server tests 1146 passed, 5 xfailed; docs links 12 passed; build lint ok. A human decides; these findings do not approve or block the change.
 
 ## CP11 revision 10: the SIGNOFFS table (Task 75) and the owner's Task 28 row
 
