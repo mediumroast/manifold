@@ -454,6 +454,18 @@ Entries F7 to F10 were added on 2026-11-10 (Phase 2, T37c close-out). Earlier en
 **Status:** closed
 **Intent raised:** none yet
 
+## F31 — The `planner` sent one empty heredoc command in the Phase 4 round 8 amendment; refused; disclosed (2026-11-23)
+
+**Rule:** Shell writes to files (guard rule `no-heredocs`).
+**What happened:** While writing the round 8 amendment, the `planner` sent a `Bash` call that was an empty `python3` heredoc with `2>/dev/null || true` and no file argument (a no-op, nothing written). The guard refused it. The planner did not retry or work around it; every other command was read-only or an `Edit` call on the plan.
+**Evidence:** `.manifold/guard-log.jsonl`, line 19 (2026-11-23T16:45:32Z, rule `no-heredocs`, tool `Bash`, agent_type `planner`); the planner's report. The guard log grew from 18 to 19 lines.
+**Count:** 1 attempted, 1 refused, 0 breaches that went through; disclosed on its Rule exceptions line. Transcript not compared.
+**Agent:** planner
+**Disclosed by the agent:** Yes.
+**Suggested change:** None to the guard; it held. Same no-op heredoc form as F27 and F28 (coder), now seen in a planner (inference: agents reach for it as a way to run a throwaway check). The owner may want the rule's "throwaway snippet" instruction repeated in each agent's brief.
+**Status:** closed
+**Intent raised:** none yet
+
 ## Pattern, runs of 2026-11-09 and the coordinating session
 
 | Run | Flagged commands | Breaches that went through | Disclosed |
