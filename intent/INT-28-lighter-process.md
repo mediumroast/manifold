@@ -3,10 +3,10 @@ id: INT-28
 title: Lighter process, fewer signatures, fewer and larger checkpoints
 author: Michael Hay
 created: 2026-11-24
-status: draft
+status: accepted
 affects: [bundles/base, docs/templates, docs/process, bundles/base/agents/planner.agent.md, bundles/base/agents/coordinator.agent.md, bundles/base/agents/reviewer.agent.md]
 drafted_with: [claude-sonnet-5-5]
-accepted_by: "<Insert Name of acceptor on Date of acceptance, ex. M. Kusanagi on Jan-01-2027>"
+accepted_by: Michael Hay on Nov 27, 2026
 # Instructions: read the intent, set status to accepted, then replace the whole quoted slug above (the quotes stay, the brackets go) with your name and the date. An agent leaves it as it is.
 ---
 
@@ -127,7 +127,7 @@ The human is asked to decide only what needs a human, once, and the work is cut 
 
 - **Where is the line between a nit and a small repair that needs no signature?** Recommendation: a Nit is whatever the reviewer marks as Nit under the existing severity rules; a small repair is a Nit-only change to text or a comment, with no change to code, rules, agent permissions, hooks or tests. Anything else is Important and takes the signed round. Who: the owner. Answer: I agree with the recommendation.
 - **Where do batched nits go?** Options: fixed inside the checkpoint's own pull request before the owner signs, or one cleanup task at the end of the phase. Recommendation: fix them in the pull request when they touch files the pull request already changes; otherwise one cleanup task at the end of the phase. Who: the owner. Answer: I agree with the recommendation.
-- **How is the one tick per pull request recorded?** Recommendation: one checkbox in "What remains for you" that reads "I accept all tasks of this pull request"; the per-task completion notes stay in the plan as the coder's evidence, and the owner no longer ticks them. Who: the owner. Answer:
+- **How is the one tick per pull request recorded?** Recommendation: one checkbox in "What remains for you" that reads "I accept all tasks of this pull request"; the per-task completion notes stay in the plan as the coder's evidence, and the owner no longer ticks them. Who: the owner. Answer: I agree with the recommendation.
 - **Does a checkpoint's size limit (4 to 8 tasks) bind the planner or only guide it?** Recommendation: guide, with one sentence in the plan when a checkpoint falls outside it. Who: the owner. Answer: I agree with the recommendation.
 - **Should a repair of an Important finding live in the original checkpoint or in a numbered repair checkpoint?** Recommendation: in the original checkpoint's pull request while it is open; a numbered repair checkpoint only after merge. Who: the owner. Answer: I agree with the recommendation.
 - **Does the light path (INT-26) widen to cover Nit-only rounds in a code pull request?** Recommendation: no; keep it to text-only pull requests and use the nit rule above for code ones. Who: the owner. Answer: I agree with the recommendation.
