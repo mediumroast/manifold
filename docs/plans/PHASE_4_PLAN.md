@@ -1447,12 +1447,12 @@ Six tasks, one pull request, branch `claude/phase-4-cp12`. Same scope, constrain
 **Open questions:**
 
 1. Fold the release into CP12's pull request? What: Tasks 38 to 40 become Task 38 inside CP12, so one pull request, one review and one tick cover the App work and the version bump, and the tag goes on that merge commit. Why: INT-28 asks for one release as one task with sub-steps, and the thin slice and CP4 change no shipped file, so the release carries only CP1 anyway. Consequence: yes means the release waits for the owner's App steps (Task 33); no means a separate CP13 with Task 38 alone (one task, outside the 4 to 8 range because a release is one act), one more pull request and review. Recommendation and default: yes.
-   Answer:
+   Answer: Yes (the owner's answer in chat, Nov 27, 2026).
 2. Apply INT-28 to Phase 4 before the process files change? What: `docs/process/REVIEW_CYCLE.md`, `docs/templates/PULL_REQUEST_TEMPLATE.md`, `docs/templates/PHASE_PLAN_TEMPLATE.md` and the agents still describe the old way (every amendment signed, one re-review per round, a tick per task). INT-28 applies them in a separate piece of work. Why: otherwise the coordinator and reviewer would follow the old text against this amendment. Consequence: yes means, for CP12 only, the owner's signature on this amendment is the exception, the coordinator writes the one-tick line in the pull request body (still beside **Instructions** and still with all four ready-check lines), and nothing else in those files changes now; no means CP12 follows the old per-round process. Recommendation and default: yes.
-   Answer:
+   Answer: Yes (the owner's answer in chat, Nov 27, 2026).
 3. Fix the guide's wording nits (F34, F35, F36, F38, F39, F40, F41) inside CP12? What: Task 77 part (b). Why: INT-28's rule is that a Nit is fixed inside the pull request when it touches a file the pull request already changes, and Task 77 (a) already edits `docs/megaroast-setup.md`. Consequence: yes costs a few wording edits and no signature; no leaves them deferred and Task 77 does only (a). Recommendation and default: yes.
-   Answer:
+   Answer: Yes (the owner's answer in chat, Nov 27, 2026).
 4. Where does the owner's tick for Task 74 and the CP4 **Verification** go? What: the coder's work on Task 74 is done and its header and the CP4 Verification line wait for the owner; CP4's pull request is merged. Why: INT-28 wants no separate tick for a finished checkpoint. Consequence: yes means the single tick of CP12's pull request also states that Task 74 and the CP4 Verification are accepted, and the coordinator records that in the notes; no means the owner ticks Task 74 on its own. Recommendation and default: yes.
-   Answer:
+   Answer: Yes (the owner's answer in chat, Nov 27, 2026).
 5. Close Task 22 and Task 55 as accepted deferrals? What: both stay `[~]` with their reasons (Task 22: the conformance suite cannot send a bearer token; Task 55: the owner's preview showed the slug visible), and so does the CP2 check "change one field name and see one test fail" that the owner has not done. Why: the Completion checklist says "No [~] blocked items outstanding". Consequence: yes means the final summary lists them as accepted deferrals and the checklist line is read with that exception; no means they stay open and block "done". Recommendation and default: yes.
-   Answer:
+   Answer: Yes (the owner's answer in chat, Nov 27, 2026).
